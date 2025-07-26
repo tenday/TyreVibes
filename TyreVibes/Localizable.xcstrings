@@ -1,0 +1,201 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    " and " : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "e"
+          }
+        }
+      }
+    },
+    " Privacy Policy " : {
+
+    },
+    "@Username" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "@Username"
+          }
+        }
+      }
+    },
+    "Account Created Successfully!" : {
+
+    },
+    "Apple" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple"
+          }
+        }
+      }
+    },
+    "Authentication \nCode" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codice OTP"
+          }
+        }
+      }
+    },
+    "Auto fill vehicles details" : {
+
+    },
+    "c" : {
+      "extractionState" : "manual"
+    },
+    "Confirm Password" : {
+
+    },
+    "Congratulations your account has been successfully created." : {
+
+    },
+    "Continue" : {
+
+    },
+    "Create Account" : {
+
+    },
+    "Done" : {
+
+    },
+    "Enter 6-Digit" : {
+
+    },
+    "Enter Email" : {
+
+    },
+    "Enter License Plate Manually" : {
+
+    },
+    "Enter Password" : {
+
+    },
+    "Enter the email associated with your account and we'll send an OTP to reset your password." : {
+
+    },
+    "Everything start from here" : {
+
+    },
+    "Forgot Password" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password Dimenticata?"
+          }
+        }
+      }
+    },
+    "Garage" : {
+
+    },
+    "Get Started" : {
+
+    },
+    "Google" : {
+
+    },
+    "Hello, World!" : {
+
+    },
+    "I agree to the " : {
+
+    },
+    "Let's" : {
+
+    },
+    "Log in" : {
+
+    },
+    "Log In" : {
+
+    },
+    "No veichles found, pls add a new one" : {
+
+    },
+    "OR" : {
+
+    },
+    "Or Continue With" : {
+
+    },
+    "Phone Number" : {
+
+    },
+    "Please Verify Your Email" : {
+
+    },
+    "Remember me" : {
+
+    },
+    "Resend Code" : {
+
+    },
+    "Reset Password" : {
+
+    },
+    "Scan License Plate" : {
+
+    },
+    "Search country" : {
+
+    },
+    "Search..." : {
+
+    },
+    "Select Country" : {
+
+    },
+    "Send" : {
+
+    },
+    "Sign Up" : {
+
+    },
+    "Sign Up to get started" : {
+
+    },
+    "Skip" : {
+
+    },
+    "Technical Specs" : {
+
+    },
+    "Terms & Conditions " : {
+
+    },
+    "The OTP code has sent to your number. Please enter the code." : {
+
+    },
+    "TyreVibes" : {
+
+    },
+    "Verify Now" : {
+
+    },
+    "We just sent an email to %@.\nClick the link in the email to verify your account." : {
+
+    },
+    "Welcome back to TyreVibes!" : {
+
+    },
+    "Your new password must be different from previous used passwords." : {
+
+    }
+  },
+  "version" : "1.0"
+}

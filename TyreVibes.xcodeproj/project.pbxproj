@@ -6,13 +6,35 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E913FB712E2D2D2B005FB7C0 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB702E2D2D2B005FB7C0 /* Auth */; };
+		E913FB732E2D2D2B005FB7C0 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB722E2D2D2B005FB7C0 /* Functions */; };
+		E913FB752E2D2D2B005FB7C0 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB742E2D2D2B005FB7C0 /* PostgREST */; };
+		E913FB772E2D2D2B005FB7C0 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB762E2D2D2B005FB7C0 /* Realtime */; };
+		E913FB792E2D2D2B005FB7C0 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB782E2D2D2B005FB7C0 /* Storage */; };
+		E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB7A2E2D2D8B005FB7C0 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		E902A1112DD011CB00E6E298 /* TyreVibes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TyreVibes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E902A15C2DD2ACF600E6E298 /* Exceptions for "TyreVibes" folder in "TyreVibes" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E902A1102DD011CB00E6E298 /* TyreVibes */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E902A1132DD011CB00E6E298 /* TyreVibes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E902A15C2DD2ACF600E6E298 /* Exceptions for "TyreVibes" folder in "TyreVibes" target */,
+			);
 			path = TyreVibes;
 			sourceTree = "<group>";
 		};
@@ -23,6 +45,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E913FB752E2D2D2B005FB7C0 /* PostgREST in Frameworks */,
+				E913FB732E2D2D2B005FB7C0 /* Functions in Frameworks */,
+				E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */,
+				E913FB712E2D2D2B005FB7C0 /* Auth in Frameworks */,
+				E913FB792E2D2D2B005FB7C0 /* Storage in Frameworks */,
+				E913FB772E2D2D2B005FB7C0 /* Realtime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +93,12 @@
 			);
 			name = TyreVibes;
 			packageProductDependencies = (
+				E913FB702E2D2D2B005FB7C0 /* Auth */,
+				E913FB722E2D2D2B005FB7C0 /* Functions */,
+				E913FB742E2D2D2B005FB7C0 /* PostgREST */,
+				E913FB762E2D2D2B005FB7C0 /* Realtime */,
+				E913FB782E2D2D2B005FB7C0 /* Storage */,
+				E913FB7A2E2D2D8B005FB7C0 /* Supabase */,
 			);
 			productName = TyreVibes;
 			productReference = E902A1112DD011CB00E6E298 /* TyreVibes.app */;
@@ -91,9 +125,13 @@
 			knownRegions = (
 				en,
 				Base,
+				it,
 			);
 			mainGroup = E902A1082DD011CB00E6E298;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E902A1122DD011CB00E6E298 /* Products */;
 			projectDirPath = "";
@@ -185,6 +223,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -242,6 +281,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -256,6 +296,8 @@
 				DEVELOPMENT_TEAM = RX2N3LRGXU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TyreVibes/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +326,8 @@
 				DEVELOPMENT_TEAM = RX2N3LRGXU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TyreVibes/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -324,6 +368,50 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E913FB702E2D2D2B005FB7C0 /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		E913FB722E2D2D2B005FB7C0 /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		E913FB742E2D2D2B005FB7C0 /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		E913FB762E2D2D2B005FB7C0 /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		E913FB782E2D2D2B005FB7C0 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		E913FB7A2E2D2D8B005FB7C0 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E913FB6F2E2D2D2B005FB7C0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E902A1092DD011CB00E6E298 /* Project object */;
 }
