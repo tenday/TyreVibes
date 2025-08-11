@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 struct LoginScreen: View {
@@ -28,15 +29,6 @@ struct LoginScreen: View {
                     Color.customBackgroundColor
                         .ignoresSafeArea()
                     
-                    // Indicatore di caricamento
-                    if viewModel.isLoading {
-                        ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(2)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.black.opacity(0.4))
-                        .zIndex(1)
-                                        }
                     
                     VStack(spacing: 26) {
                         // Header
@@ -169,15 +161,33 @@ struct LoginScreen: View {
                             // Login Button
                             Button(action: {
                                 // Login action
+                                viewModel.signIn()
                                 print("Login tapped with email: \($viewModel.email)")
                             }) {
-                                Text("Log in")
-                                    .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                    .foregroundColor(Color.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: buttonHeight)
-                                    .background(Color.customBitterSweet)
-                                    .cornerRadius(screenWidth * 0.133)
+                                if viewModel.isLoading {
+                                    Text("")
+                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                        .foregroundColor(Color.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: buttonHeight)
+                                        .background(Color.customBitterSweet)
+                                        .cornerRadius(screenWidth * 0.133)
+                                        .overlay(ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .scaleEffect(1.2)
+                                            .frame(height: 62)
+                                            .frame(maxWidth: .infinity))
+                                    
+                                } else {
+                                    Text("Log in")
+                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                        .foregroundColor(Color.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: buttonHeight)
+                                        .background(Color.customBitterSweet)
+                                        .cornerRadius(screenWidth * 0.133)
+                                }
+                                
                             }
                             .disabled(viewModel.email.isEmpty || viewModel.password.isEmpty)
                             .opacity(viewModel.email.isEmpty || viewModel.password.isEmpty ? 0.6 : 1.0)
@@ -226,7 +236,11 @@ struct LoginScreen: View {
                                 }
                                 
                                 Button(action: {
-                                    // Handle Apple login
+                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let window = windowScene.windows.first {
+                                        print(window)
+                                        viewModel.signInWithApple(presentationAnchor: window)
+                                    }
                                 }) {
                                     HStack {
                                         Image("AppleIcon") // Apple logo

@@ -7,13 +7,16 @@ struct SignUpScreen: View {
 
     @StateObject private var viewModel = SignUpViewModel()
     @Environment(\.dismiss) private var dismiss
-
+    
+    @State private var showOtpScreen = false
     @State private var showPhoneSheet: Bool = false
     @State private var showEmailVerificationSheet = false
     @State private var navigateToForgotPassword = false
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.customBackgroundColor.edgesIgnoringSafeArea(.all)
                 VStack(spacing: 0) {
@@ -29,16 +32,6 @@ struct SignUpScreen: View {
                         Spacer()
                     }
                     .padding(.horizontal, 20)
-
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(2)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color.black.opacity(0.4))
-                            .edgesIgnoringSafeArea(.all)
-                            .zIndex(1)
-                    }
                     
                     NavigationLink(
                         destination: ForgotPasswordScreen()
@@ -65,7 +58,7 @@ struct SignUpScreen: View {
                             VStack(spacing: 12) {
                                 CustomTextField(iconName: "UsernameIcon", placeholder: "Enter Full Name", text: $viewModel.fullName)
                                 CustomTextField(iconName: "UsernameIcon", placeholder: "@Username", text: $viewModel.username)
-
+                                
                                 PhoneNumberField(
                                     selectedCountry: $viewModel.selectedCountry,
                                     phoneNumber: $viewModel.phoneNumber,
@@ -89,35 +82,74 @@ struct SignUpScreen: View {
                     }
 
                     Button(action: {
-                        viewModel.createAccount()
+                        viewModel.createAccount(completion: { result in
+                            switch result {
+                            case .success:
+                                showOtpScreen = true
+                            case .failure(_):
+                                errorMessage = "Registrazione fallita. si prega di riprovare più tardi"
+                                showErrorAlert = true
+                            }
+                        })
                     }) {
-                        Text("Create Account")
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 62)
-                            .background(Color.customBitterSweet)
-                            .cornerRadius(100)
-                            .opacity(viewModel.isSignUpButtonEnabled ? 1.0 : 0.6)
+                        if viewModel.isLoadingCreationAccount {
+                            Text("")
+                                .foregroundColor(Color.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 62)
+                                .background(Color.customBitterSweet)
+                                .overlay(ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(1.2)
+                                    .frame(height: 62)
+                                    .frame(maxWidth: .infinity))
+                        } else {
+                            Text("Create Account")
+                                .font(.customFont(size: 18, weight: .bold))
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 62)
+                        }
                     }
-                    .disabled(!viewModel.isSignUpButtonEnabled)
+                    .background(Color.customBitterSweet)
+                    .cornerRadius(100)
+                    .opacity(viewModel.isSignUpButtonEnabled ? 1.0 : 0.6)
+                    .disabled(!viewModel.isSignUpButtonEnabled || viewModel.isLoadingCreationAccount)
                     .padding(.horizontal)
                     .padding(.bottom, 30)
                     .background(Color.customBackgroundColor)
                 }
                 .sheet(isPresented: $showPhoneSheet) {
-                    CountrySelectionSheet(
-                        countries: viewModel.filteredCountries,
-                        searchText: $viewModel.searchText,
-                        selectedCountry: $viewModel.selectedCountry,
-                        onDone: { showPhoneSheet = false }
-                    )
+                    if viewModel.isLoadingCountries {
+                        VStack {
+                            Spacer()
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .foregroundColor(.white)
+                                .scaleEffect(1.5)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.customBackgroundColor.ignoresSafeArea())
+                    } else {
+                        CountrySelectionSheet(
+                            countries: viewModel.filteredCountries,
+                            searchText: $viewModel.searchText,
+                            selectedCountry: $viewModel.selectedCountry,
+                            onDone: { showPhoneSheet = false }
+                        )
+                    }
                 }
                 .sheet(isPresented: $showEmailVerificationSheet) {
                     EmailVerificationSheet(email: viewModel.email)
                 }
                 // Corrected alert usage
-               
+                .alert("Error", isPresented: $showErrorAlert, actions: {
+                    Button("OK", role: .cancel) { }
+                }, message: {
+                    Text(errorMessage)
+                })
                 .onChange(of: showPhoneSheet) { _, isShowing in
                     if isShowing {
                         viewModel.fetchCountries()
@@ -135,7 +167,11 @@ struct SignUpScreen: View {
                         .foregroundColor(.white)
                 })
                 .navigationBarHidden(true)
-                
+                .navigationDestination(isPresented: $showOtpScreen) {
+                    
+                    OTPVerificationView(viewModel: viewModel)
+                }
+                .navigationBarBackButtonHidden(true)
             }
         }
     }
@@ -254,7 +290,13 @@ struct PhoneNumberField: View {
 
             HStack {
                 TextField("Phone Number", text: $phoneNumber)
-                    .keyboardType(.phonePad)
+                    .keyboardType(.numberPad)
+                    .onReceive(Just(phoneNumber)) { newValue in
+                        let filtered = newValue.filter { "0123456789".contains($0) }
+                        if filtered != newValue {
+                            phoneNumber = filtered
+                        }
+                    }
                     .font(.customFont(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxHeight: .infinity)
@@ -360,19 +402,37 @@ struct TermsAndConditionsToggle: View {
     var body: some View {
         HStack {
             Toggle(isOn: $agreedToTerms) {
-                (
-                    Text("I agree to the ")
+                HStack(spacing: 2) {
+                    Text("I agree to the")
                         .foregroundColor(.white)
-                        .font(.customFont(size: 12, weight: .regular)) +
-                    Text("Terms & Conditions ")
-                        .foregroundColor(Color.customBitterSweet)
-                        .font(.customFont(size: 12, weight: .regular)) +
-                    Text(" and ")
-                        .foregroundColor(.white) +
-                    Text(" Privacy Policy ")
-                        .foregroundColor(Color.customBitterSweet)
-                )
-                .font(.customFont(size: 12, weight: .regular))
+                        .font(.customFont(size: 12, weight: .regular))
+
+                    Button(action: {
+                        if let url = URL(string: "https://tyrevibes.com") {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        Text("Terms & Conditions")
+                            .foregroundColor(Color.customBitterSweet)
+                            .font(.customFont(size: 12, weight: .regular))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    Text("and")
+                        .foregroundColor(.white)
+                        .font(.customFont(size: 12, weight: .regular))
+
+                    Button(action: {
+                        if let url = URL(string: "https://tyrevibes.com") {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        Text("Privacy Policy")
+                            .foregroundColor(Color.customBitterSweet)
+                            .font(.customFont(size: 12, weight: .regular))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
             .toggleStyle(CheckboxToggleStyle())
         }

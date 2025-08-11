@@ -21,11 +21,15 @@ class SignUpViewModel: ObservableObject {
     
     // MARK: - Validation & State
     @Published var passwordRequirements: [PasswordRequirement] = []
-    @Published var isLoading = false
+    @Published var isLoadingCreationAccount = false
+    @Published var isLoadingCountries = false
+    @Published var isLoadingCheckingOtp = false
     @Published var showAlert = false
     @Published var alertTitle = ""
     @Published var alertMessage = ""
     @Published var showSuccessAlert = false
+    @Published var fullOtp = ""
+    @Published var showCreationSuccessScreen = false
     
     private var cancellables = Set<AnyCancellable>()
     private let authService = AuthService()
@@ -92,8 +96,12 @@ class SignUpViewModel: ObservableObject {
     }
     
     func fetchCountries() {
+        isLoadingCountries = true
         
-        guard countries.isEmpty else { return }
+        guard countries.isEmpty else {
+            self.isLoadingCountries = false
+            return
+        }
         
         Task {
             do {
@@ -104,13 +112,46 @@ class SignUpViewModel: ObservableObject {
             } catch {
                 handleError(error, title: "Network Error")
             }
+            self.isLoadingCountries = false
+        }
+    }
+    
+    func verifyOtp() {
+        isLoadingCheckingOtp = true
+
+        Task { [weak self] in
+            guard let self = self else { return }
+            defer { self.isLoadingCheckingOtp = false }
+
+            // Validazione locale OTP (6 cifre numeriche)
+            let digits = CharacterSet.decimalDigits
+            let isSixDigits = self.fullOtp.count == 6
+            let isNumeric = CharacterSet(charactersIn: self.fullOtp).isSubset(of: digits)
+            guard isSixDigits && isNumeric else {
+                self.alertTitle = "Codice OTP non valido"
+                self.alertMessage = "Inserisci un codice di 6 cifre."
+                self.showAlert = true
+                return
+            }
+
+            do {
+                try await authService.verifyOtp(otpCode: self.fullOtp, phoneNumber: self.phoneNumber)
+                self.showCreationSuccessScreen = true
+            } catch {
+                // Mostra un alert chiaro per gli errori di verifica OTP
+                self.handleError(error, title: "Verifica OTP fallita")
+                self.alertTitle = "Codice OTP non valido"
+                self.alertMessage = "Codice OTP non valido. Riprova."
+                self.showAlert = true
+            }
         }
     }
 
-    func createAccount() {
-        isLoading = true
+    func createAccount(completion: @escaping (Result<Void, Error>) -> Void) {
+        isLoadingCreationAccount = true
         showSuccessAlert = false
-        
+
+
         Task {
             do {
                 try await authService.createAccount(
@@ -126,12 +167,17 @@ class SignUpViewModel: ObservableObject {
                 self.alertMessage = "Please check your email to verify your account."
                 self.showSuccessAlert = true
                 self.showAlert = true
+                try await authService.sendOtp(phoneNumber:  selectedCountry.dialCode + phoneNumber)
+                completion(.success(()))
             } catch {
                 handleError(error, title: "Registration Failed")
+                completion(.failure(error))
             }
-            self.isLoading = false
+            self.isLoadingCreationAccount = false
         }
     }
+    
+    
     
     private func handleError(_ error: Error, title: String) {
         self.alertTitle = title
@@ -140,10 +186,28 @@ class SignUpViewModel: ObservableObject {
             case .signUpFailed(let reason): self.alertMessage = "Sign-up Error: \(reason)"
             case .profileCreationFailed(let reason): self.alertMessage = "Profile Error: \(reason)"
             case .noUserFound: self.alertMessage = "No user was found after sign up."
+            case .invalidMail(let reason): self.alertMessage = "Invalid email: \(reason)"
             }
         } else {
             self.alertMessage = error.localizedDescription
         }
         self.showAlert = true
     }
+    
+    func resendCode() {
+        isLoadingCheckingOtp = true
+        Task {
+            do {
+                try await authService.sendOtp(phoneNumber: selectedCountry.dialCode + phoneNumber)
+            } catch {
+                handleError(error, title: "Impossibile inviare nuovamente il codice OTP")
+                self.alertTitle = "Codice OTP non valido"
+                self.alertMessage = "Codice OTP non valido. Riprova."
+                self.showAlert = true
+            }
+            isLoadingCheckingOtp = false
+        }
+    }
 }
+
+   

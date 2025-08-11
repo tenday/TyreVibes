@@ -1,11 +1,17 @@
 import SwiftUI
 
 struct OTPVerificationView: View {
+    @ObservedObject var viewModel: SignUpViewModel
+    @Environment(\.dismiss) private var dismiss
+    
     @State private var otpCode: [String] = Array(repeating: "", count: 6)
     @State private var isKeyboardVisible = false
     @FocusState private var focusedField: Int?
+    @State private var countdown = 60
+    @State private var timer: Timer? = nil
     
-    var body: some View {
+var body: some View {
+    NavigationStack {
         GeometryReader { geometry in
             VStack(spacing: 10) {
                 // Navigation bar
@@ -33,7 +39,7 @@ struct OTPVerificationView: View {
                         .font(.customFont(size: 32, weight: .bold))
                         .foregroundColor(.white)
                     
-                    Text("The OTP code has sent to your number. Please enter the code.")
+                    Text("The OTP code has been sent to \(Utilities.maskPhoneNumber(viewModel.phoneNumber)). Please enter the code.")
                         .font(.customFont(size: 18, weight: .regular))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.top, 5)
@@ -72,6 +78,7 @@ struct OTPVerificationView: View {
                         .onTapGesture {
                             focusedField = index
                         }
+                        
                     }
                 }
                 .padding(.horizontal)
@@ -88,102 +95,151 @@ struct OTPVerificationView: View {
                 // Verify button
                 Button(action: {
                     // Handle verification
-                    let fullOTP = otpCode.joined()
-                    print("OTP entered: \(fullOTP)")
+                    viewModel.fullOtp = otpCode.joined()
+                    viewModel.verifyOtp()
                 }) {
-                    Text("Verify Now")
-                        .font(.customFont(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .opacity(otpCode.contains { $0.isEmpty } ? 0.6 : 1.0)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 62)
-                        .background(
+                    if viewModel.isLoadingCheckingOtp {
+                        ZStack {
                             RoundedRectangle(cornerRadius: 100)
                                 .fill(Color.customBitterSweet)
-                        )
-                        .opacity(otpCode.contains { $0.isEmpty } ? 0.6 : 1.0)
+                                .frame(height: 62)
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                        }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal)
+                    }
+                    else {
+                        Text("Verify Now")
+                            .font(.customFont(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .opacity(otpCode.contains { $0.isEmpty } ? 0.6 : 1.0)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 62)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(Color.customBitterSweet)
+                            )
+                            .opacity(otpCode.contains { $0.isEmpty } ? 0.6 : 1.0)
+                            .padding(.horizontal)
+                    }
+                    
                 }
                 .disabled(otpCode.contains { $0.isEmpty })
+                .background(Color.customBackgroundColor)
                 
-                // Resend code button - now with underline
-                Button(action: {
-                    // Handle resend code
-                    // Reset OTP and focus sul primo campo
-                    otpCode = Array(repeating: "", count: 6)
-                    focusedField = 0
-                }) {
-                    Text("Resend Code")
+                // Resend code button with countdown
+                if countdown > 0 {
+                    Text("Resend available in \(countdown)s")
                         .font(.customFont(size: 18, weight: .medium))
-                        .foregroundColor(Color.customElectricBlueColor)
+                        .foregroundColor(Color.gray)
                         .underline()
                         .padding()
+                        .disabled(true)
+                } else {
+                    Button(action: {
+                        viewModel.resendCode()
+                        otpCode = Array(repeating: "", count: 6)
+                        focusedField = 0
+                        countdown = 60
+                        startCountdown()
+                    }) {
+                        Text("Resend Code")
+                            .font(.customFont(size: 18, weight: .medium))
+                            .foregroundColor(Color.customElectricBlueColor)
+                            .underline()
+                            .padding()
+                    }
                 }
                 
                 Spacer()
             }
         }
         .background(Color.customBackgroundColor)
-        .onTapGesture {
-            // Se l'utente tocca fuori dai campi, trova il primo campo vuoto
-            if let firstEmptyIndex = otpCode.firstIndex(where: { $0.isEmpty }) {
-                focusedField = firstEmptyIndex
-            } else {
-                focusedField = 5 // Se tutti i campi sono pieni, focus sull'ultimo
+        .onAppear {
+            startCountdown()
+        }
+        .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.alertMessage)
+        }
+        .navigationDestination(isPresented: $viewModel.showCreationSuccessScreen) {
+            CreationSuccessScreen()
+        }
+    }
+}
+    
+    
+    private func handleOTPInput(newValue: String, at index: Int) {
+        // Consente solo numeri e rende le transizioni di focus idempotenti
+        let filtered = newValue.filter { $0.isNumber }
+
+        // Evita riassegnazioni inutili che possono causare "lampeggio" del focus
+        if filtered == otpCode[index] {
+            return
+        }
+
+        // Gestione incolla multipla (es. "123456"): riempi i campi da `index` in avanti
+        if filtered.count > 1 {
+            var cursor = index
+            for ch in filtered.prefix(6 - index) {
+                otpCode[cursor] = String(ch)
+                cursor += 1
+            }
+            let target = min(5, cursor)
+            if focusedField != target {
+                focusedField = target
+            }
+            return
+        }
+
+        // Inserimento singolo carattere
+        if let ch = filtered.first {
+            otpCode[index] = String(ch)
+            let target = min(5, index + 1)
+            if focusedField != target {
+                focusedField = target
+            }
+            return
+        }
+
+        // Cancellazione: svuota il campo corrente e torna indietro di uno (se possibile)
+        otpCode[index] = ""
+        if index > 0 {
+            let target = index - 1
+            if focusedField != target {
+                focusedField = target
             }
         }
     }
     
-    // Funzione separata per gestire l'input OTP
-    private func handleOTPInput(newValue: String, at index: Int) {
-        let oldValue = otpCode[index]
-        
-        // Se l'utente ha incollato tutto il codice
-        if newValue.count > 1 {
-            let numbers = newValue.filter { $0.isNumber }
-            let startIndex = numbers.startIndex
-            
-            for i in 0..<min(6, numbers.count) {
-                if index + i < 6 {
-                    let charIndex = numbers.index(startIndex, offsetBy: i)
-                    otpCode[index + i] = String(numbers[charIndex])
+    // Timer logic for countdown
+    private func startCountdown() {
+        timer?.invalidate()
+        if countdown > 0 {
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
+                if countdown > 0 {
+                    countdown -= 1
                 }
-            }
-            
-            // Focus sull'ultimo campo riempito o sul primo vuoto
-            let nextFocusIndex = min(5, index + numbers.count)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                focusedField = nextFocusIndex
-            }
-            return
-        }
-        
-        // Input normale - un carattere alla volta
-        let filtered = newValue.filter { $0.isNumber }
-        
-        if filtered.count <= 1 {
-            otpCode[index] = filtered
-            
-            // Se è stato inserito un numero, vai al prossimo campo
-            if !filtered.isEmpty && oldValue.isEmpty && index < 5 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    focusedField = index + 1
-                }
-            }
-            // Se il campo è stato svuotato (backspace), vai al precedente
-            else if filtered.isEmpty && !oldValue.isEmpty && index > 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    focusedField = index - 1
+                if countdown == 0 {
+                    timer?.invalidate()
                 }
             }
         }
     }
+
+    
 }
 
 // Preview
 struct OTPVerificationView_Previews: PreviewProvider {
     static var previews: some View {
-        OTPVerificationView()
-            .preferredColorScheme(.dark)
+        let viewModel = SignUpViewModel()
+        viewModel.phoneNumber = "3519770640"
+        return OTPVerificationView(viewModel: viewModel)
+        .preferredColorScheme(.dark)
     }
 }
+    

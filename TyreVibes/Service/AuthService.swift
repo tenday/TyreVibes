@@ -6,6 +6,68 @@ enum AuthServiceError: Error {
     case signUpFailed(String)
     case profileCreationFailed(String)
     case noUserFound
+    case invalidMail(String)
+}
+
+import AuthenticationServices
+
+@MainActor
+extension AuthService {
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws {
+        let provider = ASAuthorizationAppleIDProvider()
+        let request = provider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        let delegate = AppleSignInDelegate()
+        controller.delegate = delegate
+        controller.presentationContextProvider = delegate
+        
+        delegate.presentationAnchor = presentationAnchor
+        
+        controller.performRequests()
+        
+        let credential = try await delegate.credential
+        
+        guard let identityToken = credential.identityToken,
+              let tokenString = String(data: identityToken, encoding: .utf8) else {
+            throw AuthServiceError.signUpFailed("Token Apple non valido")
+        }
+        
+        try await SupabaseManager.client.auth.signInWithIdToken(
+            credentials: .init(provider: .apple, idToken: tokenString, nonce: nil)
+        )
+    }
+}
+
+
+private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    var continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>?
+    var presentationAnchor: ASPresentationAnchor?
+
+    var credential: ASAuthorizationAppleIDCredential {
+        get async throws {
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+            }
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+            continuation?.resume(returning: appleIDCredential)
+        } else {
+            continuation?.resume(throwing: AuthServiceError.signUpFailed("Credenziale Apple non valida"))
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        continuation?.resume(throwing: error)
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        return presentationAnchor ?? ASPresentationAnchor()
+    }
 }
 
 class AuthService {
@@ -74,7 +136,31 @@ class AuthService {
         }
     }
     
+    func sendOtp(phoneNumber: String) async throws {
+        do {
+            try await SupabaseManager.client.auth.signInWithOTP(phone: phoneNumber)
+        }
+        catch {
+            print("errore \(error)")
+        }
+    }
+    
+    func verifyOtp(otpCode: String, phoneNumber: String) async throws {
+        do {
+            let session = try await SupabaseManager.client.auth.verifyOTP(
+                phone: phoneNumber,
+                token: otpCode,
+                type: .sms
+            )
+        }
+        catch {
+            print("errore \(error)")
+        }
+    }
+    
     func signIn(email: String, password: String) async throws {
             try await SupabaseManager.client.auth.signIn(email: email, password: password)
         }
+    
+    
 }

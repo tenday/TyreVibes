@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CreationSuccessScreen: View {
     @Environment(\.presentationMode) var presentationMode
+    @State private var goHome = false
     
     var body: some View {
         ZStack {
@@ -10,25 +11,10 @@ struct CreationSuccessScreen: View {
                 .ignoresSafeArea()
             
             VStack {
-                // Top bar con freccia indietro
-                HStack {
-                    Button(action: {
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Image(systemName: "arrow.left")
-                            .frame(width: 24, height: 24)
-                            .foregroundColor(.white)
-                            .font(.title2)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                
                 // Animazione di successo nativa SwiftUI
                 SuccessAnimationView()
                     .frame(width: 100, height: 100)
-                    .padding(.top, 60)
+                    .padding(.top, 100)
                 
                 Spacer()
                 
@@ -54,8 +40,7 @@ struct CreationSuccessScreen: View {
                 
                 // Pulsante Get Started
                 Button(action: {
-                    // Azione per iniziare
-                    print("Get Started tapped")
+                    goHome = true
                 }) {
                     Text("Get Started")
                         .font(.customFont(size: 18, weight: .semibold))
@@ -69,7 +54,10 @@ struct CreationSuccessScreen: View {
                 .padding(.bottom, 52)
             }
         }
-        .navigationBarHidden(true)
+        .navigationDestination(isPresented: $goHome) {
+            GarageScreen()
+                .navigationBarBackButtonHidden(true)
+        }
     }
 }
 
@@ -195,6 +183,8 @@ struct SuccessAnimationView: View {
 
 struct AccountCreatedView_Previews: PreviewProvider {
     static var previews: some View {
-        CreationSuccessScreen()
+        NavigationStack {
+                    CreationSuccessScreen()
+                }
     }
 }

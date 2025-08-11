@@ -5,17 +5,21 @@
 
     },
     " and " : {
+      "extractionState" : "manual",
       "localizations" : {
-        "it" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "and"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
             "value" : "e"
           }
         }
       }
-    },
-    " Privacy Policy " : {
-
     },
     "@Username" : {
       "extractionState" : "stale",
@@ -29,7 +33,24 @@
       }
     },
     "Account Created Successfully!" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account creato con successo!"
+          }
+        }
+      }
+    },
+    "and" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "e"
+          }
+        }
+      }
     },
     "Apple" : {
       "localizations" : {
@@ -72,8 +93,26 @@
     "Done" : {
 
     },
+    "Engine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Motore"
+          }
+        }
+      }
+    },
     "Enter 6-Digit" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inserisci"
+          }
+        }
+      }
     },
     "Enter Email" : {
 
@@ -85,6 +124,9 @@
 
     },
     "Enter the email associated with your account and we'll send an OTP to reset your password." : {
+
+    },
+    "Error" : {
 
     },
     "Everything start from here" : {
@@ -109,10 +151,7 @@
     "Google" : {
 
     },
-    "Hello, World!" : {
-
-    },
-    "I agree to the " : {
+    "I agree to the" : {
 
     },
     "Let's" : {
@@ -124,7 +163,38 @@
     "Log In" : {
 
     },
+    "Make" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marca"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modello"
+          }
+        }
+      }
+    },
     "No veichles found, pls add a new one" : {
+
+    },
+    "OK" : {
 
     },
     "OR" : {
@@ -137,6 +207,9 @@
 
     },
     "Please Verify Your Email" : {
+
+    },
+    "Privacy Policy" : {
 
     },
     "Remember me" : {
@@ -175,23 +248,48 @@
     "Technical Specs" : {
 
     },
-    "Terms & Conditions " : {
+    "Terms & Conditions" : {
 
     },
-    "The OTP code has sent to your number. Please enter the code." : {
+    "The OTP code has been sent to %@. Please enter the code." : {
 
     },
     "TyreVibes" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TyreVibes"
+          }
+        }
+      }
     },
     "Verify Now" : {
-
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifica"
+          }
+        }
+      }
     },
     "We just sent an email to %@.\nClick the link in the email to verify your account." : {
 
     },
     "Welcome back to TyreVibes!" : {
 
+    },
+    "Year" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anno"
+          }
+        }
+      }
     },
     "Your new password must be different from previous used passwords." : {
 

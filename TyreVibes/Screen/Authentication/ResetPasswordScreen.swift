@@ -63,7 +63,7 @@ struct ResetPasswordScreen: View {
                             .padding(.bottom, 30)
                             
                             // Form Fields
-                            VStack(spacing: 12) {
+                            VStack(spacing: 6) {
                                 // Password Field
                                 HStack {
                                     Image(systemName: "lock.fill")

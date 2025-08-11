@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct WelcomeScreen: View {
+    
+    @StateObject private var viewModel = LoginViewModel()
+    
     var body: some View {
         NavigationView {
             GeometryReader { geometry in
@@ -158,7 +161,11 @@ struct WelcomeScreen: View {
                                 }
                                 
                                 Button(action: {
-                                    // Handle Apple login
+                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let window = windowScene.windows.first {
+                                        print(window)
+                                        viewModel.signInWithApple(presentationAnchor: window)
+                                    }
                                 }) {
                                     HStack {
                                         Image("AppleIcon") // Apple logo
@@ -183,6 +190,7 @@ struct WelcomeScreen: View {
                     }
                 }
                 .preferredColorScheme(.dark)
+                .navigationBarHidden(true)
                 .navigationBarBackButtonHidden(true)
             }
         }

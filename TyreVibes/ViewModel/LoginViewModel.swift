@@ -1,11 +1,16 @@
-
 import SwiftUI
 import Combine
 import Security
+import AuthenticationServices
 
+enum LoginFormFocus {
+    case email
+    case password
+}
 
 @MainActor
-class LoginViewModel: ObservableObject {
+class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
+    // MARK: - Published Properties
     @Published var email = ""
     @Published var password = ""
     @Published var rememberMe = false
@@ -13,18 +18,25 @@ class LoginViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var alertItem: AlertItem?
     
+    @Published var formFocus: LoginFormFocus?
+
     private let authService = AuthService()
     
-    init() {
+    override init() {
+        super.init()
         attemptAutoLogin()
     }
+    
     var isLoginButtonEnabled: Bool {
-        !email.isEmpty && !password.isEmpty
+        !email.isEmpty && !password.isEmpty && !isLoading
     }
     
+    // MARK: - Email/Password Sign In
+    
     func signIn() {
-        // Nascondi la tastiera
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        formFocus = nil
+        
+        guard isLoginButtonEnabled else { return }
         
         isLoading = true
         Task {
@@ -33,29 +45,50 @@ class LoginViewModel: ObservableObject {
                 
                 if rememberMe {
                     try KeychainHelper.save(email: email, password: password)
-                    } else {
+                } else {
                     KeychainHelper.delete()
-                    }
-                // Se il login ha successo, qui dovresti navigare alla schermata principale dell'app.
-                // Per ora, non facciamo nulla, ma l'indicatore di caricamento si fermerà.
-            } catch {
-                if !rememberMe {
-                    self.alertItem = AlertItem(title: "Login Failed", message: error.localizedDescription)
                 }
+                // Login con successo. La navigazione avverrà in un altro punto.
+                
+            } catch {
+                // CORREZIONE: Mostra sempre l'alert in caso di errore
+                self.alertItem = AlertItem(title: "Login Fallito", message: error.localizedDescription)
             }
             self.isLoading = false
         }
     }
     
     private func attemptAutoLogin() {
-           // Carica le credenziali dal Keychain
-           if let credentials = KeychainHelper.load() {
-               self.email = credentials.email
-               self.password = credentials.password
-               self.rememberMe = true
-               
-               // Avvia il processo di sign-in automatico
-               signIn()
-           }
-       }
+        if let credentials = KeychainHelper.load() {
+            self.email = credentials.email
+            self.password = credentials.password
+            self.rememberMe = true
+            signIn()
+        }
+    }
+    
+    // MARK: - Sign In with Apple
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) {
+        Task {
+            do {
+                try await authService.signInWithApple(presentationAnchor: presentationAnchor)
+                // Login con successo. La navigazione avverrà in un altro punto.
+            } catch {
+                self.alertItem = AlertItem(title: "Apple Login Fallito", message: "Autorizzazioni necessarie")
+            }
+        }
+    }
+
+    
+
+    
 }
+
+// Assicurati di avere queste struct di supporto nel tuo progetto
+
+
+struct Credentials {
+    let email: String
+    let password: String
+}
+
