@@ -21,6 +21,22 @@
         }
       }
     },
+    "Apple Login Failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Login Failed"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login con Apple Fallito"
+          }
+        }
+      }
+    },
     "@Username" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -156,6 +172,22 @@
     },
     "Let's" : {
 
+    },
+    "Login Failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login Failed"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login Fallito"
+          }
+        }
+      }
     },
     "Log in" : {
 

@@ -19,4 +19,8 @@ extension Color {
     static let customElectricBlueColor = Color(hex: "5CEBFF")
     static let customFieldColor = Color(red: 0.23, green: 0.23, blue: 0.23).opacity(0.30)
     static let customBackgroundColor = Color(hex: "191919")
+
+    // Colors for LoginScreen refactoring
+    static let customWhite = Color(hex: "FFFFFF")
+    static let customSocialButtonBackground = Color(hex: "3A3A3A")
 }

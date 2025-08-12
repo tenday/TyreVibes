@@ -7,7 +7,6 @@ struct LoginScreen: View {
     
     @Environment(\.dismiss) private var dismiss
     
-    @State private var rememberMe = false
     @State private var showPassword = false
     
     var body: some View {
@@ -128,20 +127,16 @@ struct LoginScreen: View {
                             
                             // Remember Me & Forgot Password
                             HStack {
-                                Button(action: {
-                                    rememberMe.toggle()
-                                }) {
-                                    HStack(spacing: 0) {
-                                        Toggle("", isOn: $rememberMe)
-                                            .labelsHidden()
-                                            .toggleStyle(CheckboxToggleStyle())
-                                        
-                                        Text("Remember me")
-                                            .foregroundColor(.white)
-                                            .font(.customFont(size: 12, weight: .regular))
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                HStack(spacing: 0) {
+                                    Toggle("", isOn: $viewModel.rememberMe)
+                                        .labelsHidden()
+                                        .toggleStyle(CheckboxToggleStyle())
+
+                                    Text("Remember me")
+                                        .foregroundColor(.white)
+                                        .font(.customFont(size: 12, weight: .regular))
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 Spacer()
                                 
@@ -160,36 +155,24 @@ struct LoginScreen: View {
                             
                             // Login Button
                             Button(action: {
-                                // Login action
                                 viewModel.signIn()
-                                print("Login tapped with email: \($viewModel.email)")
                             }) {
-                                if viewModel.isLoading {
-                                    Text("")
-                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                        .foregroundColor(Color.white)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: buttonHeight)
-                                        .background(Color.customBitterSweet)
-                                        .cornerRadius(screenWidth * 0.133)
-                                        .overlay(ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                            .scaleEffect(1.2)
-                                            .frame(height: 62)
-                                            .frame(maxWidth: .infinity))
-                                    
-                                } else {
-                                    Text("Log in")
-                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                        .foregroundColor(Color.white)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: buttonHeight)
-                                        .background(Color.customBitterSweet)
-                                        .cornerRadius(screenWidth * 0.133)
-                                }
-                                
+                                Text("Log in")
+                                    .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                    .foregroundColor(Color.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: buttonHeight)
+                                    .background(Color.customBitterSweet)
+                                    .cornerRadius(screenWidth * 0.133)
+                                    .opacity(viewModel.isLoading ? 0 : 1)
+                                    .overlay {
+                                        if viewModel.isLoading {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        }
+                                    }
                             }
-                            .disabled(viewModel.email.isEmpty || viewModel.password.isEmpty)
+                            .disabled(viewModel.email.isEmpty || viewModel.password.isEmpty || viewModel.isLoading)
                             .opacity(viewModel.email.isEmpty || viewModel.password.isEmpty ? 0.6 : 1.0)
                             .padding(.bottom,screenHeight * -0.03)
                             .padding(.top, screenHeight * 0.25)
@@ -197,16 +180,16 @@ struct LoginScreen: View {
                             // Or Continue With
                             HStack {
                                 Rectangle()
-                                    .fill(Color(hex: "FFFFFF"))
+                                    .fill(Color.customWhite.opacity(0.5))
                                     .frame(width: screenWidth * 0.25, height: 0.5)
                                 
                                 Text("Or Continue With")
                                     .font(.customFont(size: screenWidth * 0.032, weight: .regular)) // ~12pt
-                                    .foregroundColor(Color(hex: "FFFFFF"))
+                                    .foregroundColor(.customWhite)
                                     .padding(.horizontal, screenWidth * 0.025)
                                 
                                 Rectangle()
-                                    .fill(Color(hex: "FFFFFF"))
+                                    .fill(Color.customWhite.opacity(0.5))
                                     .frame(width: screenWidth * 0.25, height: 0.5)
                             }
                             .padding(.vertical, screenHeight * 0.02)
@@ -219,45 +202,36 @@ struct LoginScreen: View {
                                     // Handle Google log in
                                 }) {
                                     HStack {
-                                        Image("GoogleIcon") // Replace with Google logo
+                                        Image("GoogleIcon")
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: iconSize, height: iconSize)
-                                            .foregroundColor(.white)
                                         
                                         Text("Google")
                                             .font(.customFont(size: socialButtonFontSize, weight: .semibold))
                                             .foregroundColor(.white)
                                     }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: socialButtonHeight)
-                                    .background(Color(hex: "3A3A3A").opacity(0.3))
-                                    .cornerRadius(screenWidth * 0.075)
                                 }
+                                .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
                                 
                                 Button(action: {
                                     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                                        let window = windowScene.windows.first {
-                                        print(window)
                                         viewModel.signInWithApple(presentationAnchor: window)
                                     }
                                 }) {
                                     HStack {
-                                        Image("AppleIcon") // Apple logo
+                                        Image("AppleIcon")
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: iconSize, height: iconSize)
-                                            .foregroundColor(.white)
                                         
                                         Text("Apple")
                                             .font(.customFont(size: socialButtonFontSize, weight: .semibold))
                                             .foregroundColor(.white)
                                     }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: socialButtonHeight)
-                                    .background(Color(hex: "3A3A3A").opacity(0.3))
-                                    .cornerRadius(screenWidth * 0.075)
                                 }
+                                .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
                             }
                         }
                         .padding(.horizontal, 20)
@@ -272,6 +246,25 @@ struct LoginScreen: View {
         }
         .preferredColorScheme(.dark)
         
+    }
+}
+
+// MARK: - Reusable Components
+
+private struct SocialLoginButtonStyle: ButtonStyle {
+    let height: CGFloat
+    let cornerRadius: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .background(
+                Color.customSocialButtonBackground.opacity(configuration.isPressed ? 0.5 : 0.3)
+            )
+            .cornerRadius(cornerRadius)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
     }
 }
 

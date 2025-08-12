@@ -52,7 +52,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 
             } catch {
                 // CORREZIONE: Mostra sempre l'alert in caso di errore
-                self.alertItem = AlertItem(title: "Login Fallito", message: error.localizedDescription)
+                self.alertItem = AlertItem(title: "Login Failed", message: error.localizedDescription)
             }
             self.isLoading = false
         }
@@ -74,7 +74,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 try await authService.signInWithApple(presentationAnchor: presentationAnchor)
                 // Login con successo. La navigazione avverrà in un altro punto.
             } catch {
-                self.alertItem = AlertItem(title: "Apple Login Fallito", message: "Autorizzazioni necessarie")
+                self.alertItem = AlertItem(title: "Apple Login Failed", message: error.localizedDescription)
             }
         }
     }
