@@ -7,6 +7,8 @@ enum AuthServiceError: Error {
     case profileCreationFailed(String)
     case noUserFound
     case invalidMail(String)
+    case otpInvalid
+    case otpExpired
 }
 
 import AuthenticationServices

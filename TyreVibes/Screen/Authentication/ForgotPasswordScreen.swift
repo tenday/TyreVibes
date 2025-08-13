@@ -26,10 +26,7 @@ struct ForgotPasswordScreen: View {
                             Button(action: {
                                 dismiss()
                             }) {
-                                Image(systemName: "arrow.left")
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 24, height: 24)
+                                Image("ArrowIcon")
                             }
                             Spacer()
                         }

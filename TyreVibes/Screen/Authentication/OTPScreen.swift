@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OTPVerificationView: View {
     @ObservedObject var viewModel: SignUpViewModel
+    
     @Environment(\.dismiss) private var dismiss
     
     @State private var otpCode: [String] = Array(repeating: "", count: 6)
@@ -9,6 +10,9 @@ struct OTPVerificationView: View {
     @FocusState private var focusedField: Int?
     @State private var countdown = 60
     @State private var timer: Timer? = nil
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
+
     
 var body: some View {
     NavigationStack {
@@ -17,11 +21,9 @@ var body: some View {
                 // Navigation bar
                 HStack {
                     Button(action: {
-                        //SignUpScreen()
+                       dismiss()
                     }) {
-                        Image(systemName: "arrow.left")
-                            .foregroundColor(.white)
-                            .font(.system(size: 24))
+                        Image("ArrowIcon")
                     }
                     Spacer()
                 }
@@ -139,7 +141,14 @@ var body: some View {
                         .disabled(true)
                 } else {
                     Button(action: {
-                        viewModel.resendCode()
+                        viewModel.sendCode(completion: { result in
+                            switch result {
+                            case .success(_):
+                                break;
+                            case .failure(_):
+                                errorMessage = "\(viewModel.alertTitle): \(viewModel.alertMessage)"
+                            }
+                        })
                         otpCode = Array(repeating: "", count: 6)
                         focusedField = 0
                         countdown = 60

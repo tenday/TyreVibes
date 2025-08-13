@@ -35,10 +35,7 @@ struct ResetPasswordScreen: View {
                             Button(action: {
                                 dismiss()
                             }) {
-                                Image(systemName: "arrow.left")
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 24, height: 24)
+                                Image("ArrowIcon")
                             }
                             Spacer()
                         }
@@ -75,16 +72,16 @@ struct ResetPasswordScreen: View {
                                             .frame(maxHeight: .infinity)
                                             .font(.customFont(size: 16, weight: .semibold))
                                             .foregroundColor(.white)
-                                            .onChange(of: password) { newValue in
-                                                validatePassword(newValue)
+                                            .onChange(of: password) {
+                                                validatePassword(password)
                                             }
                                     } else {
                                         SecureField("Enter Password", text: $password)
                                             .frame(maxHeight: .infinity)
                                             .font(.customFont(size: 16, weight: .semibold))
                                             .foregroundColor(.white)
-                                            .onChange(of: password) { newValue in
-                                                validatePassword(newValue)
+                                            .onChange(of: password) {
+                                                validatePassword(password)
                                             }
                                     }
                                     

@@ -35,10 +35,7 @@ struct LoginScreen: View {
                             Button(action: {
                                 dismiss()
                             }) {
-                                Image(systemName: "arrow.left")
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                                    .frame(width: 24, height: 24)
+                                Image("ArrowIcon")
                             }
                             Spacer()
                         }
@@ -62,7 +59,7 @@ struct LoginScreen: View {
                                 
                                 Text("Welcome back to TyreVibes!")
                                     .font(.customFont(size: 16, weight: .regular))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(viewModel.alertItem != nil ? .customBitterSweet : .gray)
                                 
                             }
                             .padding(.bottom, screenHeight * 0.045)
@@ -156,6 +153,10 @@ struct LoginScreen: View {
                             // Login Button
                             Button(action: {
                                 viewModel.signIn()
+                                if viewModel.alertItem == nil && !viewModel.isLoading {
+                                    viewModel.email = ""
+                                    viewModel.password = ""
+                                }
                             }) {
                                 Text("Log in")
                                     .font(.customFont(size: buttonFontSize, weight: .semibold))
@@ -238,11 +239,20 @@ struct LoginScreen: View {
                     }
                 }
                 .alert(item: $viewModel.alertItem) { alertItem in
-                Alert(title: Text(alertItem.title), message: Text(alertItem.message), dismissButton: .default(Text("OK")))
+                    Alert(
+                        title: Text(alertItem.title),
+                        message: Text(alertItem.message),
+                        dismissButton: .default(Text("OK"), action: {
+                            // Optionally reset any error-specific UI state here
+                        })
+                    )
                 }
             }
+            .navigationDestination(isPresented: $viewModel.showHomeScreen) {
+                BottomNavigationView()
+            }
             .navigationBarHidden(true)
-            
+            .navigationBarBackButtonHidden(true)
         }
         .preferredColorScheme(.dark)
         

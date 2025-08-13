@@ -24,10 +24,7 @@ struct SignUpScreen: View {
                         Button(action: {
                             dismiss()
                         }) {
-                            Image(systemName: "arrow.left")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .frame(width: 24, height: 24)
+                            Image("ArrowIcon")
                         }
                         Spacer()
                     }
@@ -39,86 +36,91 @@ struct SignUpScreen: View {
                         EmptyView()
                     }
 
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            // Title and subtitle
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Create Account")
-                                    .font(.customFont(size: 32, weight: .semibold))
-                                    .fontWeight(.bold)
+                    // Wrap ScrollView and Button in a VStack that fills available space
+                    VStack(spacing: 0) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 24) {
+                                // Title and subtitle
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Create Account")
+                                        .font(.customFont(size: 32, weight: .semibold))
+                                        .fontWeight(.bold)
 
-                                Text("Sign Up to get started")
-                                    .font(.customFont(size: 16, weight: .regular))
-                                    .foregroundColor(.gray)
+                                    Text("Sign Up to get started")
+                                        .font(.customFont(size: 16, weight: .regular))
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(.vertical)
+
+                                // Form fields
+                                VStack(spacing: 12) {
+                                    CustomTextField(iconName: "UsernameIcon", placeholder: "Enter Full Name", text: $viewModel.fullName)
+                                    CustomTextField(iconName: "UsernameIcon", placeholder: "@Username", text: $viewModel.username)
+                                    
+                                    PhoneNumberField(
+                                        selectedCountry: $viewModel.selectedCountry,
+                                        phoneNumber: $viewModel.phoneNumber,
+                                        onFlagTap: { showPhoneSheet = true }
+                                    )
+
+                                    EmailField(email: $viewModel.email, isValid: viewModel.isEmailValid)
+
+                                    PasswordField(
+                                        password: $viewModel.password,
+                                        confirmPassword: $viewModel.confirmPassword,
+                                        isPasswordValid: viewModel.isPasswordValid,
+                                        isConfirmPasswordValid: viewModel.isConfirmPasswordValid,
+                                        requirements: viewModel.passwordRequirements
+                                    )
+                                    TermsAndConditionsToggle(agreedToTerms: $viewModel.agreedToTerms)
+                                }
                             }
-                            .padding(.vertical)
-                            //.padding(.top, -18)
-
-                            // Form fields
-                            VStack(spacing: 12) {
-                                CustomTextField(iconName: "UsernameIcon", placeholder: "Enter Full Name", text: $viewModel.fullName)
-                                CustomTextField(iconName: "UsernameIcon", placeholder: "@Username", text: $viewModel.username)
-                                
-                                PhoneNumberField(
-                                    selectedCountry: $viewModel.selectedCountry,
-                                    phoneNumber: $viewModel.phoneNumber,
-                                    onFlagTap: { showPhoneSheet = true }
-                                )
-
-                                EmailField(email: $viewModel.email, isValid: viewModel.isEmailValid)
-
-                                PasswordField(
-                                    password: $viewModel.password,
-                                    confirmPassword: $viewModel.confirmPassword,
-                                    isPasswordValid: viewModel.isPasswordValid,
-                                    isConfirmPasswordValid: viewModel.isConfirmPasswordValid,
-                                    requirements: viewModel.passwordRequirements
-                                )
-                                TermsAndConditionsToggle(agreedToTerms: $viewModel.agreedToTerms)
-                            }
+                            .padding()
+                            .padding(.bottom, 100)
                         }
-                        .padding()
-                        .padding(.bottom, 100)
-                    }
-
-                    Button(action: {
-                        viewModel.createAccount(completion: { result in
-                            switch result {
-                            case .success:
-                                showOtpScreen = true
-                            case .failure(_):
-                                errorMessage = "Registrazione fallita. si prega di riprovare più tardi"
-                                showErrorAlert = true
-                            }
-                        })
-                    }) {
-                        if viewModel.isLoadingCreationAccount {
-                            Text("")
-                                .foregroundColor(Color.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 62)
-                                .background(Color.customBitterSweet)
-                                .overlay(ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(1.2)
+                        Spacer(minLength: 0)
+                        Button(action: {
+                            viewModel.sendCode(completion: { result in
+                                switch result {
+                                case .success:
+                                    showOtpScreen = true
+                                case .failure(_):
+                                    errorMessage = "\(viewModel.alertTitle): \(viewModel.alertMessage)"
+                                    showErrorAlert = true
+                                }
+                            })
+                        }) {
+                            if viewModel.isLoadingCreationAccount {
+                                Text("")
+                                    .foregroundColor(Color.white)
+                                    .frame(maxWidth: .infinity)
                                     .frame(height: 62)
-                                    .frame(maxWidth: .infinity))
-                        } else {
-                            Text("Create Account")
-                                .font(.customFont(size: 18, weight: .bold))
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 62)
+                                    .background(Color.customBitterSweet)
+                                    .overlay(ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(1.2)
+                                        .frame(height: 62)
+                                        .frame(maxWidth: .infinity))
+                            } else {
+                                Text("Create Account")
+                                    .font(.customFont(size: 18, weight: .bold))
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 62)
+                            }
                         }
+                        .background(Color.customBitterSweet)
+                        .cornerRadius(100)
+                        .opacity(viewModel.isSignUpButtonEnabled ? 1.0 : 0.6)
+                        .disabled(!viewModel.isSignUpButtonEnabled || viewModel.isLoadingCreationAccount)
+                        .padding(.horizontal)
+                        .padding(.bottom, 30)
+                        .background(Color.customBackgroundColor)
                     }
-                    .background(Color.customBitterSweet)
-                    .cornerRadius(100)
-                    .opacity(viewModel.isSignUpButtonEnabled ? 1.0 : 0.6)
-                    .disabled(!viewModel.isSignUpButtonEnabled || viewModel.isLoadingCreationAccount)
-                    .padding(.horizontal)
-                    .padding(.bottom, 30)
-                    .background(Color.customBackgroundColor)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .scrollIndicators(.hidden)
+                    .scrollContentBackground(.hidden)
                 }
                 .sheet(isPresented: $showPhoneSheet) {
                     if viewModel.isLoadingCountries {
@@ -145,11 +147,10 @@ struct SignUpScreen: View {
                     EmailVerificationSheet(email: viewModel.email)
                 }
                 // Corrected alert usage
-                .alert("Error", isPresented: $showErrorAlert, actions: {
-                    Button("OK", role: .cancel) { }
-                }, message: {
-                    Text(errorMessage)
-                })
+                .alert(viewModel.alertTitle.isEmpty ? "Errore" : viewModel.alertTitle,
+                       isPresented: $showErrorAlert,
+                       actions: { Button("OK", role: .cancel) { } },
+                       message: { Text(viewModel.alertMessage.isEmpty ? errorMessage : viewModel.alertMessage) })
                 .onChange(of: showPhoneSheet) { _, isShowing in
                     if isShowing {
                         viewModel.fetchCountries()
@@ -167,12 +168,14 @@ struct SignUpScreen: View {
                         .foregroundColor(.white)
                 })
                 .navigationBarHidden(true)
+                .navigationBarBackButtonHidden(true)
                 .navigationDestination(isPresented: $showOtpScreen) {
                     
                     OTPVerificationView(viewModel: viewModel)
                 }
                 .navigationBarBackButtonHidden(true)
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
     }
 }

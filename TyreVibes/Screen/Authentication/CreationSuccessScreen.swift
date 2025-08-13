@@ -55,7 +55,7 @@ struct CreationSuccessScreen: View {
             }
         }
         .navigationDestination(isPresented: $goHome) {
-            GarageScreen()
+            BottomNavigationView()
                 .navigationBarBackButtonHidden(true)
         }
     }

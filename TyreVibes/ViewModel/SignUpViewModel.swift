@@ -110,7 +110,10 @@ class SignUpViewModel: ObservableObject {
                     self.selectedCountry = italy
                 }
             } catch {
-                handleError(error, title: "Network Error")
+                let alert = mapErrorToAlert(error, fallbackTitle: "Errore di rete")
+                self.alertTitle = alert.title
+                self.alertMessage = alert.message
+                self.showAlert = true
             }
             self.isLoadingCountries = false
         }
@@ -135,14 +138,42 @@ class SignUpViewModel: ObservableObject {
             }
 
             do {
-                try await authService.verifyOtp(otpCode: self.fullOtp, phoneNumber: self.phoneNumber)
-                self.showCreationSuccessScreen = true
+                try await authService.verifyOtp(otpCode: self.fullOtp, phoneNumber: selectedCountry.dialCode + phoneNumber)
+                
+                createAccount { result in
+                    switch result {
+                    case .success:
+                        self.showCreationSuccessScreen = true
+                    case .failure(let error):
+                        let alert = self.mapErrorToAlert(error, fallbackTitle: "Registrazione fallita")
+                        self.alertTitle = alert.title
+                        self.alertMessage = alert.message
+                        self.showAlert = true
+                    }
+                }
             } catch {
-                // Mostra un alert chiaro per gli errori di verifica OTP
-                self.handleError(error, title: "Verifica OTP fallita")
-                self.alertTitle = "Codice OTP non valido"
-                self.alertMessage = "Codice OTP non valido. Riprova."
-                self.showAlert = true
+                if let authError = error as? AuthServiceError {
+                    switch authError {
+                    case .otpInvalid:
+                        self.alertTitle = "Codice OTP errato"
+                        self.alertMessage = "Il codice inserito non è corretto. Verifica e riprova."
+                        self.showAlert = true
+                    case .otpExpired:
+                        self.alertTitle = "Codice OTP scaduto"
+                        self.alertMessage = "Il codice OTP è scaduto. Richiedine uno nuovo."
+                        self.showAlert = true
+                    default:
+                        let alert = mapErrorToAlert(error, fallbackTitle: "Verifica OTP fallita")
+                        self.alertTitle = alert.title
+                        self.alertMessage = alert.message
+                        self.showAlert = true
+                    }
+                } else {
+                    let alert = mapErrorToAlert(error, fallbackTitle: "Verifica OTP fallita")
+                    self.alertTitle = alert.title
+                    self.alertMessage = alert.message
+                    self.showAlert = true
+                }
             }
         }
     }
@@ -154,6 +185,7 @@ class SignUpViewModel: ObservableObject {
 
         Task {
             do {
+
                 try await authService.createAccount(
                     email: email,
                     password: password,
@@ -167,10 +199,12 @@ class SignUpViewModel: ObservableObject {
                 self.alertMessage = "Please check your email to verify your account."
                 self.showSuccessAlert = true
                 self.showAlert = true
-                try await authService.sendOtp(phoneNumber:  selectedCountry.dialCode + phoneNumber)
                 completion(.success(()))
             } catch {
-                handleError(error, title: "Registration Failed")
+                let alert = mapErrorToAlert(error, fallbackTitle: "Registrazione fallita")
+                self.alertTitle = alert.title
+                self.alertMessage = alert.message
+                self.showAlert = true
                 completion(.failure(error))
             }
             self.isLoadingCreationAccount = false
@@ -179,35 +213,93 @@ class SignUpViewModel: ObservableObject {
     
     
     
-    private func handleError(_ error: Error, title: String) {
-        self.alertTitle = title
+    private func isUserAlreadyExistsReason(_ reason: String) -> Bool {
+        let lower = reason.lowercased()
+        return lower.contains("already") ||
+               lower.contains("exists") ||
+               lower.contains("409") ||
+               lower.contains("in use") ||
+               lower.contains("già") ||
+               lower.contains("duplic")
+    }
+
+    private func mapErrorToAlert(_ error: Error, fallbackTitle: String) -> (title: String, message: String) {
+        // AuthService domain-specific errors first
         if let authError = error as? AuthServiceError {
             switch authError {
-            case .signUpFailed(let reason): self.alertMessage = "Sign-up Error: \(reason)"
-            case .profileCreationFailed(let reason): self.alertMessage = "Profile Error: \(reason)"
-            case .noUserFound: self.alertMessage = "No user was found after sign up."
-            case .invalidMail(let reason): self.alertMessage = "Invalid email: \(reason)"
+            case .invalidMail(let reason):
+                return ("Email non valida", reason)
+            case .noUserFound:
+                return ("Utente non trovato", "Nessun utente trovato dopo la registrazione.")
+            case .profileCreationFailed(let reason):
+                return ("Errore creazione profilo", reason)
+            case .signUpFailed(let reason):
+                if isUserAlreadyExistsReason(reason) {
+                    return ("Utenza già registrata", "Esiste già un account con queste credenziali. Se hai dimenticato la password, prova il recupero.")
+                } else {
+                    return ("Registrazione fallita", reason.isEmpty ? "Si è verificato un errore durante la registrazione. Riprova." : reason)
+                }
+            case .otpInvalid:
+                return ("Codice OTP errato", "Il codice inserito non è corretto. Verifica e riprova.")
+            case .otpExpired:
+                return ("Codice OTP scaduto", "Il codice OTP è scaduto. Richiedine uno nuovo.")
             }
-        } else {
-            self.alertMessage = error.localizedDescription
         }
+
+        // Network / transport errors
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return ("Timeout", "La richiesta ha impiegato troppo tempo. Controlla la connessione e riprova.")
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
+                return ("Errore di comunicazione", "Connessione assente o instabile. Verifica la rete e riprova.")
+            default:
+                break
+            }
+        }
+
+        // Generic HTTP-like numeric code surfaced as NSError (best-effort)
+        let nsErr = error as NSError
+        if nsErr.domain == NSURLErrorDomain {
+            if nsErr.code == NSURLErrorTimedOut {
+                return ("Timeout", "La richiesta ha impiegato troppo tempo. Controlla la connessione e riprova.")
+            }
+        }
+        if nsErr.code == 409 { // Conflict – spesso usato per "già esistente"
+            return ("Utenza già registrata", "Esiste già un account con queste credenziali. Se hai dimenticato la password, prova il recupero.")
+        }
+
+        // Decoding / data errors
+        if error is DecodingError {
+            return ("Errore dati", "Risposta non valida dal server. Riprova più tardi.")
+        }
+
+        // Fallback
+        let message = (error.localizedDescription.isEmpty ? "Si è verificato un errore imprevisto. Riprova." : error.localizedDescription)
+        return (fallbackTitle, message)
+    }
+
+    private func handleError(_ error: Error, title: String) {
+        let alert = mapErrorToAlert(error, fallbackTitle: title)
+        self.alertTitle = alert.title
+        self.alertMessage = alert.message
         self.showAlert = true
     }
     
-    func resendCode() {
+    func sendCode(completion: @escaping (Result<Void, Error>) -> Void) {
         isLoadingCheckingOtp = true
         Task {
             do {
                 try await authService.sendOtp(phoneNumber: selectedCountry.dialCode + phoneNumber)
+                completion(.success(()))
             } catch {
-                handleError(error, title: "Impossibile inviare nuovamente il codice OTP")
-                self.alertTitle = "Codice OTP non valido"
-                self.alertMessage = "Codice OTP non valido. Riprova."
+                let alert = mapErrorToAlert(error, fallbackTitle: "Invio OTP fallito")
+                self.alertTitle = alert.title
+                self.alertMessage = alert.message
                 self.showAlert = true
+                completion(.failure(error))
             }
             isLoadingCheckingOtp = false
         }
     }
 }
-
-   

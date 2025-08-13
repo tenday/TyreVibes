@@ -17,7 +17,8 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
     
     @Published var isLoading = false
     @Published var alertItem: AlertItem?
-    
+    @Published var showHomeScreen = false
+
     @Published var formFocus: LoginFormFocus?
 
     private let authService = AuthService()
@@ -29,6 +30,49 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
     
     var isLoginButtonEnabled: Bool {
         !email.isEmpty && !password.isEmpty && !isLoading
+    }
+
+    // MARK: - Error Handling Helpers
+    private func mapErrorToAlert(_ error: Error, fallbackTitle: String) -> (title: String, message: String) {
+        if let authError = error as? AuthServiceError {
+            switch authError {
+            case .invalidMail(let reason):
+                return ("Email non valida", reason)
+            case .noUserFound:
+                return ("Credenziali errate", "L'email o la password inserita non sono corrette. Riprova.")
+            case .otpInvalid:
+                return ("Codice OTP errato", "Il codice inserito non è corretto. Verifica e riprova.")
+            case .otpExpired:
+                return ("Codice OTP scaduto", "Il codice OTP è scaduto. Richiedine uno nuovo.")
+            case .profileCreationFailed(let reason):
+                return ("Errore creazione profilo", reason)
+            case .signUpFailed(let reason):
+                return ("Accesso fallito", reason.isEmpty ? "Si è verificato un errore durante l'accesso. Riprova." : reason)
+            }
+        }
+
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return ("Timeout", "La richiesta ha impiegato troppo tempo. Controlla la connessione e riprova.")
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
+                return ("Errore di comunicazione", "Connessione assente o instabile. Verifica la rete e riprova.")
+            default:
+                break
+            }
+        }
+
+        let nsErr = error as NSError
+        if nsErr.domain == NSURLErrorDomain, nsErr.code == NSURLErrorTimedOut {
+            return ("Timeout", "La richiesta ha impiegato troppo tempo. Controlla la connessione e riprova.")
+        }
+
+        if error is DecodingError {
+            return ("Errore dati", "Risposta non valida dal server. Riprova più tardi.")
+        }
+
+        let message = error.localizedDescription.isEmpty ? "Si è verificato un errore imprevisto. Riprova." : error.localizedDescription
+        return (fallbackTitle, message)
     }
     
     // MARK: - Email/Password Sign In
@@ -48,11 +92,11 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 } else {
                     KeychainHelper.delete()
                 }
-                // Login con successo. La navigazione avverrà in un altro punto.
-                
+
+                showHomeScreen = true
             } catch {
-                // CORREZIONE: Mostra sempre l'alert in caso di errore
-                self.alertItem = AlertItem(title: "Login Failed", message: error.localizedDescription)
+                let alert = mapErrorToAlert(error, fallbackTitle: "Login fallito")
+                self.alertItem = AlertItem(title: alert.title, message: alert.message)
             }
             self.isLoading = false
         }
@@ -74,7 +118,8 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 try await authService.signInWithApple(presentationAnchor: presentationAnchor)
                 // Login con successo. La navigazione avverrà in un altro punto.
             } catch {
-                self.alertItem = AlertItem(title: "Apple Login Failed", message: error.localizedDescription)
+                let alert = mapErrorToAlert(error, fallbackTitle: "Login Apple fallito")
+                self.alertItem = AlertItem(title: alert.title, message: alert.message)
             }
         }
     }
@@ -83,12 +128,3 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
 
     
 }
-
-// Assicurati di avere queste struct di supporto nel tuo progetto
-
-
-struct Credentials {
-    let email: String
-    let password: String
-}
-

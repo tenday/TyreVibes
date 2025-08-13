@@ -21,22 +21,6 @@
         }
       }
     },
-    "Apple Login Failed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Login Failed"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Login con Apple Fallito"
-          }
-        }
-      }
-    },
     "@Username" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -58,6 +42,9 @@
         }
       }
     },
+    "Add Your Tyres" : {
+
+    },
     "and" : {
       "localizations" : {
         "it" : {
@@ -78,6 +65,29 @@
         }
       }
     },
+    "Apple Login Failed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Login Failed"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login con Apple Fallito"
+          }
+        }
+      }
+    },
+    "Audi Q3" : {
+
+    },
+    "Audi Q3 Details" : {
+
+    },
     "Authentication \nCode" : {
       "localizations" : {
         "it" : {
@@ -94,6 +104,12 @@
     "c" : {
       "extractionState" : "manual"
     },
+    "Calendar" : {
+
+    },
+    "Central action" : {
+
+    },
     "Confirm Password" : {
 
     },
@@ -106,7 +122,13 @@
     "Create Account" : {
 
     },
+    "Detected License Plate Number" : {
+
+    },
     "Done" : {
+
+    },
+    "Elimina" : {
 
     },
     "Engine" : {
@@ -119,6 +141,9 @@
           }
         }
       }
+    },
+    "Ensure words are visible" : {
+
     },
     "Enter 6-Digit" : {
       "localizations" : {
@@ -140,9 +165,6 @@
 
     },
     "Enter the email associated with your account and we'll send an OTP to reset your password." : {
-
-    },
-    "Error" : {
 
     },
     "Everything start from here" : {
@@ -173,7 +195,14 @@
     "Let's" : {
 
     },
+    "Log in" : {
+
+    },
+    "Log In" : {
+
+    },
     "Login Failed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -188,12 +217,6 @@
           }
         }
       }
-    },
-    "Log in" : {
-
-    },
-    "Log In" : {
-
     },
     "Make" : {
       "extractionState" : "manual",
@@ -223,7 +246,7 @@
         }
       }
     },
-    "No veichles found, pls add a new one" : {
+    "No veichles found,pls add a new one" : {
 
     },
     "OK" : {
@@ -238,13 +261,25 @@
     "Phone Number" : {
 
     },
+    "PLATYPS" : {
+
+    },
     "Please Verify Your Email" : {
+
+    },
+    "Position License Plate within Frame" : {
 
     },
     "Privacy Policy" : {
 
     },
     "Remember me" : {
+
+    },
+    "Reports" : {
+
+    },
+    "Resend available in %llds" : {
 
     },
     "Resend Code" : {
@@ -268,6 +303,9 @@
     "Send" : {
 
     },
+    "Settings" : {
+
+    },
     "Sign Up" : {
 
     },
@@ -275,9 +313,6 @@
 
     },
     "Skip" : {
-
-    },
-    "Technical Specs" : {
 
     },
     "Terms & Conditions" : {
@@ -295,6 +330,9 @@
           }
         }
       }
+    },
+    "Vehicles" : {
+
     },
     "Verify Now" : {
       "localizations" : {

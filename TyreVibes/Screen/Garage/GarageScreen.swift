@@ -14,6 +14,21 @@ struct GarageScreen: View {
         Car(name: "Audi Q8", plateCode: "TEST123", make: "Audi", model: "TerraMar", year: "2024", engine: "1.6 tisdkg", imageName: "audiQ3")
     ]
     
+    var filteredCars: [Car] {
+        if searchText.isEmpty {
+            return cars
+        } else {
+            return cars.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.plateCode.localizedCaseInsensitiveContains(searchText) ||
+                $0.make.localizedCaseInsensitiveContains(searchText) ||
+                $0.model.localizedCaseInsensitiveContains(searchText) ||
+                $0.year.localizedCaseInsensitiveContains(searchText) ||
+                $0.engine.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+
     var body: some View {
         ZStack {
             Color.customBackgroundColor
@@ -123,6 +138,17 @@ struct GarageScreen: View {
                             .offset(x: 16)
                             .autocapitalization(.none)
                         
+                        if !searchText.isEmpty {
+                            Button(action: {
+                                searchText = ""
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.white)
+                                    .frame(height: 20)
+                                    .padding(10)
+                            }
+                        }
+                        
                     }
                     
                     .background(Color.customFieldColor)
@@ -162,7 +188,7 @@ struct GarageScreen: View {
 
                         VStack(spacing: 16) {
                             Button(action: {
-                                // Azione per la scansione targa
+                                
                             }) {
                                 HStack {
                                     Image(systemName: "camera")
@@ -283,7 +309,7 @@ struct GarageScreen: View {
                             .listRowSeparator(.hidden)
                     }
 
-                    ForEach(cars, id: \.id) { car in
+                    ForEach(filteredCars, id: \.id) { car in
                         SwipeableCarRow(car: car) {
                             delete(car)
                         }
@@ -364,7 +390,9 @@ struct CarCardView: View {
                             }
                             .buttonStyle(.plain)
 
-                            Button(action: {}) {
+                            Button(action: {
+                                
+                            }) {
                                 Image("detailsIcon")
                                     .font(.system(size: 16))
                                     .foregroundColor(.gray)
