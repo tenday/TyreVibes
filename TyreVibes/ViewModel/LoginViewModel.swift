@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import Security
 import AuthenticationServices
+import LocalAuthentication
 
 enum LoginFormFocus {
     case email
@@ -21,12 +22,10 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
 
     @Published var formFocus: LoginFormFocus?
 
+    @AppStorage("useFaceID") private var useFaceID: Bool = false
+
     private let authService = AuthService()
-    
-    override init() {
-        super.init()
-        attemptAutoLogin()
-    }
+
     
     var isLoginButtonEnabled: Bool {
         !email.isEmpty && !password.isEmpty && !isLoading
@@ -102,12 +101,38 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
         }
     }
     
-    private func attemptAutoLogin() {
+    public func attemptAutoLogin() {
         if let credentials = KeychainHelper.load() {
             self.email = credentials.email
             self.password = credentials.password
             self.rememberMe = true
-            signIn()
+            if useFaceID {
+                authenticateWithFaceIDAndLogin()
+            } else {
+                signIn()
+            }
+        }
+    }
+    
+    private func authenticateWithFaceIDAndLogin() {
+        let context = LAContext()
+        var error: NSError?
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let reason = "Accedi con Face ID"
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
+                if success {
+                    Task { @MainActor in
+                        self.signIn()
+                    }
+                } else {
+                    // Opzionalmente gestire fallimento autenticazione biometrica
+                }
+            }
+        } else {
+            // Face ID non disponibile, fallback a login normale
+            Task { @MainActor in
+                self.signIn()
+            }
         }
     }
     

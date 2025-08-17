@@ -147,6 +147,7 @@ var body: some View {
                                 break;
                             case .failure(_):
                                 errorMessage = "\(viewModel.alertTitle): \(viewModel.alertMessage)"
+                                viewModel.showAlert = true
                             }
                         })
                         otpCode = Array(repeating: "", count: 6)
@@ -177,6 +178,7 @@ var body: some View {
         .navigationDestination(isPresented: $viewModel.showCreationSuccessScreen) {
             CreationSuccessScreen()
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
     

@@ -5,6 +5,8 @@ import SwiftUI
 struct GarageScreen: View {
     @State private var searchText = ""
     @State private var isPresentingSheet = false
+    @State private var showScanPlate = false
+    @State private var showEnterPlate = false
     
     @State private var cars: [Car] = [
         Car(name: "Audi Q3", plateCode: "FN841WA", make: "Audi", model: "Q3", year: "2024", engine: "1.6 eTSI", imageName: "audiQ3"),
@@ -134,7 +136,7 @@ struct GarageScreen: View {
                             .frame(maxHeight: .infinity)
                             .font(.customFont(size: 16, weight: .semibold))
                             .disableAutocorrection(true)
-                            .foregroundColor(.white)
+                            .foregroundColor(.white.opacity(0.6))
                             .offset(x: 16)
                             .autocapitalization(.none)
                         
@@ -188,7 +190,13 @@ struct GarageScreen: View {
 
                         VStack(spacing: 16) {
                             Button(action: {
-                                
+                                isPresentingSheet = false
+                                // Navigate to ScanPlate view
+                                // This assumes you have a ScanPlateView to present or push
+                                // For modal presentation:
+                                showScanPlate = true
+                                // For NavigationLink:
+                                // navigationPath.append("ScanPlate")
                             }) {
                                 HStack {
                                     Image(systemName: "camera")
@@ -251,7 +259,9 @@ struct GarageScreen: View {
                             
 
                             Button(action: {
-                                // Azione per inserimento manuale
+                                isPresentingSheet = false
+                                showEnterPlate = true
+                                
                             }) {
                                 HStack {
                                     Text("Enter License Plate Manually")
@@ -294,7 +304,7 @@ struct GarageScreen: View {
                         Spacer()
                     }
                     .frame(maxWidth: .infinity)
-                    .background(Color.customBackgroundColor)
+                    //.background(Color.customBackgroundColor)
                     .presentationDetents([.fraction(0.45)])
                 }
                 
@@ -327,10 +337,11 @@ struct GarageScreen: View {
                 .padding(.top,16)
                
             }
-            
-            VStack (spacing : 0){
-                Spacer()
-                //BottomNavigationView()
+            .fullScreenCover(isPresented: $showScanPlate) {
+                ScanPlateView()
+            }
+            .fullScreenCover(isPresented: $showEnterPlate) {
+                EnterLicensePlateView()
             }
             .edgesIgnoringSafeArea(.bottom)
         }

@@ -1,5 +1,6 @@
 import AuthenticationServices
 import SwiftUI
+import LocalAuthentication
 
 struct LoginScreen: View {
     
@@ -8,9 +9,10 @@ struct LoginScreen: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var showPassword = false
+    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width
                 let screenHeight = geometry.size.height
@@ -148,7 +150,23 @@ struct LoginScreen: View {
                             }
                             .padding(.top, -16)
                             
-                            
+                            if !viewModel.email.isEmpty && !viewModel.password.isEmpty {
+                                Button(action: {
+                                    authenticateWithFaceID()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "faceid")
+                                            .resizable()
+                                            .frame(width: 24, height: 24)
+                                        Text("Log in with Face ID")
+                                            .font(.customFont(size: 14, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.customFieldColor)
+                                    .cornerRadius(18)
+                                }
+                            }
                             
                             // Login Button
                             Button(action: {
@@ -250,12 +268,34 @@ struct LoginScreen: View {
             }
             .navigationDestination(isPresented: $viewModel.showHomeScreen) {
                 BottomNavigationView()
+                    .navigationBarBackButtonHidden(true)
             }
             .navigationBarHidden(true)
             .navigationBarBackButtonHidden(true)
         }
         .preferredColorScheme(.dark)
         
+    }
+    
+    private func authenticateWithFaceID() {
+        let context = LAContext()
+        var error: NSError?
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let reason = "Log in with Face ID"
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
+                if success {
+                    DispatchQueue.main.async {
+                        // Mark user as logged in and navigate
+                        isLoggedIn = true
+                        viewModel.showHomeScreen = true
+                    }
+                } else {
+                    // Handle failed authentication
+                }
+            }
+        } else {
+            // Face ID not available
+        }
     }
 }
 

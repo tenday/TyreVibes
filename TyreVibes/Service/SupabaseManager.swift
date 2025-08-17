@@ -4,7 +4,7 @@ import Supabase
 class SupabaseManager {
 
     static let client: SupabaseClient = {
-        guard let path = Bundle.main.path(forResource: "Supabase", ofType: "plist"),
+        guard let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
               let plist = NSDictionary(contentsOfFile: path),
               let urlString = plist["SUPABASE_URL"] as? String,
               let key = plist["SUPABASE_KEY"] as? String else {

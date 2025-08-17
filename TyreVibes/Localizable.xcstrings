@@ -107,7 +107,25 @@
     "Calendar" : {
 
     },
+    "CarType:" : {
+
+    },
     "Central action" : {
+
+    },
+    "Check Details" : {
+
+    },
+    "Choose Color:" : {
+
+    },
+    "Color: " : {
+
+    },
+    "Confirm" : {
+
+    },
+    "Confirm Details" : {
 
     },
     "Confirm Password" : {
@@ -120,9 +138,6 @@
 
     },
     "Create Account" : {
-
-    },
-    "Detected License Plate Number" : {
 
     },
     "Done" : {
@@ -158,6 +173,9 @@
     "Enter Email" : {
 
     },
+    "Enter License Plate" : {
+
+    },
     "Enter License Plate Manually" : {
 
     },
@@ -165,6 +183,9 @@
 
     },
     "Enter the email associated with your account and we'll send an OTP to reset your password." : {
+
+    },
+    "Errore" : {
 
     },
     "Everything start from here" : {
@@ -189,16 +210,25 @@
     "Google" : {
 
     },
+    "Hybrid Sports Car" : {
+
+    },
     "I agree to the" : {
 
     },
     "Let's" : {
 
     },
+    "License plate %@" : {
+
+    },
     "Log in" : {
 
     },
     "Log In" : {
+
+    },
+    "Log in with Face ID" : {
 
     },
     "Login Failed" : {
@@ -246,6 +276,12 @@
         }
       }
     },
+    "Model:" : {
+
+    },
+    "Nessun dato disponibile" : {
+
+    },
     "No veichles found,pls add a new one" : {
 
     },
@@ -261,9 +297,6 @@
     "Phone Number" : {
 
     },
-    "PLATYPS" : {
-
-    },
     "Please Verify Your Email" : {
 
     },
@@ -271,6 +304,9 @@
 
     },
     "Privacy Policy" : {
+
+    },
+    "Recupero dati targa..." : {
 
     },
     "Remember me" : {
@@ -313,6 +349,9 @@
 
     },
     "Skip" : {
+
+    },
+    "Targa rilevata" : {
 
     },
     "Terms & Conditions" : {

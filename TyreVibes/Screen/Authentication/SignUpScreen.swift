@@ -168,7 +168,6 @@ struct SignUpScreen: View {
                         .foregroundColor(.white)
                 })
                 .navigationBarHidden(true)
-                .navigationBarBackButtonHidden(true)
                 .navigationDestination(isPresented: $showOtpScreen) {
                     
                     OTPVerificationView(viewModel: viewModel)

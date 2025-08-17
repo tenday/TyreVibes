@@ -6,6 +6,7 @@
 //
 
 import Foundation
+
 class Utilities {
     public static func maskPhoneNumber(_ number: String) -> String {
         // Mostra i primi 3 e ultimi 3 caratteri, maschera il resto con •
@@ -14,6 +15,8 @@ class Utilities {
         let maskedCount = max(0, number.count - 6)
         let maskedPart = String(repeating: "•", count: maskedCount)
         return "\(visiblePrefix)\(maskedPart)\(visibleSuffix)"
+        
+        
     }
 }
 

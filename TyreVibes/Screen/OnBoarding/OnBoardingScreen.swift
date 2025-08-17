@@ -25,6 +25,7 @@ struct OnboardingView: View {
     
     // Stato per gestire l'uscita dall'onboarding
     @State private var isOnboardingComplete = false
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     
     var body: some View {
         ZStack {
@@ -32,7 +33,7 @@ struct OnboardingView: View {
             Color.black.edgesIgnoringSafeArea(.all)
             
             // Se l'onboarding è completo, mostra la vista principale
-           if isOnboardingComplete {
+           if isOnboardingComplete || hasSeenOnboarding {
                 WelcomeScreen()
                     .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
                                             removal: .move(edge: .leading).combined(with: .opacity)))
@@ -100,6 +101,7 @@ struct OnboardingView: View {
                         // Pulsante Skip
                         Button(action: {
                             withAnimation {
+                                hasSeenOnboarding = true
                                 isOnboardingComplete = true
                             }
                         }) {
@@ -117,6 +119,7 @@ struct OnboardingView: View {
                                 if currentPage < onboardingData.count - 1 {
                                     currentPage += 1
                                 } else {
+                                    hasSeenOnboarding = true
                                     isOnboardingComplete = true
                                 }
                             }

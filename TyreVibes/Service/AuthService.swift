@@ -47,13 +47,78 @@ class AuthService {
     // Funzione per recuperare la lista dei paesi dal database
     func fetchCountries() async throws -> [Country] {
         let response: [Country] = try await SupabaseManager.client
-            // FIX: Rimosso .database
             .from("countries")
             .select("*")
             .order("name", ascending: true)
             .execute()
             .value
         
+        return response
+    }
+    
+    func getCarData() async throws -> [Car] {
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .order("name", ascending: true)
+            .execute()
+            .value
+        return response
+    }
+
+    // Recupera un veicolo per ID
+    func getVehicle(byId id: UUID) async throws -> Car? {
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .eq("id", value: id.uuidString)
+            .execute()
+            .value
+        return response.first
+    }
+
+    // Recupera veicoli per brand
+    func getVehicles(byBrand brand: String) async throws -> [Car] {
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .eq("brand", value: brand)
+            .execute()
+            .value
+        return response
+    }
+
+    // Ricerca veicoli per parola chiave nel nome (case-insensitive)
+    func searchVehicles(keyword: String) async throws -> [Car] {
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .ilike("name", pattern: "%\(keyword)%")
+            .execute()
+            .value
+        return response
+    }
+
+    // Recupera veicoli per intervallo di anni
+    func getVehiclesByYearRange(startYear: Int, endYear: Int) async throws -> [Car] {
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .gte("year", value: startYear)
+            .lte("year", value: endYear)
+            .execute()
+            .value
+        return response
+    }
+
+    // Recupera tutti i veicoli ordinati per una colonna specifica
+    func getAllVehiclesSorted(by column: String, ascending: Bool) async throws -> [Car] {
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .order(column, ascending: ascending)
+            .execute()
+            .value
         return response
     }
     

@@ -69,7 +69,7 @@ struct BottomNavigationView: View {
                     HStack(spacing: 0) {
                         // Left side
                         Button(action: {
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 1)) { selectedIndex = 0 }
+                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 0 }
                         }) {
                             TabItem(iconName: iconNames[0], isSelected: selectedIndex == 0, namespace: animationNamespace)
                                 .frame(maxWidth: .infinity)
@@ -88,7 +88,6 @@ struct BottomNavigationView: View {
                         }
                         .buttonStyle(.plain)
 
-                        // Gap per il "bump" centrale
                         Spacer().frame(width: 84)
 
                         // Right side
@@ -123,6 +122,7 @@ struct BottomNavigationView: View {
                 .padding(.bottom, -safeBottom)
             }
         }
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -150,6 +150,7 @@ struct TabItem: View {
             }
 
             Image(iconName)
+                .renderingMode(.template)
                 .font(.system(size: 22))
                 .foregroundColor(isSelected ? .white : .gray)
                 .frame(width: 24, height: 24, alignment: .center)
