@@ -149,7 +149,20 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
         }
     }
 
-    
-
-    
+    // MARK: - Sign In with Google
+    func signInWithGoogle() {
+        isLoading = true
+        Task {
+            do {
+                try await authService.signInWithGoogle()
+                // On success, the session publisher in SupabaseManager will trigger the navigation
+                // so we just need to stop the loading indicator.
+                showHomeScreen = true
+            } catch {
+                let alert = mapErrorToAlert(error, fallbackTitle: "Login Google fallito")
+                self.alertItem = AlertItem(title: alert.title, message: alert.message)
+            }
+            isLoading = false
+        }
+    }
 }

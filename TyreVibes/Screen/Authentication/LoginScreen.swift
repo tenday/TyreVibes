@@ -218,7 +218,7 @@ struct LoginScreen: View {
                             // Social Login Buttons
                             HStack(spacing: screenWidth * 0.04) {
                                 Button(action: {
-                                    // Handle Google log in
+                                    viewModel.signInWithGoogle()
                                 }) {
                                     HStack {
                                         Image("GoogleIcon")
