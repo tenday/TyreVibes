@@ -13,5 +13,19 @@
 		<string>Sora-SemiBold.ttf</string>
 		<string>Sora-Thin.ttf</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!--
+				NOTE TO THE USER: Replace this with the REVERSED_CLIENT_ID from your GoogleService-Info.plist file.
+				-->
+				<string>com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
