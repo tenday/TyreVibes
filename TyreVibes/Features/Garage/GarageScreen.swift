@@ -7,6 +7,7 @@ struct GarageScreen: View {
     @State private var isPresentingSheet = false
     @State private var showScanPlate = false
     @State private var showEnterPlate = false
+    @State private var showScanTire = false
     
     @State private var cars: [Car] = [
         Car(name: "Audi Q3", plateCode: "FN841WA", make: "Audi", model: "Q3", year: "2024", engine: "1.6 eTSI", imageName: "audiQ3"),
@@ -191,6 +192,56 @@ struct GarageScreen: View {
                         VStack(spacing: 16) {
                             Button(action: {
                                 isPresentingSheet = false
+                                showScanTire = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+                                        .foregroundColor(.cyan)
+                                        .font(.system(size: 20))
+                                    Spacer().frame(width: 14)
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Scan Tire Data")
+                                            .foregroundColor(.white)
+                                            .font(.customFont(size: 16, weight: .semibold))
+                                        Text("Scan tire to get data")
+                                            .foregroundColor(.white.opacity(0.8))
+                                            .font(.customFont(size: 12, weight: .regular))
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                stops: [
+                                                    Gradient.Stop(color: Color(red: 0.18, green: 0.72, blue: 1), location: 0.00),
+                                                    Gradient.Stop(color: Color(red: 0.62, green: 0.92, blue: 0.85), location: 1.00),
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .frame(width: 24, height: 24)
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(
+                                            LinearGradient(
+                                                stops: [
+                                                    Gradient.Stop(color: Color(red: 0.18, green: 0.72, blue: 1), location: 0.00),
+                                                    Gradient.Stop(color: Color(red: 0.62, green: 0.92, blue: 0.85), location: 1.00),
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            ),
+                                            lineWidth: 1
+                                        )
+                                        .frame(height: 94)
+                                )
+                            }
+                            .padding(.bottom, 31)
+
+                            Button(action: {
+                                isPresentingSheet = false
                                 // Navigate to ScanPlate view
                                 // This assumes you have a ScanPlateView to present or push
                                 // For modal presentation:
@@ -339,6 +390,9 @@ struct GarageScreen: View {
             }
             .fullScreenCover(isPresented: $showScanPlate) {
                 ScanPlateView()
+            }
+            .fullScreenCover(isPresented: $showScanTire) {
+                ScanTireScreen()
             }
             .fullScreenCover(isPresented: $showEnterPlate) {
                 EnterLicensePlateView()
