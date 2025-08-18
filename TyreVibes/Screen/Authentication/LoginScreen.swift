@@ -10,6 +10,7 @@ struct LoginScreen: View {
     
     @State private var showPassword = false
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+    @State private var showAlert = false
     
     var body: some View {
         NavigationStack {
@@ -256,15 +257,20 @@ struct LoginScreen: View {
                         .padding(.horizontal, 20)
                     }
                 }
-                .alert(item: $viewModel.alertItem) { alertItem in
-                    Alert(
-                        title: Text(alertItem.title),
-                        message: Text(alertItem.message),
-                        dismissButton: .default(Text("OK"), action: {
-                            // Optionally reset any error-specific UI state here
-                        })
-                    )
+                .onChange(of: viewModel.alertItem) { newValue in
+                    if newValue != nil {
+                        showAlert = true
+                    }
                 }
+                .customAlert(
+                    isPresented: $showAlert,
+                    title: viewModel.alertItem?.title ?? "Error",
+                    message: viewModel.alertItem?.message ?? "An unknown error occurred.",
+                    primaryButtonTitle: "OK",
+                    primaryButtonAction: {
+                        viewModel.alertItem = nil
+                    }
+                )
             }
             .navigationDestination(isPresented: $viewModel.showHomeScreen) {
                 BottomNavigationView()
