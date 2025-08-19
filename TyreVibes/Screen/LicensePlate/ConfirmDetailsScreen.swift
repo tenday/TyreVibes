@@ -3,6 +3,8 @@ import SwiftUI
 struct ConfirmDetailsView: View {
     let plateData: PlateData
     @State private var selectedColor: Color = .black
+    @StateObject private var viewModel = ConfirmDetailsViewModel()
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         ZStack {
@@ -12,9 +14,11 @@ struct ConfirmDetailsView: View {
             VStack(spacing: 20) {
                 // Custom navigation bar
                 HStack {
-                    Image(systemName: "chevron.left")
-                        .font(.title2)
-                        .foregroundColor(.white)
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                    }
                     
                     Spacer()
                     
@@ -22,7 +26,6 @@ struct ConfirmDetailsView: View {
                         .font(.customFont(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-
                     
                     Spacer(minLength: 0)
                 }
@@ -55,7 +58,7 @@ struct ConfirmDetailsView: View {
                 
                 // Confirm button
                 Button(action: {
-                    // Add action here
+                    viewModel.savePlate(plateData: plateData, color: selectedColor)
                 }) {
                     Text("Confirm")
                         .font(.customFont(size: 18, weight: .semibold))
@@ -65,10 +68,31 @@ struct ConfirmDetailsView: View {
                         .background(Color.customBitterSweet)
                         .cornerRadius(28)
                 }
+                .disabled(viewModel.isLoading)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 3)
 
             }
+
+            if viewModel.isLoading {
+                VisualEffectBlur(blurStyle: .dark)
+                    .edgesIgnoringSafeArea(.all)
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(2)
+            }
+        }
+        .onChange(of: viewModel.didSavePlate) { didSave in
+            if didSave {
+                dismiss()
+            }
+        }
+        .alert(item: $viewModel.alertItem) { alertItem in
+            Alert(
+                title: Text(alertItem.title),
+                message: Text(alertItem.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 }
