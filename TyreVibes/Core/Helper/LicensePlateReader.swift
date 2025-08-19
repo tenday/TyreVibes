@@ -132,13 +132,12 @@ enum PlateReader {
                 // pick first in order if exists, otherwise any value
                 if let first = powers.order.first { fuelName = powers.powers[String(first)] }
             }
-
             // Se makeName e modelName sono entrambi nil, fallback a motointegrator
             if makeName == nil && modelName == nil {
                 return try await PlateScraper.scrapePlateData(for: targa)
             }
 
-            var result = PlateData(plate: targa.uppercased(), make: makeName, model: modelName, version: nil, year: String(lookup.year), month: String(lookup.month), color: nil, fuel: fuelName, powerKW: nil, displacementCC: nil, registrationDate: nil, vin: nil, extra: [:])
+            var result = PlateData(plate: targa.uppercased(), make: makeName, model: modelName, version: nil, year: String(lookup.year), month: String(lookup.month), color: nil, fuel: fuelName, powerKW: try await PlateScraper.scrapePowerKW(for: targa.uppercased()), displacementCC: nil, registrationDate: nil, vin: nil, extra: [:])
             // Attach raw codes for debugging/extra
             result.extra["qr_codmar"] = String(lookup.codmar)
             result.extra["qr_codmor"] = String(lookup.codmor)
@@ -210,6 +209,30 @@ public enum PlateScraper {
             throw PlateScraperError.emptyResponse
         }
         if let parsed = parse(html: html, plate: cleaned) { return parsed }
+        throw PlateScraperError.parseFailed
+    }
+
+    /// Estrae solo la potenza (powerKW) da Motointegrator
+    @available(iOS 15.0, macOS 12.0, *)
+    public static func scrapePowerKW(for plate: String) async throws -> String? {
+        let cleaned = plate.uppercased().replacingOccurrences(of: " ", with: "")
+        guard cleaned.count >= 5 else { throw PlateScraperError.invalidPlate }
+        guard let url = searchURL(for: cleaned) else { throw PlateScraperError.badURL }
+
+        let (data, _) = try await fetch(url: url)
+
+        // Try parse JSON first
+        if let plateData = parseJSONData(data: data, plate: cleaned) {
+            return plateData.powerKW
+        }
+
+        // Fallback to HTML
+        guard let html = String(data: data, encoding: .utf8), !html.isEmpty else {
+            throw PlateScraperError.emptyResponse
+        }
+        if let parsed = parse(html: html, plate: cleaned) {
+            return parsed.powerKW
+        }
         throw PlateScraperError.parseFailed
     }
 

@@ -86,6 +86,7 @@ struct EnterLicensePlateView: View {
     @State private var navigateToCheckDetails = false
     @State private var data : PlateData?
     @State private var isLoadingDetails: Bool = false
+    @State private var showConfirmDetailsScreen : Bool = false
     
     private let maxPlateLength: Int = 8 // es. formato IT: AA123AA (7) o formati estesi
     private var isContinueEnabled: Bool {
@@ -225,6 +226,16 @@ struct EnterLicensePlateView: View {
                 .disabled(!isContinueEnabled)
                 .padding(.horizontal)
                 .padding(.bottom, 30)
+                
+                Button(action: {
+                    showConfirmDetailsScreen = true
+                }) {
+                    Text("Non trovi la tua auto?")
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .underline()
+                }
+                .padding(.bottom, 20)
             }
             .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
             .preferredColorScheme(.dark)
@@ -233,6 +244,11 @@ struct EnterLicensePlateView: View {
             }
             .navigationDestination(isPresented: $navigateToCheckDetails) {
                 CheckDetailsView(vehicleImage: vehicleImage, plateData: data ?? nil)
+            }
+            .navigationDestination(isPresented: $showConfirmDetailsScreen) {
+                ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true)
+                    .preferredColorScheme(.dark)
+                    .navigationBarBackButtonHidden(true)
             }
             .navigationBarBackButtonHidden(true)
         }

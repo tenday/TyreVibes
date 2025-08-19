@@ -218,25 +218,22 @@ class AuthService {
 
     @MainActor
     func signInWithGoogle() async throws {
-        // NOTE TO THE USER: You need to add the GoogleSignIn package to your project.
-        // In Xcode, go to File > Add Packages... and enter the following URL:
-        // https://github.com/google/GoogleSignIn-iOS
-
         guard let topVC = UIApplication.shared.topViewController() else {
             throw AuthServiceError.signUpFailed("Could not find top view controller.")
         }
 
-        // NOTE TO THE USER: You need to add your Google Client ID to the Api.plist file.
-        // This should be the "Web client ID" from your Google Cloud Console.
+        // Carichiamo clientID da Api.plist
         guard let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
               let plist = NSDictionary(contentsOfFile: path),
               let clientID = plist["GOOGLE_CLIENT_ID"] as? String else {
             throw AuthServiceError.signUpFailed("GOOGLE_CLIENT_ID not found in Api.plist. Please add it.")
         }
 
-        let configuration = GIDConfiguration(clientID: clientID)
+        // Configurazione globale (si fa una volta sola)
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
 
-        let result = try await GIDSignIn.sharedInstance.signIn(with: configuration, presenting: topVC)
+        // Nuovo metodo di login
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: topVC)
 
         guard let idToken = result.user.idToken?.tokenString else {
             throw AuthServiceError.signUpFailed("Google ID token not found.")

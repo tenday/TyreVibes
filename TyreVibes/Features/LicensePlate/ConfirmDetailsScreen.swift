@@ -1,10 +1,20 @@
 import SwiftUI
 
 struct ConfirmDetailsView: View {
-    let plateData: PlateData
+    let plateData: PlateData?
+    let manualEntryEnabled : Bool
     @State private var selectedColor: Color = .black
     @StateObject private var viewModel = ConfirmDetailsViewModel()
     @Environment(\.dismiss) private var dismiss
+    
+    @State private var navigateToCheckDetails: Bool = false
+    @State private var makeText: String = ""
+    @State private var modelText: String = ""
+    @State private var yearText: String = ""
+    @State private var engineText: String = ""
+    @State private var licenseText: String = ""
+    @State private var fuelText: String = ""
+    @State private var powerText: String = ""
     
     var body: some View {
         ZStack {
@@ -34,13 +44,66 @@ struct ConfirmDetailsView: View {
                 
                 // Detail items
                 VStack(alignment:.center, spacing: 14) {
-                    DetailRow(label: "Make:", value: plateData.make ?? "-")
-                    DetailRow(label: "Model:", value: plateData.model ?? "-")
-                    DetailRow(label: "Year:", value: plateData.year ?? "-")
-                    DetailRow(label: "Engine:", value: plateData.plate ?? "-")
-                    DetailRow(label: "License:", value: plateData.plate ?? "-")
-                    DetailRow(label: "Fuel Type:", value: plateData.fuel ?? "-")
-                    DetailRow(label: "Horsepower:", value: plateData.powerKW ?? "-")
+                    if manualEntryEnabled {
+                        HStack {
+                            TextField("Make", text: $makeText)
+                                .font(.customFont(size: 18, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                                .background(Color.customFieldColor)
+                                .cornerRadius(12)
+                                .foregroundColor(.white)
+                        }
+                        
+                        TextField("Model", text: $modelText)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                        
+                        TextField("Year", text: $yearText)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                        
+                        TextField("Engine", text: $engineText)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                        
+                        TextField("License", text: $licenseText)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                        
+                        TextField("Fuel Type", text: $fuelText)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                        
+                        TextField("Horsepower", text: $powerText)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                    } else {
+                        DetailRow(label: "Make:", value: plateData?.make ?? "-")
+                        DetailRow(label: "Model:", value: plateData?.model ?? "-")
+                        DetailRow(label: "Year:", value: plateData?.year ?? "-")
+                        DetailRow(label: "Engine:", value: plateData?.plate ?? "-")
+                        DetailRow(label: "License:", value: plateData?.plate ?? "-")
+                        DetailRow(label: "Fuel Type:", value: plateData?.fuel ?? "-")
+                        DetailRow(label: "Horsepower:", value: plateData?.powerKW ?? "-")
+                    }
                 }
                 .padding(.horizontal, 24)
                 
@@ -54,11 +117,11 @@ struct ConfirmDetailsView: View {
                 }
                 .padding(.horizontal, 24)
                 
-                //Spacer()
-                
-                // Confirm button
+                // Confirm button with navigationDestination
                 Button(action: {
-                    viewModel.savePlate(plateData: plateData, color: selectedColor)
+                    guard let plate = plateData else { return }
+                    viewModel.savePlate(plateData: plate, color: selectedColor)
+                    navigateToCheckDetails = true
                 }) {
                     Text("Confirm")
                         .font(.customFont(size: 18, weight: .semibold))
@@ -71,6 +134,9 @@ struct ConfirmDetailsView: View {
                 .disabled(viewModel.isLoading)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 3)
+                .navigationDestination(isPresented: $navigateToCheckDetails) {
+                    CheckDetailsView(plateData: plateData)
+                }
 
             }
 
@@ -82,8 +148,8 @@ struct ConfirmDetailsView: View {
                     .scaleEffect(2)
             }
         }
-        .onChange(of: viewModel.didSavePlate) { didSave in
-            if didSave {
+        .onReceive(viewModel.$didSavePlate) { newValue in
+            if newValue {
                 dismiss()
             }
         }
@@ -116,8 +182,6 @@ struct DetailRow: View {
                 .foregroundColor(.white)
                 .frame(alignment : .leading)
             
-            Spacer().frame(width: 150)
-
         }
         .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .center)
         .background(Color.customFieldColor)
@@ -310,5 +374,6 @@ struct ColorPickerView: View {
     }
 
 #Preview {
-    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuel: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", extra: ["key": ""]))
+    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuel: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", extra: ["key": ""]), manualEntryEnabled: true)
+        .preferredColorScheme(.dark)
 }

@@ -257,7 +257,7 @@ struct LoginScreen: View {
                         .padding(.horizontal, 20)
                     }
                 }
-                .onChange(of: viewModel.alertItem) { newValue in
+                .onReceive(viewModel.$alertItem) { newValue in
                     if newValue != nil {
                         showAlert = true
                     }

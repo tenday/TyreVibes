@@ -89,15 +89,15 @@ class PlateAPIService {
         }
 
         let requestBody = PlateAPIRequest(
-            plate: plateData.plate,
-            make: plateData.make,
-            model: plateData.model,
-            year: plateData.year,
-            fuel_type: plateData.fuel,
-            power_kw: plateData.powerKW,
-            displacement: plateData.displacementCC,
-            color: color.toHex(),
-            vin: plateData.vin
+            plate: plateData.plate.uppercased(),
+            make: plateData.make ?? "-",
+            model: plateData.model ?? "-",
+            year: plateData.year ?? "-",
+            fuel_type: plateData.fuel ?? "-",
+            power_kw: plateData.powerKW ?? "-",
+            displacement: plateData.displacementCC ?? "-",
+            color: color.toHex() ?? "-",
+            vin: plateData.vin ?? "-"
         )
 
         var request = URLRequest(url: url)

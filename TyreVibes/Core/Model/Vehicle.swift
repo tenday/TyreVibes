@@ -17,6 +17,7 @@ struct Car : Decodable{
     let model: String
     let year: String
     let engine: String
+    //let power: String
     let imageName: String
     
 }

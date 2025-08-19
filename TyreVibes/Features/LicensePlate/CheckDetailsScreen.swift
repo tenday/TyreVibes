@@ -155,7 +155,7 @@ struct CheckDetailsView: View {
         }
         .navigationDestination(isPresented: $showConfirmDetailsScreen) {
             if let plateData = plateData {
-                ConfirmDetailsView(plateData: plateData)
+                ConfirmDetailsView(plateData: plateData, manualEntryEnabled: false)
                     .navigationBarBackButtonHidden(true)
             } else {
                 Text("Nessun dato disponibile")

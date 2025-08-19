@@ -119,9 +119,6 @@
     "Choose Color:" : {
 
     },
-    "Color: " : {
-
-    },
     "Confirm" : {
 
     },
@@ -201,6 +198,9 @@
         }
       }
     },
+    "Fuel Type" : {
+
+    },
     "Garage" : {
 
     },
@@ -210,6 +210,9 @@
     "Google" : {
 
     },
+    "Horsepower" : {
+
+    },
     "Hybrid Sports Car" : {
 
     },
@@ -217,6 +220,9 @@
 
     },
     "Let's" : {
+
+    },
+    "License" : {
 
     },
     "License plate %@" : {
@@ -283,6 +289,9 @@
 
     },
     "No veichles found,pls add a new one" : {
+
+    },
+    "Non trovi la tua auto?" : {
 
     },
     "OK" : {

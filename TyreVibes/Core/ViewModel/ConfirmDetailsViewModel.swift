@@ -29,6 +29,8 @@ class ConfirmDetailsViewModel: ObservableObject {
                         alertItem = AlertItem(title: "Error", message: "Received an invalid response from the server.")
                     case .serverError(_, let message):
                         alertItem = AlertItem(title: "Server Error", message: message)
+                    case .plateNotFound:
+                        alertItem = AlertItem(title: "Error", message: "Targa non trovata.")
                     }
                 } else {
                     alertItem = AlertItem(title: "Error", message: error.localizedDescription)
