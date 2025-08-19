@@ -13,19 +13,78 @@ struct PlateAPIRequest: Codable {
     let vin: String?
 }
 
+struct PlateAPIResponse: Codable {
+    let plate_id: Int
+    let plate: String
+    let make: String?
+    let model: String?
+    let year: String?
+    let fuel_type: String?
+    let power_kw: String?
+    let displacement: String?
+    let color: String?
+    let vin: String?
+    let created_at: String
+}
+
 enum PlateAPIError: Error {
     case invalidURL
     case requestFailed(Error)
     case invalidResponse
     case serverError(Int, String)
+    case plateNotFound
 }
 
 class PlateAPIService {
 
-    let apiURL = URL(string: "https://www.tyrevibes.com/api/save_plate.php")
+    private let savePlateURL = URL(string: "https://www.tyrevibes.com/api/save_plate.php")
+    private let checkPlateBaseURL = "https://www.tyrevibes.com/api/check_plate.php"
+
+    func checkPlate(plateNumber: String) async throws -> PlateData? {
+        guard var components = URLComponents(string: checkPlateBaseURL) else {
+            throw PlateAPIError.invalidURL
+        }
+        components.queryItems = [URLQueryItem(name: "plate", value: plateNumber)]
+
+        guard let url = components.url else {
+            throw PlateAPIError.invalidURL
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw PlateAPIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 404 {
+            return nil // Plate not found is not an error, it's a valid outcome.
+        }
+
+        if (200...299).contains(httpResponse.statusCode) {
+            do {
+                let apiResponse = try JSONDecoder().decode(PlateAPIResponse.self, from: data)
+                return PlateData(
+                    plate: apiResponse.plate,
+                    make: apiResponse.make,
+                    model: apiResponse.model,
+                    year: apiResponse.year,
+                    color: apiResponse.color,
+                    fuel: apiResponse.fuel_type,
+                    powerKW: apiResponse.power_kw,
+                    displacementCC: apiResponse.displacement,
+                    vin: apiResponse.vin
+                )
+            } catch {
+                throw PlateAPIError.requestFailed(error) // JSON decoding error
+            }
+        } else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
+            throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)
+        }
+    }
 
     func savePlate(plateData: PlateData, color: Color) async throws {
-        guard let url = apiURL else {
+        guard let url = savePlateURL else {
             throw PlateAPIError.invalidURL
         }
 
