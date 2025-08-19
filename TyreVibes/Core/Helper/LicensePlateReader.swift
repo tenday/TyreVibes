@@ -68,6 +68,8 @@ private struct QRModelList: Decodable { let models: [String:String]; let order: 
 private struct QRPowerList: Decodable { let powers: [String:String]; let order: [Int] }
 
 enum PlateReader {
+    private static let plateAPIService = PlateAPIService()
+
     static func urlPlateLookup(targa: String) -> URL? {
         return URL(string: "https://www.quattroruote.it/auto-usate/api/v1/infocar-targa?targa=\(targa.uppercased())")
     }
@@ -87,7 +89,18 @@ enum PlateReader {
 
     @available(iOS 15.0, macOS 12.0, *)
     static func fetchPlateSummary(targa: String) async throws -> PlateData {
-        // 1) Lookup plate -> year, month, codmar (brand), codmor (model)
+        // 1) Check our custom DB first
+        do {
+            if let existingPlate = try await plateAPIService.checkPlate(plateNumber: targa) {
+                print("Plate found in custom DB. Returning cached data.")
+                return existingPlate
+            }
+        } catch {
+            // If checking our DB fails, we log the error and proceed to external services.
+            print("Failed to check custom DB: \(error.localizedDescription)")
+        }
+
+        // 2) Lookup plate -> year, month, codmar (brand), codmor (model)
         guard let lookupURL = urlPlateLookup(targa: targa) else { throw PlateScraperError.badURL }
         let lookup: QRPlateLookup
         do {
