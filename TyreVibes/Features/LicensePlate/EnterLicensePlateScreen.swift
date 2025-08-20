@@ -172,9 +172,9 @@ struct EnterLicensePlateView: View {
                     let trimmed = licensePlate.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !trimmed.isEmpty else { return }
                     
-                    Task {
-                        do {
-                            let data = try await PlateReader.fetchPlateSummary(targa: trimmed)
+                    LicensePlateReader.fetchPlateSummary(plate: trimmed) { result in
+                        switch result {
+                        case .success(let data):
                             self.data = data
                             print(data)
                             if let make = data.make, let model = data.model {
@@ -182,23 +182,25 @@ struct EnterLicensePlateView: View {
                                     switch result {
                                     case .success(let img):
                                         self.vehicleImage = img
-                                        licensePlate =  ""
+                                        licensePlate = ""
                                         self.navigateToCheckDetails = true
                                     case .failure(let err):
                                         print("Errore nel recupero immagine: \(err.localizedDescription)")
                                         self.vehicleImage = nil
                                     }
                                     isLoadingDetails = false
-                                    
                                 }
                             } else {
                                 self.navigateToCheckDetails = true
+                                isLoadingDetails = false
                             }
-                        } catch {
-                            errorMessage = error.localizedDescription
-                            showErrorAlert = true
+                        case .failure(let error):
+                            self.errorMessage = error.localizedDescription
+                            self.showErrorAlert = true
+                            self.isLoadingDetails = false
                         }
                     }
+                    
                 }) {
                     if  isLoadingDetails {
                         Text("")
@@ -243,10 +245,10 @@ struct EnterLicensePlateView: View {
                 Alert(title: Text("Errore"), message: Text(errorMessage), dismissButton: .default(Text("OK")))
             }
             .navigationDestination(isPresented: $navigateToCheckDetails) {
-                CheckDetailsView(vehicleImage: vehicleImage, plateData: data ?? nil)
+                CheckDetailsView(vehicleImage: vehicleImage, plateData: data ?? nil, isContinueEnabled: .constant(false), viewModel: ConfirmDetailsViewModel())
             }
             .navigationDestination(isPresented: $showConfirmDetailsScreen) {
-                ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true)
+                ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true, viewModel: ConfirmDetailsViewModel() )
                     .preferredColorScheme(.dark)
                     .navigationBarBackButtonHidden(true)
             }

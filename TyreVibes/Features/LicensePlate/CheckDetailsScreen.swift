@@ -8,7 +8,9 @@ struct CheckDetailsView: View {
     @State private var displayImage: UIImage?
     @State private var dateString: String = ""
     @State private var showConfirmDetailsScreen: Bool = false
-    
+    @State private var showCheckmark: Bool = false
+    @Binding var isContinueEnabled: Bool
+    @ObservedObject var viewModel: ConfirmDetailsViewModel
     var body: some View {
         ZStack {
             Color.customBackgroundColor
@@ -17,11 +19,13 @@ struct CheckDetailsView: View {
             VStack(spacing: 40) {
                 // Custom navigation bar
                 HStack {
-                    Button(action: {
-                       dismiss()
-                    }) {
-                        Image("ArrowIcon")
-                        
+                    if !isContinueEnabled  {
+                        Button(action: {
+                           dismiss()
+                        }) {
+                            Image("ArrowIcon")
+                            
+                        }
                     }
                        
                     
@@ -43,7 +47,7 @@ struct CheckDetailsView: View {
                   
                   ZStack {
                       HStack (spacing : 2){
-                          Text("Model:")
+                          Text("Modello:")
                               .font(.customFont(size: 16, weight: .regular))
                               .offset(y: -UIScreen.main.bounds.height * 0.175)
                               .foregroundColor(Color.white)
@@ -61,83 +65,79 @@ struct CheckDetailsView: View {
                   }
                   .padding(.horizontal, 24)
                     
-                    Button(action: { /* azione da eseguire */ }) {
-                        VStack(spacing: 20) {
+                    Button(action: {
+                        showConfirmDetailsScreen = true
+                    }) {
+                        VStack(spacing: 50) {
                             // Model pill
-                            HStack {
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.black)
-                                    .frame(width: 24, height: 24)
+                            if !isContinueEnabled {
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(.black)
+                                        .frame(width: 24, height: 24)
+                                }
+                                .padding(.horizontal, 35)
                             }
-                            .padding(.horizontal, 39)
-                            
+                            if(isContinueEnabled) {
+                                Spacer().frame(height: 20)
+                            }
                             
                             
                             ZStack {
-                                Color.clear
-                                if let image = vehicleImage {
-                                    Image(uiImage: displayImage ?? image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 280, height: 180)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .clipped()
-                                } else {
-                                    Image("audiQ3")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 280, height: 180)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        .clipped()
+                                ZStack {
+                                    Color.clear
+                                    if let rawImage = viewModel.vehicleImage ?? vehicleImage {
+                                        let trimmed = rawImage.trimmedTransparentPixels(threshold: 5)
+                                        Image(uiImage: trimmed)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 280, height: 180)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .clipped()
+                                    } else {
+                                        Image("audiQ3")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 280, height: 180)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .clipped()
+                                    }
                                 }
-                            }
-                            .frame(width: 280, height: 180)
-                            .onAppear {
-                                if displayImage == nil, let src = vehicleImage {
-                                    let monthString = plateData?.month ?? ""
-                                    let paddedMonth = monthString.count == 1 ? "" + monthString : monthString
-                                    if(paddedMonth == "0" && plateData?.year == "")
-                                    {
-                                        dateString = ""
-                                    }
-                                    else if (paddedMonth == "" || plateData?.year == ""){
-                                        dateString = paddedMonth + (plateData?.year ?? "")
-                                    }
-                                    else {
-                                        dateString = paddedMonth + "/" + (plateData?.year ?? "")
-
-                                    }
-                                    
-                                    displayImage = src.trimmedTransparentPixels(threshold: 5)
-                                }
+                                .frame(width: 280, height: 180)
+                                
+                              Image("vector")
+                                    .opacity(showCheckmark ? 1 : 0)
+                                    .scaleEffect(showCheckmark ? 1.0 : 0.6)
+                                    .allowsHitTesting(false)
+                                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showCheckmark)
                             }
                             
                             
                             // Date
-                            Text(dateString)
-                                .font(.customFont(size: 16, weight: .bold))
-                                .foregroundColor(.black)
-                            
-                            // Car type
-                            HStack (spacing: 2){
-                                Text("CarType:")
-                                    .font(.customFont(size: 16, weight: .regular))
+                            if let date = plateData?.registrationDate {
+                                let comps = date.split(separator: "-")
+                                let formatted = (comps.count == 3) ? "\(comps[1])/\(comps[2])" : date
+                                Text(formatted)
+                                    .font(.customFont(size: 16, weight: .bold))
                                     .foregroundColor(.black)
-                                
-                                Text("Hybrid Sports Car")
+                            } else {
+                                Text("")
                                     .font(.customFont(size: 16, weight: .bold))
                                     .foregroundColor(.black)
                             }
+                            
+
                         }
                     }
+                    .disabled(isContinueEnabled)
                 }
                 
                 Spacer()
                 
                 // Continue button
                 Button(action: {
-                    showConfirmDetailsScreen = true
+                    //
                 }) {
                     Text("Continue")
                         .font(.customFont(size: 18, weight: .bold))
@@ -148,23 +148,41 @@ struct CheckDetailsView: View {
                 }
                 .background(Color.customBitterSweet)
                 .cornerRadius(100)
-               // .opacity(isContinueEnabled ? 1.0 : 0.6)
-               // .disabled(!isContinueEnabled)
+                .opacity(isContinueEnabled ? 1.0 : 0.6)
+                .disabled(!isContinueEnabled)
                 .padding(.horizontal, 24)
             }
         }
         .navigationDestination(isPresented: $showConfirmDetailsScreen) {
             if let plateData = plateData {
-                ConfirmDetailsView(plateData: plateData, manualEntryEnabled: false)
+                ConfirmDetailsView(plateData: plateData, manualEntryEnabled: false, viewModel: viewModel)
                     .navigationBarBackButtonHidden(true)
             } else {
                 Text("Nessun dato disponibile")
             }
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            if isContinueEnabled {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    showCheckmark = true
+                }
+            }
+        }
+        .onChange(of: isContinueEnabled) { oldValue, newValue in
+            if newValue {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    showCheckmark = true
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    showCheckmark = false
+                }
+            }
+        }
     }
 }
 
 #Preview {
-    CheckDetailsView()
+    CheckDetailsView(isContinueEnabled: .constant(true), viewModel: ConfirmDetailsViewModel())
 }

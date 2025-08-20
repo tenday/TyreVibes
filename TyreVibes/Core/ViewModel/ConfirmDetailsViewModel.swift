@@ -7,16 +7,33 @@ class ConfirmDetailsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var alertItem: AlertItem?
     @Published var didSavePlate = false
+    @Published var vehicleImage: UIImage?
 
     private let plateAPIService = PlateAPIService()
 
-    func savePlate(plateData: PlateData, color: Color) {
+    func savePlate(plateData: PlateData, color: String) {
         isLoading = true
         Task {
             do {
-                try await plateAPIService.savePlate(plateData: plateData, color: color)
-                isLoading = false
-                didSavePlate = true
+                
+                VehicleImageService.fetchVehicleImage(make: plateData.make ?? "", modelFamily: plateData.model ?? "", year: plateData.year ?? "", paintId: color) { result in
+                    switch result {
+                    case .success(let img):
+                        DispatchQueue.main.async {
+                            self.vehicleImage = img
+                            self.didSavePlate = true
+                        }
+                    case .failure(let err):
+                        print("Errore nel recupero immagine: \(err.localizedDescription)")
+                        DispatchQueue.main.async {
+                            self.vehicleImage = nil
+                            self.didSavePlate = false
+                        }
+                    }
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                    }
+                }
             } catch {
                 isLoading = false
                 if let apiError = error as? PlateAPIError {
@@ -38,4 +55,6 @@ class ConfirmDetailsViewModel: ObservableObject {
             }
         }
     }
+    
+    
 }

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CheckPlateBaseURL</key>
+	<string>https://www.tyrevibes.com/api/check_plate.php</string>
+	<key>SavePlateURL</key>
+	<string>https://www.tyrevibes.com/api/save_plate.php</string>
 	<key>IMAGE_GENERATOR_URL</key>
 	<string>img</string>
 	<key>SUPABASE_URL</key>

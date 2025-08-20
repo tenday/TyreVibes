@@ -274,7 +274,7 @@ struct ScanPlateView: View {
                             Image(systemName: "xmark")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 24, height: 24)
+                                .frame(width: 10, height: 10)
                                 .foregroundColor(.white)
                                 .padding(12)
                                 .background(

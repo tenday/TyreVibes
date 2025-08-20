@@ -37,8 +37,16 @@ enum PlateAPIError: Error {
 
 class PlateAPIService {
 
-    private let savePlateURL = URL(string: "https://www.tyrevibes.com/api/save_plate.php")
-    private let checkPlateBaseURL = "https://www.tyrevibes.com/api/check_plate.php"
+    private static let apiConfig: NSDictionary = {
+        if let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
+           let dict = NSDictionary(contentsOfFile: path) {
+            return dict
+        }
+        return [:]
+    }()
+
+    private let savePlateURL = URL(string: (PlateAPIService.apiConfig["SavePlateURL"] as? String) ?? "")
+    private let checkPlateBaseURL = (PlateAPIService.apiConfig["CheckPlateBaseURL"] as? String) ?? ""
 
     func checkPlate(plateNumber: String) async throws -> PlateData? {
         guard var components = URLComponents(string: checkPlateBaseURL) else {
@@ -69,7 +77,7 @@ class PlateAPIService {
                     model: apiResponse.model,
                     year: apiResponse.year,
                     color: apiResponse.color,
-                    fuel: apiResponse.fuel_type,
+                   // fuel: apiResponse.fuel_type,
                     powerKW: apiResponse.power_kw,
                     displacementCC: apiResponse.displacement,
                     vin: apiResponse.vin
@@ -93,7 +101,7 @@ class PlateAPIService {
             make: plateData.make ?? "-",
             model: plateData.model ?? "-",
             year: plateData.year ?? "-",
-            fuel_type: plateData.fuel ?? "-",
+            fuel_type: plateData.fuelType ?? "-",
             power_kw: plateData.powerKW ?? "-",
             displacement: plateData.displacementCC ?? "-",
             color: color.toHex() ?? "-",

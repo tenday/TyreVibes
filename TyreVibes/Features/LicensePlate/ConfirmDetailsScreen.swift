@@ -3,8 +3,14 @@ import SwiftUI
 struct ConfirmDetailsView: View {
     let plateData: PlateData?
     let manualEntryEnabled : Bool
+    @State private var isContinueEnabled: Bool = false
     @State private var selectedColor: Color = .black
-    @StateObject private var viewModel = ConfirmDetailsViewModel()
+    @ObservedObject var viewModel: ConfirmDetailsViewModel
+    init(plateData: PlateData?, manualEntryEnabled: Bool, viewModel: ConfirmDetailsViewModel) {
+        self.plateData = plateData
+        self.manualEntryEnabled = manualEntryEnabled
+        self._viewModel = ObservedObject(wrappedValue: viewModel)
+    }
     @Environment(\.dismiss) private var dismiss
     
     @State private var navigateToCheckDetails: Bool = false
@@ -46,7 +52,7 @@ struct ConfirmDetailsView: View {
                 VStack(alignment:.center, spacing: 14) {
                     if manualEntryEnabled {
                         HStack {
-                            TextField("Make", text: $makeText)
+                            TextField("Marchio", text: $makeText)
                                 .font(.customFont(size: 18, weight: .bold))
                                 .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
                                 .background(Color.customFieldColor)
@@ -54,35 +60,35 @@ struct ConfirmDetailsView: View {
                                 .foregroundColor(.white)
                         }
                         
-                        TextField("Model", text: $modelText)
+                        TextField("Modello", text: $modelText)
                             .font(.customFont(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
                             .background(Color.customFieldColor)
                             .cornerRadius(12)
                             .foregroundColor(.white)
                         
-                        TextField("Year", text: $yearText)
+                        TextField("Anno", text: $yearText)
                             .font(.customFont(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
                             .background(Color.customFieldColor)
                             .cornerRadius(12)
                             .foregroundColor(.white)
                         
-                        TextField("Engine", text: $engineText)
+                        TextField("Cilindrata", text: $engineText)
                             .font(.customFont(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
                             .background(Color.customFieldColor)
                             .cornerRadius(12)
                             .foregroundColor(.white)
                         
-                        TextField("License", text: $licenseText)
+                        TextField("Targa", text: $licenseText)
                             .font(.customFont(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
                             .background(Color.customFieldColor)
                             .cornerRadius(12)
                             .foregroundColor(.white)
                         
-                        TextField("Fuel Type", text: $fuelText)
+                        TextField("Alimentazione", text: $fuelText)
                             .font(.customFont(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
                             .background(Color.customFieldColor)
@@ -96,13 +102,13 @@ struct ConfirmDetailsView: View {
                             .cornerRadius(12)
                             .foregroundColor(.white)
                     } else {
-                        DetailRow(label: "Make:", value: plateData?.make ?? "-")
-                        DetailRow(label: "Model:", value: plateData?.model ?? "-")
-                        DetailRow(label: "Year:", value: plateData?.year ?? "-")
-                        DetailRow(label: "Engine:", value: plateData?.plate ?? "-")
-                        DetailRow(label: "License:", value: plateData?.plate ?? "-")
-                        DetailRow(label: "Fuel Type:", value: plateData?.fuel ?? "-")
-                        DetailRow(label: "Horsepower:", value: plateData?.powerKW ?? "-")
+                        DetailRow(label: "Marchio:", value: plateData?.make ?? "-")
+                        DetailRow(label: "Modello:", value: plateData?.modelDetails ?? "-")
+                        DetailRow(label: "Immatricolazione:", value: plateData?.registrationDate ?? "-")
+                        DetailRow(label: "Cilindrata:", value: plateData?.displacementCC ?? "-")
+                        DetailRow(label: "Targa:", value: plateData?.plate ?? "-")
+                        DetailRow(label: "Alimentazione:", value: plateData?.fuelType ?? "-")
+                        DetailRow(label: "Cavalli:", value: plateData?.powerCV ?? "-")
                     }
                 }
                 .padding(.horizontal, 24)
@@ -120,37 +126,49 @@ struct ConfirmDetailsView: View {
                 // Confirm button with navigationDestination
                 Button(action: {
                     guard let plate = plateData else { return }
-                    viewModel.savePlate(plateData: plate, color: selectedColor)
-                    navigateToCheckDetails = true
+                    viewModel.savePlate(plateData: plate, color: ColorPickerView(selectedColor: $selectedColor).colorName(for: selectedColor))
                 }) {
-                    Text("Confirm")
-                        .font(.customFont(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 62)
-                        .background(Color.customBitterSweet)
-                        .cornerRadius(28)
+                    if viewModel.isLoading {
+                        Text("")
+                            .foregroundColor(Color.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 62)
+                            .background(Color.customBitterSweet)
+                            .cornerRadius(28)
+                            .overlay(ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                                .frame(height: 62)
+                                .frame(maxWidth: .infinity))
+                    }
+                    else {
+                        Text("Confirm")
+                            .font(.customFont(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 62)
+                            .background(Color.customBitterSweet)
+                            .cornerRadius(28)
+                    }
+                  
                 }
                 .disabled(viewModel.isLoading)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 3)
                 .navigationDestination(isPresented: $navigateToCheckDetails) {
-                    CheckDetailsView(plateData: plateData)
+                    CheckDetailsView(plateData: plateData,
+                                     isContinueEnabled: $isContinueEnabled,
+                                     viewModel: viewModel)
                 }
 
-            }
-
-            if viewModel.isLoading {
-                VisualEffectBlur(blurStyle: .dark)
-                    .edgesIgnoringSafeArea(.all)
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(2)
             }
         }
         .onReceive(viewModel.$didSavePlate) { newValue in
             if newValue {
-                dismiss()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    isContinueEnabled = true
+                }
+                navigateToCheckDetails = true
             }
         }
         .alert(item: $viewModel.alertItem) { alertItem in
@@ -172,15 +190,15 @@ struct DetailRow: View {
         HStack (alignment: .center){
             Spacer().frame(width: 20)
             Text(label)
-                .font(.customFont(size: 16, weight: .semibold))
+                .font(.customFont(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.6))
             
-
             Spacer()
             Text(value)
                 .font(.customFont(size: 18, weight: .bold))
                 .foregroundColor(.white)
                 .frame(alignment : .leading)
+                .padding(.horizontal, 30)
             
         }
         .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .center)
@@ -317,7 +335,7 @@ struct ColorPickerView: View {
     }
 
     // Helper to get a readable color name from a Color
-    private func colorName(for color: Color) -> String {
+    public func colorName(for color: Color) -> String {
         // Try to extract hue, saturation, brightness from the Color
         #if canImport(UIKit)
         // UIKit (iOS)
@@ -374,6 +392,6 @@ struct ColorPickerView: View {
     }
 
 #Preview {
-    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuel: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", extra: ["key": ""]), manualEntryEnabled: true)
+    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuelType: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", extra: ["key": ""]), manualEntryEnabled: false, viewModel: ConfirmDetailsViewModel())
         .preferredColorScheme(.dark)
 }

@@ -45,6 +45,9 @@
     "Add Your Tyres" : {
 
     },
+    "Alimentazione" : {
+
+    },
     "and" : {
       "localizations" : {
         "it" : {
@@ -54,6 +57,9 @@
           }
         }
       }
+    },
+    "Anno" : {
+
     },
     "Apple" : {
       "localizations" : {
@@ -107,9 +113,6 @@
     "Calendar" : {
 
     },
-    "CarType:" : {
-
-    },
     "Central action" : {
 
     },
@@ -117,6 +120,9 @@
 
     },
     "Choose Color:" : {
+
+    },
+    "Cilindrata" : {
 
     },
     "Confirm" : {
@@ -198,9 +204,6 @@
         }
       }
     },
-    "Fuel Type" : {
-
-    },
     "Garage" : {
 
     },
@@ -213,16 +216,10 @@
     "Horsepower" : {
 
     },
-    "Hybrid Sports Car" : {
-
-    },
     "I agree to the" : {
 
     },
     "Let's" : {
-
-    },
-    "License" : {
 
     },
     "License plate %@" : {
@@ -271,6 +268,9 @@
         }
       }
     },
+    "Marchio" : {
+
+    },
     "Model" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -282,7 +282,10 @@
         }
       }
     },
-    "Model:" : {
+    "Modello" : {
+
+    },
+    "Modello:" : {
 
     },
     "Nessun dato disponibile" : {
@@ -358,6 +361,9 @@
 
     },
     "Skip" : {
+
+    },
+    "Targa" : {
 
     },
     "Targa rilevata" : {
