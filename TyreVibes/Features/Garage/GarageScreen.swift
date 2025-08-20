@@ -8,19 +8,13 @@ struct GarageScreen: View {
     @State private var showScanPlate = false
     @State private var showEnterPlate = false
     
-    @State private var cars: [Car] = [
-        Car(name: "Audi Q3", plateCode: "FN841WA", make: "Audi", model: "Q3", year: "2024", engine: "1.6 eTSI", imageName: "audiQ3"),
-        Car(name: "Seat Leon", plateCode: "TEST567", make: "Audi", model: "Q3", year: "2024", engine: "1.6 eTSI", imageName: "audiQ3"),
-        Car(name: "Audi Q8", plateCode: "TEST123", make: "Audi", model: "Q3", year: "2024", engine: "1.6 ETS", imageName: "audiQ3"),
-        Car(name: "Audi Q8", plateCode: "TEST123", make: "Audi", model: "Q3", year: "2024", engine: "1.6 ETS", imageName: "audiQ3"),
-        Car(name: "Audi Q8", plateCode: "TEST123", make: "Audi", model: "TerraMar", year: "2024", engine: "1.6 tisdkg", imageName: "audiQ3")
-    ]
+    @StateObject private var viewModel = GarageViewModel()
     
     var filteredCars: [Car] {
         if searchText.isEmpty {
-            return cars
+            return viewModel.cars
         } else {
-            return cars.filter {
+            return viewModel.cars.filter {
                 $0.name.localizedCaseInsensitiveContains(searchText) ||
                 $0.plateCode.localizedCaseInsensitiveContains(searchText) ||
                 $0.make.localizedCaseInsensitiveContains(searchText) ||
@@ -309,7 +303,7 @@ struct GarageScreen: View {
                 }
                 
                 List {
-                    if cars.isEmpty {
+                    if viewModel.cars.isEmpty {
                         Text("No veichles found,pls add a new one")
                             .font(.customFont(size: 18, weight: .bold))
                             .foregroundColor(.gray)
@@ -344,12 +338,13 @@ struct GarageScreen: View {
                 EnterLicensePlateView()
             }
             .edgesIgnoringSafeArea(.bottom)
+            .onAppear {
+                viewModel.fetchCars()
+            }
         }
     }
     private func delete(_ car: Car) {
-        if let idx = cars.firstIndex(where: { $0.id == car.id }) {
-            cars.remove(at: idx)
-        }
+        viewModel.deleteCar(car)
     }
 }
 

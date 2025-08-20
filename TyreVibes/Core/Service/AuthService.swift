@@ -122,6 +122,27 @@ class AuthService {
         return response
     }
     
+    func getVehiclesForCurrentUser() async throws -> [Car] {
+        let session = try await SupabaseManager.client.auth.session
+        let userId = session.user.id
+
+        let response: [Car] = try await SupabaseManager.client
+            .from("vehicles")
+            .select("*")
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+            .value
+        return response
+    }
+
+    func deleteCar(withId carId: UUID) async throws {
+        try await SupabaseManager.client
+            .from("vehicles")
+            .delete()
+            .eq("id", value: carId.uuidString)
+            .execute()
+    }
+
     // Funzione unica per gestire l'intero processo di registrazione
     func createAccount(
         email: String,
