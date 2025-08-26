@@ -46,12 +46,12 @@ struct CheckDetailsView: View {
                 ZStack(alignment: .center) {
                   
                   ZStack {
-                      HStack (spacing : 2){
+                      VStack (spacing : 2){
                           Text("Modello:")
                               .font(.customFont(size: 16, weight: .regular))
                               .offset(y: -UIScreen.main.bounds.height * 0.175)
                               .foregroundColor(Color.white)
-                          Text(plateData?.model ?? "")
+                          Text(plateData?.modelDetails ?? plateData?.model ?? "")
                               .font(.customFont(size: 16, weight: .bold))
                               .offset(y: -UIScreen.main.bounds.height * 0.175)
                               .foregroundColor(Color.white)
@@ -95,37 +95,36 @@ struct CheckDetailsView: View {
                                             .frame(width: 280, height: 180)
                                             .clipShape(RoundedRectangle(cornerRadius: 12))
                                             .clipped()
-                                    } else {
-                                        Image("audiQ3")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 280, height: 180)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                            .clipped()
                                     }
                                 }
                                 .frame(width: 280, height: 180)
                                 
                               Image("vector")
                                     .opacity(showCheckmark ? 1 : 0)
-                                    .scaleEffect(showCheckmark ? 1.0 : 0.6)
+                                    .scaleEffect(showCheckmark ? 1.5 : 0.6)
                                     .allowsHitTesting(false)
-                                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showCheckmark)
+                                    .animation(.spring(response: 2, dampingFraction: 1), value: showCheckmark)
                             }
                             
                             
-                            // Date
-                            if let date = plateData?.registrationDate {
-                                let comps = date.split(separator: "-")
-                                let formatted = (comps.count == 3) ? "\(comps[1])/\(comps[2])" : date
-                                Text(formatted)
-                                    .font(.customFont(size: 16, weight: .bold))
-                                    .foregroundColor(.black)
-                            } else {
-                                Text("")
-                                    .font(.customFont(size: 16, weight: .bold))
-                                    .foregroundColor(.black)
+                            if !isContinueEnabled {
+                                if let date = plateData?.registrationDate {
+                                    let comps = date.split(separator: "-")
+                                    let formatted = (comps.count == 3) ? "\(comps[1])/\(comps[2])" : date
+                                    Text(formatted)
+                                        .font(.customFont(size: 16, weight: .bold))
+                                        .foregroundColor(.black)
+                                        .offset(y: UIScreen.main.bounds.height * -0.04)
+
+                                }
                             }
+                            else {
+                                Text("07/2020")
+                                    .font(.customFont(size: 16, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .offset(y: UIScreen.main.bounds.height * -0.04)
+                            }
+                           
                             
 
                         }

@@ -5,12 +5,24 @@ struct PlateAPIRequest: Codable {
     let plate: String
     let make: String?
     let model: String?
-    let year: String?
+    let modelDetail : String?
     let fuel_type: String?
     let power_kw: String?
-    let displacement: String?
+    let power_cv: String?
+    let cilindrata: String?
     let color: String?
     let vin: String?
+    let user_id: String
+    let registration_date: String?
+    let image_base64: String?
+    let image_mime: String?
+    
+    let rcaCompany: String?
+    let rcaPolicyNumber: String?
+    let rcaExpiry: Date?
+    let rcaInsurancePresent: Bool?
+    let classeAmbientale: String?
+    let tyres: [[String: String]]?
 }
 
 struct PlateAPIResponse: Codable {
@@ -18,13 +30,22 @@ struct PlateAPIResponse: Codable {
     let plate: String
     let make: String?
     let model: String?
-    let year: String?
+    let modelDetail : String?
     let fuel_type: String?
     let power_kw: String?
-    let displacement: String?
+    let cilindrata: String?
     let color: String?
     let vin: String?
     let created_at: String
+    let user_id: String?
+    let registration_date: String?
+    let image_base64: String?
+    
+    let rcaCompany: String?
+    let rcaPolicyNumber: String?
+    let rcaExpiry: Date?
+    let rcaInsurancePresent: Bool?
+    let classeAmbientale: String?
 }
 
 enum PlateAPIError: Error {
@@ -33,6 +54,16 @@ enum PlateAPIError: Error {
     case invalidResponse
     case serverError(Int, String)
     case plateNotFound
+}
+
+private func imageHasAlpha(_ image: UIImage) -> Bool {
+    guard let alpha = image.cgImage?.alphaInfo else { return false }
+    switch alpha {
+    case .first, .last, .premultipliedFirst, .premultipliedLast:
+        return true
+    default:
+        return false
+    }
 }
 
 class PlateAPIService {
@@ -75,12 +106,12 @@ class PlateAPIService {
                     plate: apiResponse.plate,
                     make: apiResponse.make,
                     model: apiResponse.model,
-                    year: apiResponse.year,
                     color: apiResponse.color,
                    // fuel: apiResponse.fuel_type,
                     powerKW: apiResponse.power_kw,
-                    displacementCC: apiResponse.displacement,
-                    vin: apiResponse.vin
+                    displacementCC: apiResponse.cilindrata,
+                    vin: apiResponse.vin,
+                    
                 )
             } catch {
                 throw PlateAPIError.requestFailed(error) // JSON decoding error
@@ -91,21 +122,45 @@ class PlateAPIService {
         }
     }
 
-    func savePlate(plateData: PlateData, color: Color) async throws {
+    func savePlate(plateData: PlateData, color: String, userId: String, image: UIImage?) async throws {
         guard let url = savePlateURL else {
             throw PlateAPIError.invalidURL
+        }
+
+        // Prepara immagine come PNG (se alpha) o JPEG (altrimenti). iOS non esporta WEBP nativamente.
+        var imageBase64: String? = nil
+        var imageMime: String? = nil
+        if let uiImage = image {
+            if imageHasAlpha(uiImage), let data = uiImage.pngData() {
+                imageBase64 = data.base64EncodedString()
+                imageMime = "image/png"
+            } else if let data = uiImage.jpegData(compressionQuality: 0.9) {
+                imageBase64 = data.base64EncodedString()
+                imageMime = "image/jpeg"
+            }
         }
 
         let requestBody = PlateAPIRequest(
             plate: plateData.plate.uppercased(),
             make: plateData.make ?? "-",
             model: plateData.model ?? "-",
-            year: plateData.year ?? "-",
+            modelDetail: plateData.modelDetails ?? "-",
             fuel_type: plateData.fuelType ?? "-",
             power_kw: plateData.powerKW ?? "-",
-            displacement: plateData.displacementCC ?? "-",
-            color: color.toHex() ?? "-",
-            vin: plateData.vin ?? "-"
+            power_cv: plateData.powerCV ?? "-",
+            cilindrata: plateData.displacementCC ?? "-",
+            color: color,
+            vin: plateData.vin ?? "-",
+            user_id: userId,
+            registration_date: plateData.registrationDate ?? "-",
+            image_base64: imageBase64,
+            image_mime: imageMime,
+            rcaCompany : plateData.rcaCompany ?? "",
+            rcaPolicyNumber: plateData.rcaPolicyNumber ?? "",
+            rcaExpiry : plateData.rcaExpiry,
+            rcaInsurancePresent: plateData.rcaInsurancePresent ?? false,
+            classeAmbientale : plateData.classeAmbientale ?? "",
+            tyres: plateData.tyres
         )
 
         var request = URLRequest(url: url)

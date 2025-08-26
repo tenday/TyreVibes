@@ -43,6 +43,16 @@ private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, 
 }
 
 class AuthService {
+    static var currentUserId: String? {
+        get async {
+            do {
+                let session = try await SupabaseManager.client.auth.session
+                return session.user.id.uuidString
+            } catch {
+                return nil
+            }
+        }
+    }
     
     // Funzione per recuperare la lista dei paesi dal database
     func fetchCountries() async throws -> [Country] {

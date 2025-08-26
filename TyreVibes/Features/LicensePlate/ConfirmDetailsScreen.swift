@@ -108,7 +108,7 @@ struct ConfirmDetailsView: View {
                         DetailRow(label: "Cilindrata:", value: plateData?.displacementCC ?? "-")
                         DetailRow(label: "Targa:", value: plateData?.plate ?? "-")
                         DetailRow(label: "Alimentazione:", value: plateData?.fuelType ?? "-")
-                        DetailRow(label: "Cavalli:", value: plateData?.powerCV ?? "-")
+                        DetailRow(label: "Cavalli:", value: "\(plateData?.powerCV ?? "-") CV")
                     }
                 }
                 .padding(.horizontal, 24)
@@ -187,21 +187,20 @@ struct DetailRow: View {
     let value: String
     
     var body: some View {
-        HStack (alignment: .center){
-            Spacer().frame(width: 20)
+        HStack (){
+            Spacer().frame(width: 10)
             Text(label)
                 .font(.customFont(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.6))
-            
             Spacer()
             Text(value)
                 .font(.customFont(size: 18, weight: .bold))
                 .foregroundColor(.white)
-                .frame(alignment : .leading)
-                .padding(.horizontal, 30)
+                .frame(alignment : .center)
+            Spacer().frame(width: 20)
             
         }
-        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .center)
+        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 140)
         .background(Color.customFieldColor)
         .cornerRadius(12)
     }
@@ -392,6 +391,6 @@ struct ColorPickerView: View {
     }
 
 #Preview {
-    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuelType: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", extra: ["key": ""]), manualEntryEnabled: false, viewModel: ConfirmDetailsViewModel())
+    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuelType: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", rcaInsurancePresent: false, rcaPolicyNumber: "", classeAmbientale: "" ), manualEntryEnabled: false, viewModel: ConfirmDetailsViewModel())
         .preferredColorScheme(.dark)
 }

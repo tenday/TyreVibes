@@ -178,7 +178,8 @@ struct EnterLicensePlateView: View {
                             self.data = data
                             print(data)
                             if let make = data.make, let model = data.model {
-                                VehicleImageService.fetchVehicleImage(make: make, modelFamily: model, year: data.year ?? "", paintId: data.color ?? "") { result in
+                                let year = data.registrationDate?.components(separatedBy: "/").last ?? ""
+                                VehicleImageService.fetchVehicleImage(make: make, modelFamily: data.modelDetails ?? model, year: year, paintId: data.color ?? "") { result in
                                     switch result {
                                     case .success(let img):
                                         self.vehicleImage = img
@@ -213,6 +214,7 @@ struct EnterLicensePlateView: View {
                                 .scaleEffect(1.2)
                                 .frame(height: 62)
                                 .frame(maxWidth: .infinity))
+                            .disabled(true)
                     } else {
                         Text("Continue")
                             .font(.customFont(size: 18, weight: .bold))

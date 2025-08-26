@@ -26,7 +26,7 @@ class VehicleImageService {
             URLQueryItem(name: "paintId", value: paintId),
             URLQueryItem(name: "angle", value: String(options.angle)),
             URLQueryItem(name: "modelYear", value: String(year)),
-            URLQueryItem(name: "fil5eType", value: options.fileType)
+            URLQueryItem(name: "fileType", value: options.fileType)
         ]
         guard let url = comps.url else {
             completion(.failure(NSError(domain: "VehicleImageService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL components"])))
