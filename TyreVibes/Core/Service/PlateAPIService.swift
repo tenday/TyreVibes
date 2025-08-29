@@ -155,11 +155,11 @@ class PlateAPIService {
             registration_date: plateData.registrationDate ?? "-",
             image_base64: imageBase64,
             image_mime: imageMime,
-            rcaCompany : plateData.rcaCompany ?? "",
-            rcaPolicyNumber: plateData.rcaPolicyNumber ?? "",
-            rcaExpiry : plateData.rcaExpiry,
-            rcaInsurancePresent: plateData.rcaInsurancePresent ?? false,
-            classeAmbientale : plateData.classeAmbientale ?? "",
+            rcaCompany : plateData.insuranceCompany ?? "",
+            rcaPolicyNumber: plateData.insuranceCompany ?? "",
+            rcaExpiry : plateData.insuranceExpiry,
+            rcaInsurancePresent: plateData.insurancePresent ?? false,
+            classeAmbientale : plateData.emissionClass ?? "",
             tyres: plateData.tyres
         )
 

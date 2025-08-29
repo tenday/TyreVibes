@@ -151,23 +151,6 @@ struct LoginScreen: View {
                             }
                             .padding(.top, -16)
                             
-                            if !viewModel.email.isEmpty && !viewModel.password.isEmpty {
-                                Button(action: {
-                                    authenticateWithFaceID()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "faceid")
-                                            .resizable()
-                                            .frame(width: 24, height: 24)
-                                        Text("Log in with Face ID")
-                                            .font(.customFont(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .background(Color.customFieldColor)
-                                    .cornerRadius(18)
-                                }
-                            }
                             
                             // Login Button
                             Button(action: {
@@ -261,6 +244,9 @@ struct LoginScreen: View {
                     if newValue != nil {
                         showAlert = true
                     }
+                }
+                .onAppear {
+                    authenticateWithFaceID()
                 }
                 .customAlert(
                     isPresented: $showAlert,

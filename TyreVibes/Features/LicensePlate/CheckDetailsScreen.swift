@@ -51,7 +51,7 @@ struct CheckDetailsView: View {
                               .font(.customFont(size: 16, weight: .regular))
                               .offset(y: -UIScreen.main.bounds.height * 0.175)
                               .foregroundColor(Color.white)
-                          Text(plateData?.modelDetails ?? plateData?.model ?? "")
+                          Text(plateData?.model ?? plateData?.modelDetails ?? "-")
                               .font(.customFont(size: 16, weight: .bold))
                               .offset(y: -UIScreen.main.bounds.height * 0.175)
                               .foregroundColor(Color.white)

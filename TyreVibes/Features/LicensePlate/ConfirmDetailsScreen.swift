@@ -105,7 +105,9 @@ struct ConfirmDetailsView: View {
                         DetailRow(label: "Marchio:", value: plateData?.make ?? "-")
                         DetailRow(label: "Modello:", value: plateData?.modelDetails ?? "-")
                         DetailRow(label: "Immatricolazione:", value: plateData?.registrationDate ?? "-")
-                        DetailRow(label: "Cilindrata:", value: plateData?.displacementCC ?? "-")
+                        if plateData?.displacementCC != "0" {
+                            DetailRow(label: "Cilindrata:", value: plateData?.displacementCC ?? "-")
+                        }
                         DetailRow(label: "Targa:", value: plateData?.plate ?? "-")
                         DetailRow(label: "Alimentazione:", value: plateData?.fuelType ?? "-")
                         DetailRow(label: "Cavalli:", value: "\(plateData?.powerCV ?? "-") CV")
@@ -391,6 +393,40 @@ struct ColorPickerView: View {
     }
 
 #Preview {
-    ConfirmDetailsView(plateData: PlateData(plate: "-", make: "-", model: "-", version: "-", year: "-", month: "-", color: "-", fuelType: "-", powerKW: "-", displacementCC: "-", registrationDate: "-", vin: "-", rcaInsurancePresent: false, rcaPolicyNumber: "", classeAmbientale: "" ), manualEntryEnabled: false, viewModel: ConfirmDetailsViewModel())
+    ConfirmDetailsView(
+        plateData: PlateData(
+            plate: "GB241PT",
+            make: "SEAT",
+            model: "Leon",
+            version: "FR",
+            year: "2020",
+            month: "08",
+            color: "Black",
+            fuelType: "Hybrid",
+            powerKW: "110",
+            powerCV: "150",
+            modelDetails: "Leon 1.5 eTSI 150 CV DSG FR",
+            displacementCC: "1500",
+            registrationDate: "08/2020",
+            vin: "WVWZZZ1KZ6W000001",
+            insuranceCompany: "Allianz",
+            insuranceExpiry: Date(),
+            insurancePresent: true,
+            insurancePolicyNumber: "123456789",
+            emissionClass: "EURO 6",
+            tyres: [],
+            saleEnd: "12/2020",
+            gearbox: "Automatic",
+            maxSpeed: "221 km/h",
+            bodyType: "Hatchback",
+            doors: "5",
+            seats: "5",
+            consumption: "Urban: 6.1 / Extra-urban: 4.2 / Combined: 5.6",
+            traction: "Front",
+            powerCVKW: "150 CV (110 kW)"
+        ),
+        manualEntryEnabled: false,
+        viewModel: ConfirmDetailsViewModel()
+    )
         .preferredColorScheme(.dark)
 }

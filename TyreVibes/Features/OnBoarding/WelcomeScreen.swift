@@ -11,9 +11,11 @@ struct WelcomeScreen: View {
     
     @StateObject private var viewModel = LoginViewModel()
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+    @State private var goToLogin = false
+    @State private var goToSignUp = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if isLoggedIn || viewModel.showHomeScreen {
                     BottomNavigationView()
@@ -97,21 +99,22 @@ struct WelcomeScreen: View {
                                 // Login Buttons
                                 VStack(spacing: screenHeight * 0.015) {
                                     
-                                    NavigationLink(destination: LoginScreen()
-                                        .navigationBarBackButtonHidden(true)){
-                                            Text("Log in")
-                                                .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                                .foregroundColor(Color.white)
-                                                .frame(maxWidth: .infinity)
-                                                .frame(height: buttonHeight)
-                                                .background(Color.customBitterSweet)
-                                                .cornerRadius(screenWidth * 0.133) // ~50pt radius
+                                    Button(action: {
+                                        goToLogin = true
+                                    }) {
+                                        Text("Log in")
+                                            .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                            .foregroundColor(Color.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: buttonHeight)
+                                            .background(Color.customBitterSweet)
+                                            .cornerRadius(screenWidth * 0.133)
                                     }
                                 
                                     
-                                    
-                                    NavigationLink(destination: SignUpScreen()
-                                        .navigationBarBackButtonHidden(true)){
+                                    Button(action: {
+                                        goToSignUp = true
+                                    }) {
                                         Text("Sign Up")
                                             .font(.customFont(size: buttonFontSize, weight: .semibold))
                                             .foregroundColor(Color.customBitterSweet)
@@ -207,6 +210,14 @@ struct WelcomeScreen: View {
                 if newValue {
                     isLoggedIn = true
                 }
+            }
+            .navigationDestination(isPresented: $goToLogin) {
+                LoginScreen()
+                    .navigationBarBackButtonHidden(true)
+            }
+            .navigationDestination(isPresented: $goToSignUp) {
+                SignUpScreen()
+                    .navigationBarBackButtonHidden(true)
             }
         }
     }
