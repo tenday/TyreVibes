@@ -29,7 +29,8 @@ class ConfirmDetailsViewModel: ObservableObject {
                 make: plateData.make ?? "",
                 modelFamily: plateData.model ?? "",
                 year: plateData.year ?? "",
-                paintId: color
+                paintId: color,
+                plate: plateData.plate
             ) { result in
                 switch result {
                 case .success(let img):

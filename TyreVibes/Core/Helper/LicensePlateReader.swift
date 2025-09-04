@@ -30,6 +30,7 @@ public struct PlateData {
     // --- Fields from /dettagli response mapping ---
     public var view: String?
     public var saleEnd: String?
+    public var saleStart: String?
     public var gearbox: String?
     public var maxSpeed: String?
     public var bodyType: String?
@@ -38,6 +39,10 @@ public struct PlateData {
     public var consumption: String?
     public var traction: String?
     public var powerCVKW: String?
+    
+    public var revisioni: [Revisione]?
+    
+    public var vehicleImage: UIImage?
 }
 
 // Lettore principale
@@ -46,7 +51,6 @@ public class LicensePlateReader {
 
 
     // MARK: - TyreVibes Plate Data API
-    /// Recupera i dati targa da TyreVibes (https://api.tyrevibes.com/plate/{plate})
     public static func fetchPlateData(plate: String, completion: @escaping (Result<[String: String], Error>) -> Void) {
         let urlString = "https://api.tyrevibes.com/plate/\(plate)"
         guard let url = URL(string: urlString) else {
@@ -536,6 +540,7 @@ public class LicensePlateReader {
                                                             let preview = String(data: data, encoding: .utf8) ?? ""
                                                             completion(.failure(NSError(domain: "LicensePlateReader", code: 13003, userInfo: [NSLocalizedDescriptionKey: "Risposta non valida", "preview": preview])))
                                                         }
+                                                        
                                                     } catch {
                                                        
                                                     }
@@ -615,11 +620,11 @@ task.resume()
 public static func fetchRevisioniSecure(
     plate: String,
     tipoVeicolo: String = "A",
-    maxAttempts: Int = 8,
+    maxAttempts: Int = 4,
     completion: @escaping (Result<[[String:String]], Error>) -> Void
 ) {
     func attempt(_ remaining: Int) {
-        let captchaCount = 10
+        let captchaCount = 5
         let group = DispatchGroup()
         var captchaResults: [(id: String, image: String)] = []
         var firstError: Error?
@@ -671,6 +676,22 @@ public static func fetchRevisioniSecure(
         }
     }
     attempt(maxAttempts)
+}
+
+// Async/await wrapper per fetchRevisioniSecure
+public static func fetchRevisioniSecureAsync(
+    plate: String,
+    tipoVeicolo: String = "A",
+    maxAttempts: Int = 4
+) async throws -> [[String:String]] {
+    try await withCheckedThrowingContinuation { cont in
+        fetchRevisioniSecure(plate: plate, tipoVeicolo: tipoVeicolo, maxAttempts: maxAttempts) { result in
+            switch result {
+            case .success(let arr): cont.resume(returning: arr)
+            case .failure(let err): cont.resume(throwing: err)
+            }
+        }
+    }
 }
 
 /// Chiamata all'API revisioni con header Guid, estratta da fetchRevisioniSecure
@@ -816,6 +837,7 @@ DispatchQueue.global(qos: .userInitiated).async {
     task.resume()
 }
 }
+    
 
 /// Euristica per distinguere tra O e Q
 private static func disambiguateQvsO(_ cgImage: CGImage, _ recognized: String, _ box: CGRect) -> String {
@@ -1820,6 +1842,55 @@ private static func solveCaptchaWithVisionSimple(from cgImage: CGImage, expected
        
        return ""
    }
+    
+    // MARK: - Async wrappers
+    private static func fetchAllianzInfoAsync(plate: String, plateData: PlateData) async throws -> [String:String] {
+        try await withCheckedThrowingContinuation { cont in
+            fetchAllianzInfo(plate: plate, plateData: plateData) { result in
+                cont.resume(with: result)
+            }
+        }
+    }
+
+    private static func fetchQuattroruotePlateDataAsync(plate: String) async throws -> [String:Any] {
+        try await withCheckedThrowingContinuation { cont in
+            fetchQuattroruotePlateData(plate: plate, anchorURL: "https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Le8aF8rAAAAAJWwLyBz0etzTUVmNb_xm68qgxoJ&co=aHR0cHM6Ly9xdW90YXppb25pLnF1YXR0cm9ydW90ZS5pdDo0NDM.&hl=it&v=_mscDd1KHr60EWWbt2I_ULP0&size=invisible&anchor-ms=20000&execute-ms=15000&cb=m871w5q3hb3j") { result in
+                cont.resume(with: result)
+            }
+        }
+    }
+
+    private static func fetchCoperturaRCAsync(plate: String) async throws -> [String:String] {
+        try await withCheckedThrowingContinuation { cont in
+            fetchCoperturaRC(plate: plate) { result in
+                cont.resume(with: result)
+            }
+        }
+    }
+
+    private static func fetchClasseAmbientaleAsync(plate: String) async throws -> String {
+        try await withCheckedThrowingContinuation { cont in
+            fetchClasseAmbientale(plate: plate) { result in
+                cont.resume(with: result)
+            }
+        }
+    }
+
+    private static func fetchTyreBlackcirclesAsync(plate: String) async throws -> [[String:String]] {
+        try await withCheckedThrowingContinuation { cont in
+            fetchTyreBlackcircles(plate: plate) { result in
+                cont.resume(with: result)
+            }
+        }
+    }
+
+    private static func fetchRevisioniSecureAsync(plate: String) async throws -> [[String:String]] {
+        try await withCheckedThrowingContinuation { cont in
+            fetchRevisioniSecure(plate: plate) { result in
+                cont.resume(with: result)
+            }
+        }
+    }
    
    /// Preprocessing minimo ma efficace
    private static func preprocessForOCR(_ cgImage: CGImage) -> CGImage {
@@ -1956,162 +2027,196 @@ private static func solveCaptchaWithVisionSimple(from cgImage: CGImage, expected
            .filter { $0.isLetter || $0.isNumber }// Solo lettere per captcha alfanumerici
    }
 
-// Funzione principale che raccoglie tutti i dati da fonti ufficåiali
-public static func fetchPlateSummary(plate: String, completion: @escaping (Result<PlateData, Error>) -> Void) {
+// MARK: - Timeout helper
+private struct TimeoutError: Error {}
 
-    var plateData = PlateData(plate: plate)
-    
-    fetchQuattroruotePlateData(plate: plate, anchorURL: "https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Le8aF8rAAAAAJWwLyBz0etzTUVmNb_xm68qgxoJ&co=aHR0cHM6Ly9xdW90YXppb25pLnF1YXR0cm9ydW90ZS5pdDo0NDM.&hl=it&v=_mscDd1KHr60EWWbt2I_ULP0&size=invisible&anchor-ms=20000&execute-ms=15000&cb=m871w5q3hb3j") { result in
-        switch result {
-        case .success(let a):
-            print(a)
-            // Map dictionary fields into plateData
-            plateData.make = a["make"] as? String
-            plateData.model = a["model"] as? String
-            plateData.modelDetails = a["modelDetails"] as? String
-            plateData.displacementCC = a["displacementCC"] as? String
-            plateData.fuelType = a["fuelType"] as? String
-            plateData.powerKW = a["powerKW"] as? String
-            plateData.powerCV = a["powerCV"] as? String
-            plateData.registrationDate = a["registrationDate"] as? String
-            // Add any other mapped fields from /dettagli response if present
-            if let gearbox = a["cambio"] as? String {
-                plateData.gearbox = gearbox
-            }
-            if let maxSpeed = a["velocitaMax"] as? String {
-                plateData.maxSpeed = maxSpeed
-            }
-            
-            
-            
-            
-            
-            if plateData.make == nil ||
-               plateData.model == nil ||
-               plateData.modelDetails == nil ||
-               plateData.fuelType == nil ||
-               plateData.powerKW == nil ||
-               plateData.powerCV == nil ||
-               plateData.displacementCC == nil ||
-               plateData.registrationDate == nil {
-
-        // Step 1: Allianz API per dati base veicolo
-                fetchAllianzInfo(plate: plate) { result in
-                    switch result {
-                    case .success(let allianz):
-                        if plateData.make == nil { plateData.make = allianz["make"] }
-                        if plateData.model == nil { plateData.model = allianz["model"] }
-                        if plateData.version == nil { plateData.version = allianz["version"] }
-                        if plateData.powerKW == nil { plateData.powerKW = allianz["powerKW"] }
-                        if plateData.powerCV == nil { plateData.powerCV = allianz["powerCV"] }
-                        if plateData.fuelType == nil { plateData.fuelType = allianz["fuelType"] }
-                        if plateData.displacementCC == nil { plateData.displacementCC = allianz["displacementCC"] }
-                        if plateData.registrationDate == nil { plateData.registrationDate = allianz["registrationDate"] }
-                        if plateData.modelDetails == nil { plateData.modelDetails = allianz["modelDetail"] }
-                    case .failure(let error):
-                        print("Allianz error: \(error)")
-                    }
-                }
-            }
-        case .failure(_):
-            if plateData.make == nil ||
-               plateData.model == nil ||
-               plateData.modelDetails == nil ||
-               plateData.fuelType == nil ||
-               plateData.powerKW == nil ||
-               plateData.powerCV == nil ||
-               plateData.displacementCC == nil ||
-               plateData.registrationDate == nil {
-
-                fetchAllianzInfo(plate: plate) { result in
-                    switch result {
-                    case .success(let allianz):
-                        if plateData.make == nil { plateData.make = allianz["make"] }
-                        if plateData.model == nil { plateData.model = allianz["model"] }
-                        if plateData.version == nil { plateData.version = allianz["version"] }
-                        if plateData.powerKW == nil { plateData.powerKW = allianz["powerKW"] }
-                        if plateData.powerCV == nil { plateData.powerCV = allianz["powerCV"] }
-                        if plateData.fuelType == nil { plateData.fuelType = allianz["fuelType"] }
-                        if plateData.displacementCC == nil { plateData.displacementCC = allianz["displacementCC"] }
-                        if plateData.registrationDate == nil { plateData.registrationDate = allianz["registrationDate"] }
-                        if plateData.modelDetails == nil { plateData.modelDetails = allianz["modelDetail"] }
-                    case .failure(let error):
-                        print("Allianz error: \(error)")
-                    }
-                }
-            }
-       
+@inline(__always)
+private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask {
+            return try await operation()
+        }
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TimeoutError()
+        }
+        guard let result = try await group.next() else { throw TimeoutError() }
+        group.cancelAll()
+        return result
     }
-    
-    
+}
 
-// Step 2: RCA dal Portale
-fetchCoperturaRC(plate: plate) { rcaResult in
-    switch rcaResult {
-    case .success(let rca):
-        // Extra fields
+// Funzione principale che raccoglie tutti i dati da fonti ufficåiali
+    /// Versione moderna async/await di fetchPlateSummary
+    public static func fetchPlateSummary(plate: String) async throws -> PlateData {
+        var plateData = PlateData(plate: plate)
+
+    async let revisioniResult: [[String: String]] = {
+        do { return try await withTimeout(10) { try await fetchRevisioniSecureAsync(plate: plate) } } catch { return [] }
+    }()
+    // Lancia in parallelo tutte le chiamate async con timeout
+    async let quattroruoteResult: [String: Any] = {
+        do { return try await withTimeout(2.0) { try await fetchQuattroruotePlateDataAsync(plate: plate) } } catch { return [:] }
+    }()
+    async let rcaResult: [String: String] = {
+        do { return try await withTimeout(2.0) { try await fetchCoperturaRCAsync(plate: plate) } } catch { return [:] }
+    }()
+    async let classeAmbientaleResult: String = {
+        do { return try await withTimeout(2.0) { try await fetchClasseAmbientaleAsync(plate: plate) } } catch { return "" }
+    }()
+    async let tyreResult: [[String: String]] = {
+        do { return try await withTimeout(2.0) { try await fetchTyreBlackcirclesAsync(plate: plate) } } catch { return [] }
+    }()
+   
+
+        // 1. Quattroruote
+        let quattroruoteData: [String: Any]
+        do {
+            quattroruoteData =  await quattroruoteResult
+        } catch {
+            // Se fallisce, usa dict vuoto
+            quattroruoteData = [:]
+        }
+
+        // Mappa i dati quattroruote in plateData, usando "" come fallback per nil
+        plateData.make = (quattroruoteData["make"] as? String) ?? ""
+        plateData.model = (quattroruoteData["model"] as? String) ?? ""
+        plateData.modelDetails = (quattroruoteData["modelDetails"] as? String) ?? ""
+        plateData.displacementCC = (quattroruoteData["displacementCC"] as? String) ?? ""
+        plateData.fuelType = (quattroruoteData["fuelType"] as? String) ?? ""
+        plateData.powerKW = (quattroruoteData["powerKW"] as? String) ?? ""
+        plateData.powerCV = (quattroruoteData["powerCV"] as? String) ?? ""
+        plateData.registrationDate = (quattroruoteData["registrationDate"] as? String) ?? ""
+        // Campi extra con fallback a ""
+        let gearbox = quattroruoteData["cambio"] as? String
+        plateData.gearbox = gearbox ?? ""
+        let maxSpeed = quattroruoteData["velocitaMax"] as? String
+        plateData.maxSpeed = maxSpeed ?? ""
+        let bodyType = quattroruoteData["bodyType"] as? String
+        plateData.bodyType = bodyType ?? ""
+        let doorsValue = quattroruoteData["doors"]
+        if let doorsStr = doorsValue as? String {
+            plateData.doors = doorsStr
+        } else if let doorsNum = doorsValue as? NSNumber {
+            plateData.doors = doorsNum.stringValue
+        } else if let doorsInt = doorsValue as? Int {
+            plateData.doors = String(doorsInt)
+        } else {
+            plateData.doors = ""
+        }
+        let seatsValue = quattroruoteData["seats"]
+        if let seatsStr = seatsValue as? String {
+            plateData.seats = seatsStr
+        } else if let seatsNum = seatsValue as? NSNumber {
+            plateData.seats = seatsNum.stringValue
+        } else if let seatsInt = seatsValue as? Int {
+            plateData.seats = String(seatsInt)
+        } else {
+            plateData.seats = ""
+        }
+        let consumption = quattroruoteData["consumi"] as? String
+        plateData.consumption = consumption ?? ""
+        let traction = quattroruoteData["trazione"] as? String
+        plateData.traction = traction ?? ""
+        let version = quattroruoteData["version"] as? String
+        plateData.version = version ?? ""
+        let vin = quattroruoteData["vin"] as? String
+        plateData.vin = vin ?? ""
+        let saleStart = quattroruoteData["inizioVendita"] as? String
+        plateData.saleStart = saleStart ?? ""
+        let saleEnd = quattroruoteData["fineVendita"] as? String
+        plateData.saleEnd = saleEnd ?? ""
+
+        // Se mancano campi fondamentali, integra con Allianz
+        let missingQuattroruoteFields =
+            plateData.make == "" ||
+            plateData.model == "" ||
+            plateData.modelDetails == "" ||
+            plateData.fuelType == "" ||
+            plateData.powerKW == "" ||
+            plateData.powerCV == "" ||
+            plateData.displacementCC == "" ||
+            plateData.registrationDate == ""
+        if missingQuattroruoteFields {
+            do {
+                let allianz = try await fetchAllianzInfoAsync(plate: plate, plateData: plateData)
+                if plateData.make == "" { plateData.make = allianz["make"] }
+                if plateData.model == "" { plateData.model = allianz["model"] }
+                if plateData.version == "" { plateData.version = allianz["version"] }
+                if plateData.powerKW == "" { plateData.powerKW = allianz["powerKW"] }
+                if plateData.powerCV == "" { plateData.powerCV = allianz["powerCV"] }
+                if plateData.fuelType == "" { plateData.fuelType = allianz["fuelType"] }
+                if plateData.displacementCC == "" { plateData.displacementCC = allianz["displacementCC"] }
+                if plateData.registrationDate == "" { plateData.registrationDate = allianz["registrationDate"] }
+                if plateData.modelDetails == "" { plateData.modelDetails = allianz["modelDetail"] }
+            } catch {
+                // Allianz fallita, continua senza
+            }
+        }
+
+        // Attendi risultati RCA, classe ambientale, pneumatici, revisioni
+        let rca = await rcaResult
         plateData.insuranceCompany = rca["company"]
         if let expiryStr = rca["expiry"] {
             let inputFormatter = DateFormatter()
             inputFormatter.locale = Locale(identifier: "it_IT")
             inputFormatter.dateFormat = "yyyy-MM-ddZZZZZ"
-
             if let date = inputFormatter.date(from: expiryStr) {
                 plateData.insuranceExpiry = date
-
-                // Se vuoi anche salvare una stringa leggibile
-                let outputFormatter = DateFormatter()
-                outputFormatter.locale = Locale(identifier: "it_IT")
-                outputFormatter.dateFormat = "dd/MM/yyyy"
-                _ = outputFormatter.string(from: date)
-
             }
         }
         plateData.insurancePolicyNumber = rca["policyNumber"]
-        plateData.insurancePresent = (rca["insurancePresent"] as NSString?)?.boolValue
-    case .failure(let error):
-        print("RCA error: \(error)")
-    }
-    
-    // Step 3: Classe ambientale
-    fetchClasseAmbientale(plate: plate) { classeResult in
-        switch classeResult {
-        case .success(let classe):
-            plateData.emissionClass = classe
-        case .failure(let error):
-            print("Classe error: \(error)")
+        if let insurancePresent = rca["insurancePresent"] {
+            plateData.insurancePresent = (insurancePresent as NSString).boolValue
         }
-        
-        // Step 4: Revisioni
-        fetchRevisioniSecure(plate: plate) { revResult in
-            switch revResult {
-            case .success(let revisions):
-                print(revisions)
-            case .failure(let error):
-                print("Revisioni error: \(error)")
+
+        let classe = await classeAmbientaleResult
+        plateData.emissionClass = classe
+
+        let tyres = await tyreResult
+        plateData.tyres = tyres
+
+        // Revisioni (già avviate in parallelo, con timeout)
+        let revisioni = await revisioniResult
+        let parsed = revisioni.compactMap { dict -> Revisione? in
+            let km = dict["numKmiPcsRvs"] ?? ""
+            let esito = dict["flgEsiRvsVei"] ?? ""
+            var data: Date? = nil
+            if let datStr = dict["datRvs"] {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "it_IT")
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.S"
+                data = formatter.date(from: datStr)
             }
-            
-            // Step 5: Tyre Blackcircles
-            fetchTyreBlackcircles(plate: plate) { tyreResult in
-                switch tyreResult {
-                case .success(let tyreData):
-                    print("Tyre Blackcircles:", tyreData)
-                    plateData.tyres = tyreData
-                case .failure(let error):
-                    print("Tyre Blackcircles error: \(error)")
-                }
-                completion(.success(plateData))
+            return Revisione(kmRevisione: km, dataRevisione: data, esitoRevisione: esito)
+        }
+        plateData.revisioni = parsed
+
+        // Fetch immagine veicolo
+        if let make = plateData.make, let model = plateData.model {
+            let year = plateData.registrationDate?.components(separatedBy: "/").last ?? ""
+            do {
+                let image = try await VehicleImageService.fetchVehicleImageAsync(
+                    make: make,
+                    modelFamily: plateData.modelDetails ?? model,
+                    year: year,
+                    paintId: plateData.color ?? "",
+                    plate: plateData.plate
+                )
+                plateData.vehicleImage = image
+            } catch {
+                print("⚠️ Immagine non recuperata: \(error.localizedDescription)")
+                plateData.vehicleImage = nil
             }
         }
+
+        return plateData
     }
-}
-}
-}
 
 
 
 // MARK: - Allianz
-private static func fetchAllianzInfo(plate: String, completion: @escaping (Result<[String:String], Error>) -> Void) {
+    private static func fetchAllianzInfo(plate: String,plateData: PlateData, completion: @escaping (Result<[String:String], Error>) -> Void) {
 let urlString = "https://pro-edp.apis.allianz.com/prod/sales-service/quotebundles?flow=SFQ"
 guard let url = URL(string: urlString) else {
 completion(.failure(NSError(domain: "LicensePlateReader", code: 1, userInfo: nil)))
@@ -2120,6 +2225,7 @@ return
 
 var request = URLRequest(url: url)
 request.httpMethod = "POST"
+request.timeoutInterval = 6
 request.setValue("motor", forHTTPHeaderField: "line-of-business")
 request.setValue("IT", forHTTPHeaderField: "backend-tenant")
 request.setValue("it-IT", forHTTPHeaderField: "mapped-lang")
@@ -2175,16 +2281,19 @@ if let raw = String(data: data, encoding: .utf8),
            let customerData = json["customerData"] as? [String: Any],
            let insuredProperty = customerData["insuredProperty"] as? [String: Any],
            let details = insuredProperty["details"] as? [String: Any] {
-            
-            if let brand = details["brand"] as? String {
+            // plateData is not in scope here, so this function must receive it as argument if you want to check its fields.
+            // But as per instructions, we will assume plateData is available in the closure scope (for the check).
+            // If not, you need to pass it as an argument.
+            // For now, let's assume plateData is accessible here.
+            if let brand = details["brand"] as? String, plateData.make == "" {
                 dict["make"] = brand
             }
-            if let model = details["model"] as? String {
+            if let model = details["model"] as? String, plateData.model == "" {
                 let cleanModel = model.components(separatedBy: "(").first?.trimmingCharacters(in: .whitespaces) ?? model
                 let normalized = cleanModel.folding(options: .diacriticInsensitive, locale: .current)
                 dict["model"] = normalized
             }
-            if let fuelType = details["fuelType"] as? String {
+            if let fuelType = details["fuelType"] as? String, plateData.fuelType == "" {
                 var fuel = fuelType
                 switch fuelType {
                 case "D": fuel = "Diesel"
@@ -2197,18 +2306,18 @@ if let raw = String(data: data, encoding: .utf8),
                 }
                 dict["fuelType"] = fuel
             }
-            if let power = details["power"] {
+            if let power = details["power"], plateData.powerKW == "" {
                 if let powerStr = power as? String {
                     dict["powerKW"] = powerStr
-                    if let kw = Double(powerStr) {
+                    if plateData.powerCV == "", let kw = Double(powerStr) {
                         dict["powerCV"] = String(Int(round(kw / 0.73549875)))
                     }
                 }
             }
-            if let cubicCapacity = details["cubicCapacity"] as? String {
+            if let cubicCapacity = details["cubicCapacity"] as? String, plateData.displacementCC == "" {
                 dict["displacementCC"] = cubicCapacity
             }
-            if let firstRegistrationDate = details["firstRegistrationDate"] as? String {
+            if let firstRegistrationDate = details["firstRegistrationDate"] as? String, plateData.registrationDate == "" {
                 let parts = firstRegistrationDate.split(separator: "-")
                 if parts.count == 3 {
                     dict["registrationDate"] = "\(parts[1])/\(parts[0])"
@@ -2216,8 +2325,7 @@ if let raw = String(data: data, encoding: .utf8),
                     dict["registrationDate"] = firstRegistrationDate
                 }
             }
-            
-            if let modelDetails = details["modelDetail"] as? String{
+            if let modelDetails = details["modelDetail"] as? String, plateData.modelDetails == "" {
                 let cleanModelDetails = modelDetails.components(separatedBy: "(").first?.trimmingCharacters(in: .whitespaces) ?? modelDetails
                 let normalized = cleanModelDetails.folding(options: .diacriticInsensitive, locale: .current)
                 dict["modelDetail"] = normalized
@@ -2248,6 +2356,7 @@ return
 
 var request = URLRequest(url: url)
 request.httpMethod = "POST"
+request.timeoutInterval = 6
 request.setValue("text/xml;charset=utf-8", forHTTPHeaderField: "Content-Type")
 request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 
@@ -2301,6 +2410,7 @@ return
 
 var request = URLRequest(url: url)
 request.httpMethod = "POST"
+request.timeoutInterval = 6
 request.setValue("text/xml;charset=utf-8", forHTTPHeaderField: "Content-Type")
 request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 request.setValue("\"VerificaClasseAmbientaleVeicoloSecure\"", forHTTPHeaderField: "SOAPAction")
@@ -2385,6 +2495,7 @@ public static func fetchTyreBlackcircles(plate: String, completion: @escaping (R
     }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
+    request.timeoutInterval = 6
     // Generate X-XSRF-TOKEN value
     let xsrfToken = generateBlackcirclesToken()
     // Headers richiesti
@@ -2485,7 +2596,8 @@ public static func fetchTyreBlackcircles(plate: String, completion: @escaping (R
         ) else { return }
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+    request.httpMethod = "POST"
+    request.timeoutInterval = 6
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = "{}".data(using: .utf8)
         
@@ -2612,4 +2724,28 @@ currentValue = ""
 func parser(_ parser: XMLParser, foundCharacters string: String) {
 currentValue += string
 }
+}
+
+
+// MARK: - Async/await + cache
+extension VehicleImageService {
+    private static var cache = NSCache<NSString, UIImage>()
+
+    static func fetchVehicleImageAsync(make: String, modelFamily: String, year: String, paintId: String, plate: String) async throws -> UIImage {
+        let key = "\(make)-\(modelFamily)-\(year)-\(paintId)" as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+        return try await withCheckedThrowingContinuation { cont in
+            fetchVehicleImage(make: make, modelFamily: modelFamily, year: year, paintId: paintId, plate: plate) { result in
+                switch result {
+                case .success(let img):
+                    cache.setObject(img, forKey: key)
+                    cont.resume(returning: img)
+                case .failure(let err):
+                    cont.resume(throwing: err)
+                }
+            }
+        }
+    }
 }

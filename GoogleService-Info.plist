@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>628808645845-etj5cdmni8703nd5jie361luir9mmmme.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.628808645845-etj5cdmni8703nd5jie361luir9mmmme</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCuG-oDcP3fw5T504yWGSs3pbF35woaMME</string>
+	<key>GCM_SENDER_ID</key>
+	<string>628808645845</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>tyrevibes.TyreVibes</string>
+	<key>PROJECT_ID</key>
+	<string>tyrevibes-f4fff</string>
+	<key>STORAGE_BUCKET</key>
+	<string>tyrevibes-f4fff.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:628808645845:ios:d5a63591f9ea8ec4d9765c</string>
+</dict>
+</plist>

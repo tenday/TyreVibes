@@ -101,163 +101,174 @@ struct EnterLicensePlateView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            HStack {
-                Spacer()
-                Text("Enter License Plate")
-                    .font(.customFont(size: 24, weight: .semibold))
-                    .foregroundColor(.white)
-                Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 10, height: 10)
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(
-                            ZStack {
-                                Circle()
-                                    .fill(Color.customBackgroundColor)
-                                Circle()
-                                    .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
-                                    .blur(radius: 1)
-                                    .offset(x: 0.3, y: 1)
-                                    .mask(
-                                        Circle().fill(LinearGradient(
-                                            gradient: Gradient(colors: [.black, .black]),
-                                            startPoint: .top,
-                                            endPoint: .bottom)
-                                        )
-                                    )
-                                VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
-                                    .clipShape(Circle())
-                                    .padding(12)
-                                    .blur(radius: 40)
-                                    .opacity(0.8)
-                            }
-                        )
+        ZStack {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
-            }
-            .padding(.top)
-            .padding(.horizontal)
-            .background(Color.customBackgroundColor)
-            
-            
-            VStack(spacing: 2) {
-                Spacer()
-                
-                // Title
-                
-                
-                // Manual plate entry styled as a license plate (EU style)
-                LicensePlateComponent(
-                    text: licensePlate.isEmpty ? "AA123AA" : licensePlate,
-                    width: 280,
-                    height: 80,
-                    countryCode: "I"
-                )
-                .overlay(
-                    PlateTextField(text: $licensePlate, placeholder: "", maxLen: maxPlateLength)
-                        .frame(width: 280, height: 80)
-                        .background(Color.clear)
-                        .contentShape(Rectangle())
-                )
-                
-                Spacer()
-                
-                // Continue Button
-                Button(action: {
-                    isLoadingDetails = true
-                    let trimmed = licensePlate.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    
-                    LicensePlateReader.fetchPlateSummary(plate: trimmed) { result in
-                        switch result {
-                        case .success(let data):
-                            self.data = data
-                            print(data)
-                            if let make = data.make, let model = data.model {
-                                let year = data.registrationDate?.components(separatedBy: "/").last ?? ""
-                                VehicleImageService.fetchVehicleImage(make: make, modelFamily: data.modelDetails ?? model, year: year, paintId: data.color ?? "") { result in
-                                    switch result {
-                                    case .success(let img):
-                                        self.vehicleImage = img
-                                        licensePlate = ""
-                                        self.navigateToCheckDetails = true
-                                    case .failure(let err):
-                                        print("Errore nel recupero immagine: \(err.localizedDescription)")
-                                        self.vehicleImage = nil
-                                    }
-                                    isLoadingDetails = false
+            NavigationStack {
+                HStack {
+                    Spacer()
+                    Text("Enter License Plate")
+                        .font(.customFont(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 10, height: 10)
+                            .foregroundColor(.white)
+                            .padding(12)
+                            .background(
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.customBackgroundColor)
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
+                                        .blur(radius: 1)
+                                        .offset(x: 0.3, y: 1)
+                                        .mask(
+                                            Circle().fill(LinearGradient(
+                                                gradient: Gradient(colors: [.black, .black]),
+                                                startPoint: .top,
+                                                endPoint: .bottom)
+                                            )
+                                        )
+                                    VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
+                                        .clipShape(Circle())
+                                        .padding(12)
+                                        .blur(radius: 40)
+                                        .opacity(0.8)
                                 }
-                            } else {
+                            )
+                    }
+                }
+                .padding(.top)
+                .padding(.horizontal)
+                .background(Color.customBackgroundColor)
+                
+                
+                VStack(spacing: 2) {
+                    Spacer()
+                    
+                    // Title
+                    
+                    
+                    // Manual plate entry styled as a license plate (EU style)
+                    LicensePlateComponent(
+                        text: licensePlate.isEmpty ? "AA123AA" : licensePlate,
+                        width: 280,
+                        height: 80,
+                        countryCode: "I"
+                    )
+                    .overlay(
+                        PlateTextField(text: $licensePlate, placeholder: "", maxLen: maxPlateLength)
+                            .frame(width: 280, height: 80)
+                            .background(Color.clear)
+                            .contentShape(Rectangle())
+                    )
+                    
+                    Spacer()
+                    
+                    // Continue Button
+                    Button(action: {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        isLoadingDetails = true
+                        let trimmed = licensePlate.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        
+                        Task {
+                            do {
+                                let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
+                                if data.make == ""  {
+                                    licensePlate = ""
+                                    self.errorMessage = "Targa errata!"
+                                    self.showErrorAlert = true
+                                    self.isLoadingDetails = false
+                                    return
+                                }
+                                
+                                self.data = data
+                                self.vehicleImage = data.vehicleImage
+                                licensePlate = ""
                                 self.navigateToCheckDetails = true
-                                isLoadingDetails = false
+                            } catch {
+                                self.errorMessage = error.localizedDescription
+                                self.showErrorAlert = true
                             }
-                        case .failure(let error):
-                            self.errorMessage = error.localizedDescription
-                            self.showErrorAlert = true
                             self.isLoadingDetails = false
                         }
-                    }
-                    
-                }) {
-                    if  isLoadingDetails {
-                        Text("")
-                            .foregroundColor(Color.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 62)
-                            .background(Color.customBitterSweet)
-                            .overlay(ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(1.2)
+                        
+                    }) {
+                        if  isLoadingDetails {
+                            Text("")
+                                .foregroundColor(Color.white)
+                                .frame(maxWidth: .infinity)
                                 .frame(height: 62)
-                                .frame(maxWidth: .infinity))
-                            .disabled(true)
-                    } else {
-                        Text("Continue")
-                            .font(.customFont(size: 18, weight: .bold))
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 62)
+                                .background(Color.customBitterSweet)
+                                .overlay(ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(1.2)
+                                    .frame(height: 62)
+                                    .frame(maxWidth: .infinity))
+                                .disabled(true)
+                        } else {
+                            Text("Continue")
+                                .font(.customFont(size: 18, weight: .bold))
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 62)
+                        }
                     }
+                    .background(Color.customBitterSweet)
+                    .cornerRadius(100)
+                    .opacity(isContinueEnabled ? 1.0 : 0.6)
+                    .disabled(!isContinueEnabled)
+                    .padding(.horizontal)
+                    .padding(.bottom, 30)
+                    
+                    Button(action: {
+                        showConfirmDetailsScreen = true
+                    }) {
+                        Text("Non trovi la tua auto?")
+                            .font(.customFont(size: 14, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.8))
+                            .underline()
+                    }
+                    .padding(.bottom, 20)
                 }
-                .background(Color.customBitterSweet)
-                .cornerRadius(100)
-                .opacity(isContinueEnabled ? 1.0 : 0.6)
-                .disabled(!isContinueEnabled)
-                .padding(.horizontal)
-                .padding(.bottom, 30)
-                
-                Button(action: {
-                    showConfirmDetailsScreen = true
-                }) {
-                    Text("Non trovi la tua auto?")
-                        .font(.customFont(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.8))
-                        .underline()
+                .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
+                .preferredColorScheme(.dark)
+                .overlay(
+                    Group {
+                        if showErrorAlert {
+                            CustomAlertView(
+                                title: errorMessage, showProgress: false
+                            )
+                        }
+                    }
+                )
+                .navigationDestination(isPresented: $navigateToCheckDetails) {
+                    CheckDetailsView(vehicleImage: vehicleImage, plateData: data ?? nil, isContinueEnabled: .constant(false), viewModel: ConfirmDetailsViewModel())
                 }
-                .padding(.bottom, 20)
+                .navigationDestination(isPresented: $showConfirmDetailsScreen) {
+                    ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true, viewModel: ConfirmDetailsViewModel() )
+                        .preferredColorScheme(.dark)
+                        .navigationBarBackButtonHidden(true)
+                }
+                .navigationBarBackButtonHidden(true)
             }
-            .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
-            .preferredColorScheme(.dark)
-            .alert(isPresented: $showErrorAlert) {
-                Alert(title: Text("Errore"), message: Text(errorMessage), dismissButton: .default(Text("OK")))
-            }
-            .navigationDestination(isPresented: $navigateToCheckDetails) {
-                CheckDetailsView(vehicleImage: vehicleImage, plateData: data ?? nil, isContinueEnabled: .constant(false), viewModel: ConfirmDetailsViewModel())
-            }
-            .navigationDestination(isPresented: $showConfirmDetailsScreen) {
-                ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true, viewModel: ConfirmDetailsViewModel() )
-                    .preferredColorScheme(.dark)
-                    .navigationBarBackButtonHidden(true)
-            }
-            .navigationBarBackButtonHidden(true)
+        }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
 }
+
 
 #Preview {
     EnterLicensePlateView()

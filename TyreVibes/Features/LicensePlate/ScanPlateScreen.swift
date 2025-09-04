@@ -1,6 +1,8 @@
 import SwiftUI
+import UIKit
 import AVFoundation
 import Vision
+import CoreML
 
 struct DashedROI: View {
     var cornerRadius: CGFloat
@@ -18,25 +20,56 @@ struct LicensePlateView: View {
     var height: CGFloat = 100
     var countryCode: String = "I"
 
+    // Helper: Adaptive placeholder for plate text
+    private func adaptivePlaceholder(countRange: ClosedRange<Int> = 6...8) -> String {
+        // Estimate character width from font size (height * 0.5) and a conservative width factor
+        let charWidth = height * 0.5 * 0.6 + 3 // 0.6 width factor + kerning (3)
+        let usableWidth = width - (height * 0.64) // horizontal padding for blue band + border (both sides)
+        let maxChars = max(countRange.lowerBound, min(Int(usableWidth / max(charWidth, 1)), countRange.upperBound))
+        return String(repeating: "·", count: maxChars) // middle dot placeholder
+    }
+
     var body: some View {
         ZStack {
-            // Plate base
-            RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
-                .fill(Color.white.opacity(0))
-                .overlay(
-                    RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
-                        .stroke(Color.clear, lineWidth: 3)
-                )
-                // subtle inner bevel
-                .overlay(
-                    RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
-                        .stroke(Color.black.opacity(0.12), lineWidth: 1)
-                        .blur(radius: 1)
-                        .offset(x: 0, y: 1)
-                        .mask(
+            if !text.isEmpty {
+                RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                    .fill(Color.white.opacity(0))
+                    .overlay(
                             RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
-                        )
-                )
+                                .stroke(Color.green, lineWidth: 4)
+                       
+                    )
+                    // subtle inner bevel
+                    .overlay(
+                        RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                            .stroke(Color.black.opacity(0.12), lineWidth: 1)
+                            .blur(radius: 1)
+                            .offset(x: 0, y: 1)
+                            .mask(
+                                RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                            )
+                    )
+            } else {
+                RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                    .fill(Color.white.opacity(0))
+                    .overlay(
+                            RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                       
+                    )
+                    // subtle inner bevel
+                    .overlay(
+                        RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                            .stroke(Color.black.opacity(0.12), lineWidth: 1)
+                            .blur(radius: 1)
+                            .offset(x: 0, y: 1)
+                            .mask(
+                                RoundedRectangle(cornerRadius: height * 0.18, style: .continuous)
+                            )
+                    )
+            }
+            // Plate base
+            
 
             // Blue EU/country band on the left
             HStack(spacing: 0) {
@@ -55,13 +88,14 @@ struct LicensePlateView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: height * 0.18, style: .continuous))
 
-            // Plate number
-            Text(text)
-                .font(.system(size: height * 0.5, weight: .semibold, design: .rounded))
+            // Plate number (adaptive placeholder when empty)
+            let displayString = text.isEmpty ? adaptivePlaceholder() : text
+            Text(displayString)
+                .font(.customFont(size: height * 0.5, weight: .semibold))
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
                 .kerning(3)
-                .foregroundColor(.black)
+                .foregroundColor(text.isEmpty ? Color.black.opacity(0.35) : .black)
                 .padding(.horizontal, height * 0.32) // keep clear of blue band and border
 
         }
@@ -93,7 +127,9 @@ struct CameraPreview: UIViewControllerRepresentable {
     var roiSize: CGSize
     var onPlateDetected: (String) -> Void
 
-    class CameraViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
+        class CameraViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
+        private var lastRequestTime = Date(timeIntervalSince1970: 0)
+        private var lastPlates: [String] = []
         let captureSession = AVCaptureSession()
         var previewLayer: AVCaptureVideoPreviewLayer?
         private var permissionLabel: UILabel?
@@ -101,42 +137,114 @@ struct CameraPreview: UIViewControllerRepresentable {
         var onPlateDetected: ((String) -> Void)?
         private var hasFiredDetection = false
 
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            handleCameraAuthorization()
+        private var plateDetectorModel: VNCoreMLModel?
+        private var plateOCRModel: VNCoreMLModel?
+
+        private func loadVNModel(named name: String) -> VNCoreMLModel? {
+            // Prova prima a caricare il modello .mlmodelc
+            if let url = Bundle.main.url(forResource: name, withExtension: "mlmodelc") {
+                do {
+                    let mlModel = try MLModel(contentsOf: url, configuration: MLModelConfiguration())
+                    return try VNCoreMLModel(for: mlModel)
+                } catch {
+                    print("[CoreML] Impossibile caricare modello \(name).mlmodelc: \(error)")
+                }
+            }
+            // Se non trovato o errore, prova a caricare .mlpackage (cartella modello)
+            if let packageURL = Bundle.main.url(forResource: name, withExtension: "mlpackage") {
+                do {
+                    let mlModel = try MLModel(contentsOf: packageURL, configuration: MLModelConfiguration())
+                    return try VNCoreMLModel(for: mlModel)
+                } catch {
+                    print("[CoreML] Impossibile caricare modello \(name).mlpackage: \(error)")
+                }
+            }
+            print("[CoreML] Modello \(name) non trovato in .mlmodelc né .mlpackage")
+            return nil
         }
 
+        private func loadModels() {
+            // Supporta modelli sia in formato .mlmodelc che .mlpackage.
+            // Nomi attesi nei Resources del bundle: "LicensePlateDetector.mlmodelc" o "LicensePlateDetector.mlpackage"
+            // e (opzionale) "PlateOCRCRNN.mlmodelc" o "PlateOCRCRNN.mlpackage"
+            self.plateDetectorModel = loadVNModel(named: "LicensePlateDetector")
+        }
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            print("CameraViewController viewDidLoad")
+            loadModels()
+            handleCameraAuthorization()
+        }
+            
+            private func handleDetectedPlate(_ plate: String) {
+                lastPlates.append(plate)
+                if lastPlates.count > 5 { lastPlates.removeFirst() }
+
+                let mostCommon = lastPlates.reduce(into: [:]) { counts, val in
+                    counts[val, default: 0] += 1
+                }.max(by: { $0.value < $1.value })?.key
+
+                if let stablePlate = mostCommon,
+                   lastPlates.filter({ $0 == stablePlate }).count >= 3,
+                   !self.hasFiredDetection {
+                    self.hasFiredDetection = true
+                    DispatchQueue.main.async {
+                        self.captureSession.stopRunning()
+                        self.onPlateDetected?(stablePlate)
+                    }
+                }
+            }
+
+            public func resumeCamera() {
+                if !captureSession.isRunning {
+                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                        self?.captureSession.startRunning()
+                    }
+                }
+            }
+
         private func handleCameraAuthorization() {
+            print("handleCameraAuthorization chiamato")
             switch AVCaptureDevice.authorizationStatus(for: .video) {
             case .authorized:
+                print("Camera autorizzata")
                 setupSession()
             case .notDetermined:
+                print("Camera: richiesta permesso")
                 AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                     DispatchQueue.main.async {
                         if granted {
+                            print("Permesso fotocamera garantito")
                             self?.setupSession()
                         } else {
+                            print("Permesso fotocamera NEGATO")
                             self?.showPermissionLabel(text: "Accesso fotocamera negato.\nAbilitalo in Impostazioni > Privacy > Fotocamera.")
                         }
                     }
                 }
             case .denied, .restricted:
+                print("Camera negata o ristretta")
                 showPermissionLabel(text: "Accesso fotocamera negato o limitato.\nAbilitalo in Impostazioni > Privacy > Fotocamera.")
             @unknown default:
+                print("Camera stato sconosciuto")
                 showPermissionLabel(text: "Impossibile accedere alla fotocamera.")
             }
         }
 
         private func setupSession() {
             #if targetEnvironment(simulator)
+            print("Simulator: la fotocamera non è disponibile")
             showPermissionLabel(text: "La fotocamera non è disponibile nel Simulator.\nEsegui su un dispositivo reale.")
             return
             #else
+            print("setupSession: inizializzo sessione fotocamera")
             captureSession.sessionPreset = .photo
 
             guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let videoInput = try? AVCaptureDeviceInput(device: videoDevice),
                   captureSession.canAddInput(videoInput) else {
+                print("setupSession: errore input fotocamera")
                 showPermissionLabel(text: "Impossibile inizializzare la fotocamera.")
                 return
             }
@@ -146,6 +254,7 @@ struct CameraPreview: UIViewControllerRepresentable {
             let videoOutput = AVCaptureVideoDataOutput()
             videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "videoQueue"))
             guard captureSession.canAddOutput(videoOutput) else {
+                print("setupSession: errore output video")
                 showPermissionLabel(text: "Impossibile aggiungere output video.")
                 return
             }
@@ -157,9 +266,21 @@ struct CameraPreview: UIViewControllerRepresentable {
             view.layer.insertSublayer(layer, at: 0)
             self.previewLayer = layer
 
-            captureSession.startRunning()
+            print("setupSession: avvio captureSession")
+            print("▶️ captureSession.startRunning chiamato")
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.captureSession.startRunning()
+                DispatchQueue.main.async {
+                    print("✅ captureSession in esecuzione: \(self?.captureSession.isRunning ?? false)")
+                }
+            }
             #endif
         }
+            
+            
+            
+            
+            
 
         private func showPermissionLabel(text: String) {
             permissionLabel?.removeFromSuperview()
@@ -182,52 +303,148 @@ struct CameraPreview: UIViewControllerRepresentable {
             super.viewDidLayoutSubviews()
             previewLayer?.frame = view.bounds
         }
+            
+            
+                    
+            
 
         func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-
-            let request = VNRecognizeTextRequest { req, error in
-                if let results = req.results as? [VNRecognizedTextObservation] {
-                    let candidates: [String] = results.compactMap { $0.topCandidates(1).first?.string }
-                    let merged = candidates.joined(separator: " ")
-                        .uppercased()
-                        .replacingOccurrences(of: " ", with: "")
-                        .replacingOccurrences(of: "-", with: "")
-
-                    // Simple EU-style heuristic: 5–8 alphanumeric, at least 1 letter and 1 digit
-                    let charset = CharacterSet.alphanumerics.inverted
-                    let cleaned = merged.components(separatedBy: charset).joined()
-                    if cleaned.count >= 5 && cleaned.count <= 8 && cleaned.rangeOfCharacter(from: .letters) != nil && cleaned.rangeOfCharacter(from: .decimalDigits) != nil {
-                        if !self.hasFiredDetection {
-                            self.hasFiredDetection = true
-                            DispatchQueue.main.async {
-                                self.onPlateDetected?(cleaned)
-                            }
-                        }
-                    }
-                }
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+                print("captureOutput: pixelBuffer nil")
+                return
             }
-            request.usesLanguageCorrection = false
-            request.recognitionLevel = .accurate
-
-            // Calculate the region of interest centered in the previewLayer
+            
+            // Calcolo ROI normalizzata in coordinate Vision (origine in basso a sinistra)
+            var roiRectNormalized: CGRect = .zero
             if let previewLayer = previewLayer {
                 let videoWidth = previewLayer.bounds.width
                 let videoHeight = previewLayer.bounds.height
-
-                let widthNorm = roiSize.width / videoWidth
-                let heightNorm = roiSize.height / videoHeight
-
+                var widthNorm = (roiSize.width / videoWidth) * 0.85
+                var heightNorm = (roiSize.height / videoHeight) * 0.60
+                widthNorm = min(max(widthNorm, 0.1), 1.0)
+                heightNorm = min(max(heightNorm, 0.1), 1.0)
                 let originX = (1 - widthNorm) / 2
                 let originY = (1 - heightNorm) / 2
-
                 let originYFlipped = 1 - originY - heightNorm
-
-                request.regionOfInterest = CGRect(x: originX, y: originYFlipped, width: widthNorm, height: heightNorm)
+                roiRectNormalized = CGRect(x: originX, y: originYFlipped, width: widthNorm, height: heightNorm)
             }
 
-            let requestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
-            try? requestHandler.perform([request])
+            // Determina l'orientamento per Vision
+            let orientation = self.cgImagePropertyOrientation(for: UIDevice.current.orientation)
+
+            // Se abbiamo un modello di detection, usiamolo per trovare la bounding box della targa
+            if let detector = plateDetectorModel {
+                let detRequest = VNCoreMLRequest(model: detector) { [weak self] req, _ in
+                    guard let self = self else { return }
+                    guard let results = req.results as? [VNRecognizedObjectObservation] else {
+                        print("VNCoreMLRequest: nessun risultato/cast fallito")
+                        return
+                    }
+                    // Converte ROI e bounding box nel sistema pixel buffer (origine in alto a sinistra)
+                    let pixelWidth = CVPixelBufferGetWidth(pixelBuffer)
+                    let pixelHeight = CVPixelBufferGetHeight(pixelBuffer)
+
+                    let roiInPixels = VNImageRectForNormalizedRect(roiRectNormalized, pixelWidth, pixelHeight)
+
+                    let filteredResults = results.filter { obs in
+                        let boxInPixels = VNImageRectForNormalizedRect(obs.boundingBox, pixelWidth, pixelHeight)
+                        return roiInPixels.intersects(boxInPixels)
+                    }
+
+                    guard let best = filteredResults.sorted(by: { $0.confidence > $1.confidence }).first else {
+                        return
+                    }
+                    // Se vuoi mantenere la vecchia selezione, commenta la riga sotto:
+                    // guard let best = results.sorted(by: { $0.confidence > $1.confidence }).first else { return }
+
+                    // Esegui l'OCR solo sulla bounding box rilevata, clampa i valori in [0,1]
+                    var plateBox = best.boundingBox
+                    plateBox.origin.x = max(0, min(1, plateBox.origin.x))
+                    plateBox.origin.y = max(0, min(1, plateBox.origin.y))
+                    plateBox.size.width = max(0, min(1 - plateBox.origin.x, plateBox.size.width))
+                    plateBox.size.height = max(0, min(1 - plateBox.origin.y, plateBox.size.height))
+
+                    let textReq = VNRecognizeTextRequest { [weak self] treq, _ in
+                        guard let self = self else { return }
+                        guard let observations = treq.results as? [VNRecognizedTextObservation] else { return }
+
+                        // Filtra le osservazioni che ricadono nella bounding box della targa
+                        let filteredObservations = observations.filter { obs in
+                            plateBox.intersects(obs.boundingBox)
+                        }
+
+                        // Raccogli al massimo 2 candidati per osservazione
+                        let rawCandidates: [String] = filteredObservations.flatMap { $0.topCandidates(2).map { $0.string } }
+                        print("Candidati OCR raw: \(rawCandidates)")
+
+                        // Normalizzazione
+                        let cleanedCandidates: [String] = rawCandidates.map { cand in
+                            cand.uppercased()
+                                .replacingOccurrences(of: " ", with: "")
+                                .replacingOccurrences(of: "-", with: "")
+                                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                                .joined()
+                        }
+                        //print("Candidati OCR cleaned: \(cleanedCandidates)")
+
+                        // Regex: IT, EU, e regex permissiva di debug
+                        let itRegex = try! NSRegularExpression(pattern: "^[A-Z]{2}[0-9]{3}[A-Z]{2}$")
+                        let euRegex = try! NSRegularExpression(pattern: "^(?=.*[A-Z])(?=.*[0-9])[A-Z0-9]{5,8}$")
+                        let anyPlateRegex = try! NSRegularExpression(pattern: "^[A-Z0-9]{4,10}$")
+
+                        let scored: [(String, Int)] = cleanedCandidates.compactMap { s in
+                            guard !s.isEmpty else { return nil }
+                            guard (6...8).contains(s.count) else { return nil }
+                            guard s.rangeOfCharacter(from: .letters) != nil,
+                                  s.rangeOfCharacter(from: .decimalDigits) != nil else { return nil }
+                            let r = NSRange(location: 0, length: s.count)
+                            let isIT = itRegex.firstMatch(in: s, range: r) != nil
+                            let isEU = euRegex.firstMatch(in: s, range: r) != nil
+                            let isAny = anyPlateRegex.firstMatch(in: s, range: r) != nil
+                            guard isIT || isEU || isAny else { return nil }
+                            let letters = s.filter { $0.isLetter }.count
+                            let digits = s.filter { $0.isNumber }.count
+                            // Score: premia IT, poi EU, poi any
+                            let score = (isIT ? 100 : isEU ? 60 : 20) + s.count * 2 + min(letters, 4) + min(digits, 4)
+                            return (s, score)
+                        }
+
+                        if let best = scored.sorted(by: { $0.1 > $1.1 }).first?.0 {
+                           self.handleDetectedPlate(best)
+                        } else if let fallback = cleanedCandidates.first, !fallback.isEmpty {
+                            print("⚠️ Nessun match regex, uso fallback:", fallback)
+                            self.handleDetectedPlate(fallback)
+                        }
+                    }
+                    textReq.usesLanguageCorrection = false
+                    textReq.recognitionLevel = .accurate
+                    textReq.recognitionLanguages = ["en-US"]
+                    //textReq.regionOfInterest = plateBox
+
+                    let handler2 = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])
+                    try? handler2.perform([textReq])
+                }
+                detRequest.imageCropAndScaleOption = .scaleFill
+                detRequest.regionOfInterest = roiRectNormalized
+
+                let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])
+                try? handler.perform([detRequest])
+                return
+            }
+            
+            
+
+            
+        }
+
+        // Helper per mappare UIDeviceOrientation a CGImagePropertyOrientation
+        private func cgImagePropertyOrientation(for deviceOrientation: UIDeviceOrientation) -> CGImagePropertyOrientation {
+            switch deviceOrientation {
+            case .portraitUpsideDown: return .left
+            case .landscapeLeft: return .up
+            case .landscapeRight: return .down
+            default: return .right
+            }
         }
     }
 
@@ -240,6 +457,8 @@ struct CameraPreview: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: CameraViewController, context: Context) {
     }
+    
+    
 }
 
 struct ScanPlateView: View {
@@ -247,6 +466,11 @@ struct ScanPlateView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var plateText: String = ""
     @State private var isLoadingPlateData: Bool = false
+    @State private var navigateToCheckDetails: Bool = false
+    @State private var data: PlateData?
+    @State private var vehicleImage: UIImage?
+    @State private var errorMessage: String = ""
+    @State private var showErrorAlert: Bool = false
 
     var body: some View {
         let plateWidth: CGFloat = 280
@@ -304,42 +528,110 @@ struct ScanPlateView: View {
                     .padding(.top)
                     .padding(.horizontal,24)
                     
-                    
                     Spacer()
-                    ZStack {
-                        DashedROI(cornerRadius: plateHeight * 0.18)
-                            .frame(width: plateWidth, height: plateHeight)
-                        LicensePlateView(text: plateText.isEmpty ? "PLATYPS" : plateText, width: plateWidth, height: plateHeight, countryCode: "I")
-                            .padding(.horizontal)
-                    }
-                    Spacer()
-                    
-                    // Instructions
-                    VStack(alignment: .center, spacing: 8) {
-                        Text("Position License Plate within Frame")
-                            .font(.customFont(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                        Text("Ensure words are visible")
-                            .font(.customFont(size: 16, weight: .regular))
-                            .foregroundColor(.gray)
+                    // Overlay guidato per l'utente
+                    VStack(spacing: 0) {
+                        // Testo guida sopra il riquadro ROI
+                        if plateText.isEmpty {
+                            Text("Allinea la targa all’interno del riquadro")
+                                .font(.customFont(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.bottom, 16)
+                        }
+                        // ZStack con bordo animato attorno alla ROI
+                        ZStack {
+                            if plateText.isEmpty {
+                                DashedROI(cornerRadius: plateHeight * 0.18)
+                                    .frame(width: plateWidth, height: plateHeight)
+                                    .foregroundColor(.clear)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: plateHeight * 0.18)
+                                            .stroke(Color.yellow, lineWidth: 3)
+                                            .opacity(0.6)
+                                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: plateText.isEmpty)
+                                    )
+                            }
+
+                            LicensePlateView(text: plateText, width: plateWidth, height: plateHeight, countryCode: "I")
+                                .padding(.horizontal)
+                                .scaleEffect(plateText.isEmpty ? 1.0 : 1.1)
+                                .opacity(plateText.isEmpty ? 0.7 : 1.0)
+                                .animation(.easeOut(duration: 0.4), value: plateText.isEmpty)
+
+                            if !plateText.isEmpty {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.green)
+                                    .transition(.scale.combined(with: .opacity))
+                                    .padding(.top, -plateHeight * 1.4)
+                                    .animation(.spring(response: 0.5, dampingFraction: 0.7), value: plateText)
+                            }
+                        }
+                        // Testo dinamico sotto al riquadro
+                        if isLoadingPlateData {
+                            Text("Rimani fermo")
+                                .font(.customFont(size: 16, weight: .medium))
+                                .foregroundColor(.red)
+                                .padding(.top, 8)
+                        } else if plateText.isEmpty {
+                            Text("Inquadra la targa all’interno del riquadro")
+                                .font(.customFont(size: 16, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(.top, 8)
+                        }
                     }
                     .padding(.horizontal)
                     Spacer()
                 }
-                if isLoadingPlateData {
-                    Color.black.opacity(0.5).ignoresSafeArea()
-                    ProgressView("Recupero dati targa...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.7)))
+                ZStack {
+                    if isLoadingPlateData {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                            .overlay(
+                                Color.clear.customAlert(
+                                    isPresented: $isLoadingPlateData,
+                                    title: "",
+                                    message: "Ricerca targa in corso...",
+                                    showprogress: false,
+                                    primaryButtonTitle: "OK",
+                                    primaryButtonAction: {
+
+                                    }
+                                )
+                            )
+                            .task {
+                                let trimmed = plateText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                guard !trimmed.isEmpty else {
+                                    self.isLoadingPlateData = false
+                                    return
+                                }
+                                // Interrompe subito la ricerca visuale
+                                self.isLoadingPlateData = false
+                                do {
+                                    let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
+                                    self.data = data
+                                    self.vehicleImage = data.vehicleImage
+                                    self.navigateToCheckDetails = true
+                                } catch {
+                                    self.errorMessage = error.localizedDescription
+                                    self.showErrorAlert = true
+                                }
+                            }
+                    }
                 }
+                .animation(.easeInOut(duration: 0.4), value: isLoadingPlateData)
             }
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
             .preferredColorScheme(.dark)
-            .alert(isPresented: .constant(!plateText.isEmpty)) {
-                Alert(title: Text("Targa rilevata"), message: Text(plateText), dismissButton: .default(Text("OK")))
+            .navigationDestination(isPresented: self.$navigateToCheckDetails) {
+                CheckDetailsView(
+                    vehicleImage: self.vehicleImage,
+                    plateData: self.data,
+                    isContinueEnabled: .constant(false),
+                    viewModel: ConfirmDetailsViewModel()
+                )
             }
         }
     }
@@ -360,6 +652,10 @@ struct ScanPlateView: View {
     }
 }
 
+
+
 #Preview {
     ScanPlateView()
 }
+
+       

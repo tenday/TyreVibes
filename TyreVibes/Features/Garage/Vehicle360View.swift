@@ -47,6 +47,7 @@ struct Vehicle360View: View {
             paintId: paintId,
             angles: angles,
             progress: { _, _ in },
+            plate: "",
             completion: { ordered in
                 images = ordered
             }
@@ -96,7 +97,7 @@ struct Vehicle360View_Previews: PreviewProvider {
             make: "seat",
             modelFamily: "leon",
             year: "2020",
-            paintId: "blue"
+            paintId: "GRAY"
         )
         .frame(height: 300)
         .padding()

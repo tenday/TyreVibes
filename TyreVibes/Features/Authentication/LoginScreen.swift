@@ -62,7 +62,7 @@ struct LoginScreen: View {
                                 
                                 Text("Welcome back to TyreVibes!")
                                     .font(.customFont(size: 16, weight: .regular))
-                                    .foregroundColor(viewModel.alertItem != nil ? .customBitterSweet : .gray)
+                                    .foregroundColor(.gray)
                                 
                             }
                             .padding(.bottom, screenHeight * 0.045)
@@ -252,6 +252,7 @@ struct LoginScreen: View {
                     isPresented: $showAlert,
                     title: viewModel.alertItem?.title ?? "Error",
                     message: viewModel.alertItem?.message ?? "An unknown error occurred.",
+                    showprogress: false,
                     primaryButtonTitle: "OK",
                     primaryButtonAction: {
                         viewModel.alertItem = nil

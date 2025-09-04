@@ -5,7 +5,7 @@
 	<key>CheckPlateBaseURL</key>
 	<string>https://www.tyrevibes.com/api/v1/check_plate</string>
 	<key>SavePlateURL</key>
-	<string>https://www.tyrevibes.com/api/v1/save_plate</string>
+	<string>http://localhost:3000/v1/save_plate</string>
 	<key>IMAGE_GENERATOR_URL</key>
 	<string>img</string>
 	<key>SUPABASE_URL</key>

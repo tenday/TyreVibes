@@ -5,24 +5,42 @@ struct PlateAPIRequest: Codable {
     let plate: String
     let make: String?
     let model: String?
-    let modelDetail : String?
-    let fuel_type: String?
-    let power_kw: String?
-    let power_cv: String?
-    let cilindrata: String?
+    let version: String?
     let color: String?
+    let fuelType: String?
+    let powerKW: String?
+    let powerCV: String?
+    let modelDetails: String?
+    let displacementCC: String?
+    let registrationDate: String?
     let vin: String?
-    let user_id: String
-    let registration_date: String?
-    let image_base64: String?
-    let image_mime: String?
     
-    let rcaCompany: String?
-    let rcaPolicyNumber: String?
-    let rcaExpiry: Date?
-    let rcaInsurancePresent: Bool?
-    let classeAmbientale: String?
+    let userId: String
+    let imageBase64: String?
+    let imageMime: String?
+    
+    // RCA/Assicurazione
+    let insuranceCompany: String?
+    let insurancePolicyNumber: String?
+    let insuranceExpiry: Date?
+    let insurancePresent: Bool?
+    
+    let emissionClass: String?
     let tyres: [[String: String]]?
+    
+    // --- campi da /dettagli ---
+    let view: String?
+    let saleStart: String?
+    let saleEnd: String?
+    let gearbox: String?
+    let maxSpeed: String?
+    let bodyType: String?
+    let doors: String?
+    let seats: String?
+    let consumption: String?
+    let traction: String?
+    
+    let revisioni: [Revisione]?
 }
 
 struct PlateAPIResponse: Codable {
@@ -78,6 +96,20 @@ class PlateAPIService {
 
     private let savePlateURL = URL(string: (PlateAPIService.apiConfig["SavePlateURL"] as? String) ?? "")
     private let checkPlateBaseURL = (PlateAPIService.apiConfig["CheckPlateBaseURL"] as? String) ?? ""
+    
+    private func convertRegistrationDate(_ dateStr: String?) -> String {
+        guard let dateStr = dateStr else { return "-" }
+        let formatterInput = DateFormatter()
+        formatterInput.dateFormat = "MM/yyyy"
+        formatterInput.locale = Locale(identifier: "it_IT_POSIX")
+        if let date = formatterInput.date(from: dateStr) {
+            let formatterOutput = DateFormatter()
+            formatterOutput.dateFormat = "dd-MM-yyyy"
+            formatterOutput.locale = Locale(identifier: "it_IT_POSIX")
+            return formatterOutput.string(from: date)
+        }
+        return "-"
+    }
 
     func checkPlate(plateNumber: String) async throws -> PlateData? {
         guard var components = URLComponents(string: checkPlateBaseURL) else {
@@ -144,23 +176,35 @@ class PlateAPIService {
             plate: plateData.plate.uppercased(),
             make: plateData.make ?? "-",
             model: plateData.model ?? "-",
-            modelDetail: plateData.modelDetails ?? "-",
-            fuel_type: plateData.fuelType ?? "-",
-            power_kw: plateData.powerKW ?? "-",
-            power_cv: plateData.powerCV ?? "-",
-            cilindrata: plateData.displacementCC ?? "-",
-            color: color,
+            version: plateData.version,
+            color: color.lowercased(),
+            fuelType: plateData.fuelType ?? "-",
+            powerKW: plateData.powerKW ?? "-",
+            powerCV: plateData.powerCV ?? "-",
+            modelDetails: plateData.modelDetails ?? "-",
+            displacementCC: plateData.displacementCC ?? "-",
+            registrationDate: convertRegistrationDate(plateData.registrationDate),
             vin: plateData.vin ?? "-",
-            user_id: userId,
-            registration_date: plateData.registrationDate ?? "-",
-            image_base64: imageBase64,
-            image_mime: imageMime,
-            rcaCompany : plateData.insuranceCompany ?? "",
-            rcaPolicyNumber: plateData.insuranceCompany ?? "",
-            rcaExpiry : plateData.insuranceExpiry,
-            rcaInsurancePresent: plateData.insurancePresent ?? false,
-            classeAmbientale : plateData.emissionClass ?? "",
-            tyres: plateData.tyres
+            userId: userId,
+            imageBase64: imageBase64,
+            imageMime: imageMime,
+            insuranceCompany: plateData.insuranceCompany,
+            insurancePolicyNumber: plateData.insurancePolicyNumber,
+            insuranceExpiry: plateData.insuranceExpiry,
+            insurancePresent: plateData.insurancePresent,
+            emissionClass: plateData.emissionClass,
+            tyres: plateData.tyres,
+            view: plateData.view,
+            saleStart : plateData.saleStart,
+            saleEnd: plateData.saleEnd,
+            gearbox: plateData.gearbox,
+            maxSpeed: plateData.maxSpeed,
+            bodyType: plateData.bodyType,
+            doors: plateData.doors,
+            seats: plateData.seats,
+            consumption: plateData.consumption,
+            traction: plateData.traction,
+            revisioni: plateData.revisioni ?? []
         )
 
         var request = URLRequest(url: url)
@@ -168,7 +212,9 @@ class PlateAPIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
-            request.httpBody = try JSONEncoder().encode(requestBody)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            request.httpBody = try encoder.encode(requestBody)
         } catch {
             throw PlateAPIError.requestFailed(error)
         }

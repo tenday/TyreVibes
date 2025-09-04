@@ -1,4 +1,41 @@
 import SwiftUI
+import UIKit
+
+// Hidden UITextField to capture iOS OTP AutoFill (SMS one-time code)
+struct OneTimeCodeTextField: UIViewRepresentable {
+    @Binding var code: String
+    @Binding var isFirstResponder: Bool
+
+    class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: OneTimeCodeTextField
+        init(parent: OneTimeCodeTextField) { self.parent = parent }
+        @objc func editingChanged(_ textField: UITextField) {
+            parent.code = textField.text ?? ""
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeUIView(context: Context) -> UITextField {
+        let tf = UITextField(frame: .zero)
+        tf.keyboardType = .numberPad
+        tf.textContentType = .oneTimeCode
+        tf.delegate = context.coordinator
+        tf.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
+        tf.setContentHuggingPriority(.required, for: .horizontal)
+        tf.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return tf
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != code { uiView.text = code }
+        if isFirstResponder && !uiView.isFirstResponder {
+            uiView.becomeFirstResponder()
+        } else if !isFirstResponder && uiView.isFirstResponder {
+            uiView.resignFirstResponder()
+        }
+    }
+}
 
 struct OTPVerificationView: View {
     @ObservedObject var viewModel: SignUpViewModel
@@ -13,10 +50,18 @@ struct OTPVerificationView: View {
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
 
+    @State private var hiddenCode: String = ""
+    @State private var captureAutoFill: Bool = false
+
     
 var body: some View {
     NavigationStack {
         GeometryReader { geometry in
+            OneTimeCodeTextField(code: $hiddenCode, isFirstResponder: $captureAutoFill)
+                .frame(width: 1, height: 1)
+                .opacity(0.01)
+                .allowsHitTesting(false)
+            
             VStack(spacing: 10) {
                 // Navigation bar
                 HStack {
@@ -61,7 +106,7 @@ var body: some View {
                             })
                         )
                         .keyboardType(.numberPad)
-                        .textContentType(.oneTimeCode)
+                        // oneTimeCode handled by hidden field
                         .multilineTextAlignment(.center)
                         .font(.system(size: 24, weight: .bold))
                         .frame(maxWidth: .infinity)
@@ -79,6 +124,7 @@ var body: some View {
                         .focused($focusedField, equals: index)
                         .onTapGesture {
                             focusedField = index
+                            captureAutoFill = true
                         }
                         
                     }
@@ -88,6 +134,18 @@ var body: some View {
                     // Focus automatico sul primo campo quando appare la view
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         focusedField = 0
+                    }
+                }
+                .onChange(of: hiddenCode) { _, newValue in
+                    let digits = newValue.filter { $0.isNumber }
+                    guard !digits.isEmpty else { return }
+                    // If iOS pasted the full 6-digit code, distribute it
+                    if digits.count >= 6 {
+                        for i in 0..<6 { otpCode[i] = String(digits[digits.index(digits.startIndex, offsetBy: i)]) }
+                        focusedField = 5
+                        viewModel.fullOtp = otpCode.joined()
+                        viewModel.verifyOtp()
+                        captureAutoFill = false
                     }
                 }
                 
@@ -169,6 +227,7 @@ var body: some View {
         .background(Color.customBackgroundColor)
         .onAppear {
             startCountdown()
+            captureAutoFill = true
         }
         .alert(viewModel.alertTitle, isPresented: $viewModel.showAlert) {
             Button("OK", role: .cancel) { }
@@ -203,6 +262,10 @@ var body: some View {
             if focusedField != target {
                 focusedField = target
             }
+            if !otpCode.contains(where: { $0.isEmpty }) {
+                viewModel.fullOtp = otpCode.joined()
+                viewModel.verifyOtp()
+            }
             return
         }
 
@@ -212,6 +275,10 @@ var body: some View {
             let target = min(5, index + 1)
             if focusedField != target {
                 focusedField = target
+            }
+            if !otpCode.contains(where: { $0.isEmpty }) {
+                viewModel.fullOtp = otpCode.joined()
+                viewModel.verifyOtp()
             }
             return
         }

@@ -13,12 +13,14 @@
 		E913FB772E2D2D2B005FB7C0 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB762E2D2D2B005FB7C0 /* Realtime */; };
 		E913FB792E2D2D2B005FB7C0 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB782E2D2D2B005FB7C0 /* Storage */; };
 		E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB7A2E2D2D8B005FB7C0 /* Supabase */; };
+		E917BAFA2E61A5320070D53B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E917BAF92E61A5320070D53B /* GoogleService-Info.plist */; };
 		E9F8D0C12E53814A00C572B1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E9F8D0C02E53814A00C572B1 /* GoogleSignIn */; };
 		E9F8D0C32E53814A00C572B1 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E9F8D0C22E53814A00C572B1 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		E902A1112DD011CB00E6E298 /* TyreVibes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TyreVibes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E917BAF92E61A5320070D53B /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -73,6 +75,7 @@
 			children = (
 				E902A1132DD011CB00E6E298 /* TyreVibes */,
 				E902A1122DD011CB00E6E298 /* Products */,
+				E917BAF92E61A5320070D53B /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -161,6 +164,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E917BAFA2E61A5320070D53B /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -316,6 +320,7 @@
 				INFOPLIST_FILE = TyreVibes/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Necessario l'uso della fotocamera per la lettura targa";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "volto all'autenticazione";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -348,6 +353,7 @@
 				INFOPLIST_FILE = TyreVibes/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Necessario l'uso della fotocamera per la lettura targa";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "volto all'autenticazione";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -4,6 +4,7 @@ struct CustomAlertModifier: ViewModifier {
     @Binding var isPresented: Bool
     let title: String
     let message: String
+    let showProgress: Bool
     let primaryButtonTitle: String
     let primaryButtonAction: () -> Void
 
@@ -12,15 +13,17 @@ struct CustomAlertModifier: ViewModifier {
             content
 
             if isPresented {
-                CustomAlertView(
+               CustomAlertView(
                     title: title,
-                    message: message,
-                    primaryButtonTitle: primaryButtonTitle,
-                    primaryButtonAction: {
-                        primaryButtonAction()
-                        isPresented = false
-                    }
-                )
+                    showProgress: showProgress
+               )
+                    //     message: message,
+               //     primaryButtonTitle: primaryButtonTitle,
+              //      primaryButtonAction: {
+              //          primaryButtonAction()
+              //          isPresented = false
+              //      }
+              //  )
             }
         }
     }
@@ -31,6 +34,7 @@ extension View {
         isPresented: Binding<Bool>,
         title: String,
         message: String,
+        showprogress: Bool,
         primaryButtonTitle: String,
         primaryButtonAction: @escaping () -> Void
     ) -> some View {
@@ -39,6 +43,7 @@ extension View {
                 isPresented: isPresented,
                 title: title,
                 message: message,
+                showProgress: showprogress,
                 primaryButtonTitle: primaryButtonTitle,
                 primaryButtonAction: primaryButtonAction
             )

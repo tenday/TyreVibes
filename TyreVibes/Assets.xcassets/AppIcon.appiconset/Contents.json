@@ -83,19 +83,17 @@
       "size" : "60x60"
     },
     {
-      "filename" : "TyreVibes 2.png",
+      "filename" : "TyreVibes 1.png",
       "idiom" : "ios-marketing",
       "scale" : "1x",
       "size" : "1024x1024"
     },
     {
-      "filename" : "TyreVibes 3.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
-      "filename" : "TyreVibes 4.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"

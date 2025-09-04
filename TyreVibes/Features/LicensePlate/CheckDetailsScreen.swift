@@ -118,12 +118,6 @@ struct CheckDetailsView: View {
 
                                 }
                             }
-                            else {
-                                Text("07/2020")
-                                    .font(.customFont(size: 16, weight: .bold))
-                                    .foregroundColor(.black)
-                                    .offset(y: UIScreen.main.bounds.height * -0.04)
-                            }
                            
                             
 

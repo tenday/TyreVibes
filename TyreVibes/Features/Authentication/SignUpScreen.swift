@@ -175,6 +175,9 @@ struct SignUpScreen: View {
                 .navigationBarBackButtonHidden(true)
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
         }
     }
 }
