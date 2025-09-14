@@ -35,7 +35,10 @@ struct ResetPasswordScreen: View {
                             Button(action: {
                                 dismiss()
                             }) {
-                                Image("ArrowIcon")
+                                Image(systemName: "chevron.left")
+                                    .resizable()
+                                    .frame(width: 24, height: 24)
+                                    .foregroundColor(.white)
                             }
                             Spacer()
                         }
