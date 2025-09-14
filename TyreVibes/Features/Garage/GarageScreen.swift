@@ -10,6 +10,7 @@ struct GarageScreen: View {
     @State private var showScanPlate = false
     @State private var showEnterPlate = false
 
+    private let sheetSpacing: CGFloat = 20
     
     @StateObject private var viewModel = GarageViewModel()
     
@@ -180,16 +181,15 @@ struct GarageScreen: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
                 .sheet(isPresented: $isPresentingSheet) {
-                    VStack(spacing: 20) {
+                    VStack(spacing: sheetSpacing) {
                         Capsule()
                             .fill(Color(red: 0.85, green: 0.85, blue: 0.85))
                             .frame(width: 88, height: 4)
-                            .padding(.top, 19)
                             
 
                         Spacer().frame(height: 15)
 
-                        VStack(spacing: 16) {
+                        VStack(spacing: sheetSpacing) {
                             Button(action: {
                                 isPresentingSheet = false
                                 showScanPlate = true
@@ -238,7 +238,7 @@ struct GarageScreen: View {
                                         .frame(height: 94)
                                 )
                             }
-                            .padding(.bottom, 31)
+                            .padding(.bottom, sheetSpacing + 11)
 
                             HStack {
                                 Rectangle()
@@ -251,7 +251,7 @@ struct GarageScreen: View {
                                     .fill(Color.white.opacity(0.4))
                                     .frame(height: 1)
                             }
-                            .padding(.bottom,41)
+                            .padding(.bottom, sheetSpacing + 21)
                             
 
                             Button(action: {
@@ -479,7 +479,7 @@ struct CarCardView: View {
                                         .uppercased() ?? ""
                                 )
                                 SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
-                                SpecRow(label: "Engine:", value: v.vehicle.engine?.uppercased() ?? "")
+                                SpecRow(label: "Engine:", value: v.vehicle.engine ?? "")
                             }
                         }
                         .padding(.trailing, w * 0.04)

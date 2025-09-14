@@ -13,6 +13,9 @@ extension String {
 struct CarDetailsView: View {
     let vehicle: VehicleResponse
     @Environment(\.dismiss) private var dismiss
+    @State private var showTyreRegistration: Bool = false
+    @State private var showInfoDialog: Bool = false
+    @State private var infoDialogOffset: CGFloat = 0
     
     
     
@@ -73,7 +76,9 @@ struct CarDetailsView: View {
                                 Spacer()
                                 
                                 Button(action: {
-                                    // Azione da eseguire
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                                        showInfoDialog = true
+                                    }
                                 }) {
                                     Image(systemName: "info.circle")
                                         .resizable()
@@ -113,8 +118,10 @@ struct CarDetailsView: View {
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 20) {
-                                ForEach(0..<5, id: \.self) { _ in
-                                    Button(action: {}) {
+                                ForEach(0..<1, id: \.self) { _ in
+                                    Button(action: {
+                                        showTyreRegistration = true
+                                    }) {
                                         ZStack {
                                             RoundedRectangle(cornerRadius: 12)
                                                 .fill(Color.customFieldColor)
@@ -136,10 +143,131 @@ struct CarDetailsView: View {
                             .padding(.vertical, 9)
                             .padding(.horizontal, 8)
                         }
+                        .fullScreenCover(isPresented: $showTyreRegistration) {
+                            TyreRegistrationView()
+                        }
+
                     }
                 }
                 .padding(.horizontal,24)
                 
+            }
+            .sheet(isPresented: $showInfoDialog) {
+                VStack(spacing: 12) {
+                    Capsule()
+                        .fill(Color.gray.opacity(0.4))
+                        .frame(width: 40, height: 5)
+                        .padding(.top, 8)
+
+                    Text("Storico Revisioni")
+                        .font(.customFont(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Data")
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Esito")
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Km")
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.vertical, 6)
+
+                        Divider().background(Color.customGray)
+
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                if let revisions = vehicle.revisions, !revisions.isEmpty {
+                                    ForEach(revisions) { revisione in
+                                        HStack {
+                                            Text(revisione.dataRevisione ?? "" )
+                                                .font(.customFont(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            Text(revisione.esitoRevisione ?? "")
+                                                .font(.customFont(size: 12, weight: .regular))
+                                                .foregroundColor(.green)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            Text(revisione.kmRevisione ?? "")
+                                                .font(.customFont(size: 12, weight: .regular))
+                                                .foregroundColor(.white.opacity(0.8))
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                        .padding(.vertical, 6)
+                                        Divider().background(Color.customGray)
+                                    }
+                                } else {
+                                    Text("Nessuna revisione disponibile")
+                                        .font(.customFont(size: 12, weight: .regular))
+                                        .foregroundColor(.white.opacity(0.7))
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .padding(.vertical, 12)
+                                }
+                                
+                            }
+                        }
+                        .frame(maxHeight: 280)
+                    }
+
+                    Divider().background(Color.customGray)
+
+                    Text("Pneumatici Supportati")
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.top, 8)
+
+                    ScrollView {
+                        VStack(spacing: 6) {
+                            if let tyres = vehicle.tyres, !tyres.isEmpty {
+                                ForEach(tyres) { tyre in
+                                    HStack {
+                                        Text("\(tyre.width ?? 0)")
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text("\(tyre.ratio ?? 0)")
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text("R\(tyre.diameter ?? 0)")
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text(tyre.loadIndex ?? "-")
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text(tyre.speedIndex ?? "-")
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .font(.customFont(size: 12, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .padding(6)
+                                    .background(Color.customGray.opacity(0.3))
+                                    .cornerRadius(6)
+                                }
+                            } else {
+                                Text("Nessun pneumatico disponibile")
+                                    .font(.customFont(size: 12, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 8)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 120)
+
+                    Button(action: { showInfoDialog = false }) {
+                        Text("Chiudi")
+                            .font(.customFont(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.customGray)
+                            .cornerRadius(10)
+                    }
+                }
+                .padding()
+                .background(Color.customFieldColor.ignoresSafeArea())
             }
         
         

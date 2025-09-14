@@ -125,7 +125,7 @@ struct LicensePlateView: View {
 
 struct CameraPreview: UIViewControllerRepresentable {
     var roiSize: CGSize
-    var onPlateDetected: (String) -> Void
+    var onPlateDetected: (String?) -> Void
 
         class CameraViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
         private var lastRequestTime = Date(timeIntervalSince1970: 0)
@@ -480,11 +480,11 @@ struct ScanPlateView: View {
         NavigationStack {
             ZStack(alignment: .top) {
                 CameraPreview(roiSize: CGSize(width: plateWidth, height: plateHeight)) { plate in
-                    self.plateText = plate
+                    self.plateText = plate ?? ""
                     self.isLoadingPlateData = true
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
-                    fetchPlateData(for: plate)
+                    fetchPlateData(for: plate ?? "")
                 }
                 .ignoresSafeArea()
                 VStack {

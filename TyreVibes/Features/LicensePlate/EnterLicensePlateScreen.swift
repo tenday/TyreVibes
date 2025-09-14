@@ -281,6 +281,7 @@ struct EnterLicensePlateView: View {
                     ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true, viewModel: ConfirmDetailsViewModel() )
                         .preferredColorScheme(.dark)
                         .navigationBarBackButtonHidden(true)
+                        .background(InteractivePopGestureEnabler())
                 }
                 .navigationBarBackButtonHidden(true)
             }
