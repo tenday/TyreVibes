@@ -1,4 +1,5 @@
-
+// the entire code of the file with your changes goes here.
+// Do not skip over anything.
 import Foundation
 import UIKit
 import Vision
@@ -43,10 +44,15 @@ public struct PlateData {
     public var revisioni: [Revisione]?
     
     public var vehicleImage: UIImage?
+    public var vehicleAngle: Int?
+    
+    public var vehicleId: Int?
 }
 
 // Lettore principale
 public class LicensePlateReader {
+    
+    static var exists : Bool = false
     
 
 
@@ -406,7 +412,15 @@ public class LicensePlateReader {
                         }
                     } catch {
                         // Errore: risposta non JSON, quindi tentiamo di estrarre dal tag <car-filter-container :data="...">
-                        let html = String(data: data2, encoding: .utf8) ?? ""
+                        guard let html = String(data: data2, encoding: .utf8) else {
+                            completion(.failure(NSError(domain: "LicensePlateReader", code: 12008, userInfo: [NSLocalizedDescriptionKey: "Impossibile convertire i dati in HTML"])))
+                            return
+                        }
+                        
+                        if html.contains("La targa inserita non identifica nessun veicolo Quattroruote") {
+                            completion(.failure(NSError(domain: "LicensePlateReader", code: 12008, userInfo: [NSLocalizedDescriptionKey: "Targa non rilevata"])))
+                            return
+                        }
 
                         // 1) Cerca l'attributo :data sul tag <car-filter-container>
                         let pattern = #"<car-filter-container[^>]*:data=\"([^\"]+)\""#
@@ -542,7 +556,8 @@ public class LicensePlateReader {
                                                         }
                                                         
                                                     } catch {
-                                                       
+                                                        completion(.failure(error))
+                                                        return
                                                     }
                                                 }.resume()
 
@@ -550,7 +565,8 @@ public class LicensePlateReader {
                                         }
                                     }
                                 } catch {
-                                    // continua al fallback regex
+                                    completion(.failure(error))
+                                    return
                                 }
                             }
                         }
@@ -620,7 +636,7 @@ task.resume()
 public static func fetchRevisioniSecure(
     plate: String,
     tipoVeicolo: String = "A",
-    maxAttempts: Int = 4,
+    maxAttempts: Int = 8,
     completion: @escaping (Result<[[String:String]], Error>) -> Void
 ) {
     func attempt(_ remaining: Int) {
@@ -2049,34 +2065,43 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
 // Funzione principale che raccoglie tutti i dati da fonti ufficåiali
     /// Versione moderna async/await di fetchPlateSummary
     public static func fetchPlateSummary(plate: String) async throws -> PlateData {
+        
+        
+        
+        do {
+            if let cachedPlateData = try await checkVehicleInDB(plate: plate) {
+                exists = true
+                return cachedPlateData
+            }
+        } catch let apiError as PlateAPIError {
+            if case .alreadyInGarage = apiError {
+                throw apiError // lo rilanci per gestirlo più in alto con alert
+            }
+        } catch {
+            print("⚠️ Errore checkVehicleInDB:", error.localizedDescription)
+        }
+        
+        
         var plateData = PlateData(plate: plate)
-
-    async let revisioniResult: [[String: String]] = {
-        do { return try await withTimeout(10) { try await fetchRevisioniSecureAsync(plate: plate) } } catch { return [] }
+    async let classeAmbientaleResult: String = {
+        do { return try await withTimeout(4.0) { try await fetchClasseAmbientaleAsync(plate: plate) } } catch { return "" }
     }()
-    // Lancia in parallelo tutte le chiamate async con timeout
+    async let revisioniResult: [[String: String]] = {
+        do { return try await withTimeout(7.0) { try await fetchRevisioniSecureAsync(plate: plate) } } catch { return [] }
+    }()
     async let quattroruoteResult: [String: Any] = {
-        do { return try await withTimeout(2.0) { try await fetchQuattroruotePlateDataAsync(plate: plate) } } catch { return [:] }
+        do { return try await withTimeout(7.0) { try await fetchQuattroruotePlateDataAsync(plate: plate) } } catch { return [:] }
     }()
     async let rcaResult: [String: String] = {
-        do { return try await withTimeout(2.0) { try await fetchCoperturaRCAsync(plate: plate) } } catch { return [:] }
-    }()
-    async let classeAmbientaleResult: String = {
-        do { return try await withTimeout(2.0) { try await fetchClasseAmbientaleAsync(plate: plate) } } catch { return "" }
+        do { return try await withTimeout(4.0) { try await fetchCoperturaRCAsync(plate: plate) } } catch { return [:] }
     }()
     async let tyreResult: [[String: String]] = {
-        do { return try await withTimeout(2.0) { try await fetchTyreBlackcirclesAsync(plate: plate) } } catch { return [] }
+        do { return try await withTimeout(4.0) { try await fetchTyreBlackcirclesAsync(plate: plate) } } catch { return [] }
     }()
    
 
         // 1. Quattroruote
-        let quattroruoteData: [String: Any]
-        do {
-            quattroruoteData =  await quattroruoteResult
-        } catch {
-            // Se fallisce, usa dict vuoto
-            quattroruoteData = [:]
-        }
+        let quattroruoteData: [String: Any] = await quattroruoteResult
 
         // Mappa i dati quattroruote in plateData, usando "" come fallback per nil
         plateData.make = (quattroruoteData["make"] as? String) ?? ""
@@ -2201,7 +2226,8 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
                     modelFamily: plateData.modelDetails ?? model,
                     year: year,
                     paintId: plateData.color ?? "",
-                    plate: plateData.plate
+                    plate: plateData.plate,
+                    angle: 23
                 )
                 plateData.vehicleImage = image
             } catch {
@@ -2213,6 +2239,147 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         return plateData
     }
 
+    private static func checkVehicleInDB(plate: String) async throws -> PlateData? {
+        
+        let apiConfig = PlateAPIService.apiConfig
+        
+        
+        guard let baseURL = apiConfig["BASE_URL"] as? String else {
+            print("BASE_URL not found")
+            return nil
+        }
+        
+        guard let url = URL(string: "\(baseURL)/v1/check_plate") else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let userId = await AuthService.currentUserId ?? ""
+        let body: [String: Any] = [
+            "plate": plate,
+            "userId": userId
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                exists = false
+                return nil
+            }
+            
+            if let vehicleDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                
+                
+                if let alreadyInGarage = vehicleDict["already_in_garage"] as? Bool, alreadyInGarage {
+                    throw PlateAPIError.alreadyInGarage
+                }
+                
+                
+                var plateData = PlateData(plate: plate)
+                plateData.make = vehicleDict["make"] as? String ?? ""
+                plateData.model = vehicleDict["model"] as? String ?? ""
+                plateData.modelDetails = vehicleDict["model_detail"] as? String ?? ""
+                // Handle displacementCC (can be String, NSNumber, Int, Double, or nil)
+                if let disp = vehicleDict["displacement"] {
+                    if let str = disp as? String {
+                        plateData.displacementCC = str
+                    } else if let num = disp as? NSNumber {
+                        plateData.displacementCC = num.stringValue
+                    } else if let intVal = disp as? Int {
+                        plateData.displacementCC = String(intVal)
+                    } else if let doubleVal = disp as? Double {
+                        plateData.displacementCC = String(Int(doubleVal))
+                    } else {
+                        plateData.displacementCC = ""
+                    }
+                } else {
+                    plateData.displacementCC = ""
+                }
+                plateData.fuelType = vehicleDict["fuel_type"] as? String ?? ""
+                plateData.powerKW = vehicleDict["power_kw"] as? String ?? ""
+                // Handle powerCV (can be String, NSNumber, Int, Double, or nil)
+                if let cv = vehicleDict["power_cv"] {
+                    if let str = cv as? String {
+                        plateData.powerCV = str
+                    } else if let num = cv as? NSNumber {
+                        plateData.powerCV = num.stringValue
+                    } else if let intVal = cv as? Int {
+                        plateData.powerCV = String(intVal)
+                    } else if let doubleVal = cv as? Double {
+                        plateData.powerCV = String(Int(doubleVal))
+                    } else {
+                        plateData.powerCV = ""
+                    }
+                } else {
+                    plateData.powerCV = ""
+                }
+                plateData.registrationDate = vehicleDict["registration_date"] as? String ?? ""
+                plateData.version = vehicleDict["version"] as? String ?? ""
+                plateData.bodyType = vehicleDict["body_type"] as? String ?? ""
+                // Handle doors (can be String, NSNumber, Int, or nil)
+                if let doorsVal = vehicleDict["doors"] {
+                    if let str = doorsVal as? String {
+                        plateData.doors = str
+                    } else if let num = doorsVal as? NSNumber {
+                        plateData.doors = num.stringValue
+                    } else if let intVal = doorsVal as? Int {
+                        plateData.doors = String(intVal)
+                    } else {
+                        plateData.doors = ""
+                    }
+                } else {
+                    plateData.doors = ""
+                }
+                // Handle seats (can be String, NSNumber, Int, or nil)
+                if let seatsVal = vehicleDict["seats"] {
+                    if let str = seatsVal as? String {
+                        plateData.seats = str
+                    } else if let num = seatsVal as? NSNumber {
+                        plateData.seats = num.stringValue
+                    } else if let intVal = seatsVal as? Int {
+                        plateData.seats = String(intVal)
+                    } else {
+                        plateData.seats = ""
+                    }
+                } else {
+                    plateData.seats = ""
+                }
+                plateData.color = vehicleDict["color"] as? String ?? ""
+                plateData.gearbox = vehicleDict["gearbox"] as? String ?? ""
+                plateData.maxSpeed = vehicleDict["max_speed"] as? String ?? ""
+                plateData.emissionClass = vehicleDict["emission_class"] as? String ?? ""
+                plateData.consumption = vehicleDict["consumption"] as? String ?? ""
+                plateData.traction = vehicleDict["traction"] as? String ?? ""
+                plateData.saleStart = vehicleDict["sale_start"] as? String ?? ""
+                plateData.saleEnd = vehicleDict["sale_end"] as? String ?? ""
+                plateData.vin = vehicleDict["vin"] as? String ?? ""
+                // Insurance mapping
+                if let insuranceDict = vehicleDict["insurance"] as? [String: Any] {
+                    plateData.insuranceCompany = insuranceDict["company"] as? String
+                    plateData.insurancePolicyNumber = insuranceDict["policy_number"] as? String
+                    plateData.insuranceExpiry = insuranceDict["expiry"] as? Date
+                    if let present = insuranceDict["insurance_present"] as? Bool {
+                        plateData.insurancePresent = present
+                    }
+                }
+                // Decode Base64 image if present
+                if let base64String = vehicleDict["image_base64"] as? String,
+                   let imageData = Data(base64Encoded: base64String),
+                   let image = UIImage(data: imageData) {
+                    plateData.vehicleImage = image
+                }
+                plateData.vehicleId = vehicleDict["vehicle_id"] as? Int ?? nil
+                
+                return plateData
+            }
+        } catch (let err){
+            if err.localizedDescription.contains("404") {
+            }
+            throw PlateAPIError.alreadyInGarage
+        }
+        
+        return nil
+    }
 
 
 // MARK: - Allianz
@@ -2451,7 +2618,12 @@ guard let data = data else {
 }
 let parser = SimpleXMLParser(data: data)
 let classe = parser.parseClasse()
-completion(.success(classe))
+if classe == "" {
+    completion(.failure(NSError(domain: "LicensePlateReader", code: 7, userInfo: [NSLocalizedDescriptionKey: "Classe ambientale non trovata"])))
+    return
+} else {
+    completion(.success(classe))
+}
 }.resume()
 }
 
@@ -2731,13 +2903,13 @@ currentValue += string
 extension VehicleImageService {
     private static var cache = NSCache<NSString, UIImage>()
 
-    static func fetchVehicleImageAsync(make: String, modelFamily: String, year: String, paintId: String, plate: String) async throws -> UIImage {
+    static func fetchVehicleImageAsync(make: String, modelFamily: String, year: String, paintId: String, plate: String, angle: Int) async throws -> UIImage {
         let key = "\(make)-\(modelFamily)-\(year)-\(paintId)" as NSString
         if let cached = cache.object(forKey: key) {
             return cached
         }
         return try await withCheckedThrowingContinuation { cont in
-            fetchVehicleImage(make: make, modelFamily: modelFamily, year: year, paintId: paintId, plate: plate) { result in
+            fetchVehicleImage(make: make, modelFamily: modelFamily, year: year, paintId: paintId,angle: angle, plate: plate) { result in
                 switch result {
                 case .success(let img):
                     cache.setObject(img, forKey: key)

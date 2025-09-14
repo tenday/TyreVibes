@@ -1,4 +1,5 @@
 import CoreGraphics
+import SwiftUI
 import Vision
 import UIKit
 
@@ -232,5 +233,17 @@ private extension CGImagePropertyOrientation {
         case .rightMirrored: self = .rightMirrored
         @unknown default: self = .up
         }
+    }
+}
+
+
+extension Image {
+    init?(base64: String?) {
+        guard let base64 = base64,
+              let data = Data(base64Encoded: base64),
+              let uiImage = UIImage(data: data) else {
+            return nil
+        }
+        self = Image(uiImage: uiImage)
     }
 }

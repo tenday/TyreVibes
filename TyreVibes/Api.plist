@@ -4,8 +4,12 @@
 <dict>
 	<key>CheckPlateBaseURL</key>
 	<string>https://www.tyrevibes.com/api/v1/check_plate</string>
+	<key>BASE_URL</key>
+	<string>https://www.tyrevibes.com/api</string>
 	<key>SavePlateURL</key>
-	<string>http://localhost:3000/v1/save_plate</string>
+	<string>https://www.tyrevibes.com/api/v1/save_plate</string>
+	<key>GetAllCars</key>
+	<string>https://www.tyrevibes.com/api/vehicles/:userId</string>
 	<key>IMAGE_GENERATOR_URL</key>
 	<string>img</string>
 	<key>SUPABASE_URL</key>

@@ -5,7 +5,6 @@ struct PlateAPIRequest: Codable {
     let plate: String
     let make: String?
     let model: String?
-    let version: String?
     let color: String?
     let fuelType: String?
     let powerKW: String?
@@ -16,8 +15,10 @@ struct PlateAPIRequest: Codable {
     let vin: String?
     
     let userId: String
-    let imageBase64: String?
-    let imageMime: String?
+    let imagesBase64: [String]?
+    let imagesMime: [String]?
+    let imagesAngle: [Int]?
+    let imagesColor: [String]
     
     // RCA/Assicurazione
     let insuranceCompany: String?
@@ -72,6 +73,7 @@ enum PlateAPIError: Error {
     case invalidResponse
     case serverError(Int, String)
     case plateNotFound
+    case alreadyInGarage
 }
 
 private func imageHasAlpha(_ image: UIImage) -> Bool {
@@ -85,15 +87,15 @@ private func imageHasAlpha(_ image: UIImage) -> Bool {
 }
 
 class PlateAPIService {
-
-    private static let apiConfig: NSDictionary = {
+    
+    static let apiConfig: NSDictionary = {
         if let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
            let dict = NSDictionary(contentsOfFile: path) {
             return dict
         }
         return [:]
     }()
-
+    
     private let savePlateURL = URL(string: (PlateAPIService.apiConfig["SavePlateURL"] as? String) ?? "")
     private let checkPlateBaseURL = (PlateAPIService.apiConfig["CheckPlateBaseURL"] as? String) ?? ""
     
@@ -104,33 +106,36 @@ class PlateAPIService {
         formatterInput.locale = Locale(identifier: "it_IT_POSIX")
         if let date = formatterInput.date(from: dateStr) {
             let formatterOutput = DateFormatter()
-            formatterOutput.dateFormat = "dd-MM-yyyy"
+            formatterOutput.dateFormat = "yyyy-MM-dd"
             formatterOutput.locale = Locale(identifier: "it_IT_POSIX")
             return formatterOutput.string(from: date)
         }
         return "-"
     }
-
+    
+    
+    
+    
     func checkPlate(plateNumber: String) async throws -> PlateData? {
         guard var components = URLComponents(string: checkPlateBaseURL) else {
             throw PlateAPIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "plate", value: plateNumber)]
-
+        
         guard let url = components.url else {
             throw PlateAPIError.invalidURL
         }
-
+        
         let (data, response) = try await URLSession.shared.data(from: url)
-
+        
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
         }
-
+        
         if httpResponse.statusCode == 404 {
             return nil // Plate not found is not an error, it's a valid outcome.
         }
-
+        
         if (200...299).contains(httpResponse.statusCode) {
             do {
                 let apiResponse = try JSONDecoder().decode(PlateAPIResponse.self, from: data)
@@ -139,7 +144,7 @@ class PlateAPIService {
                     make: apiResponse.make,
                     model: apiResponse.model,
                     color: apiResponse.color,
-                   // fuel: apiResponse.fuel_type,
+                    // fuel: apiResponse.fuel_type,
                     powerKW: apiResponse.power_kw,
                     displacementCC: apiResponse.cilindrata,
                     vin: apiResponse.vin,
@@ -153,30 +158,30 @@ class PlateAPIService {
             throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)
         }
     }
-
-    func savePlate(plateData: PlateData, color: String, userId: String, image: UIImage?) async throws {
+    
+    func savePlate(plateData: PlateData, color: String, userId: String, images: [UIImage?], imagesColor: [String]) async throws {
         guard let url = savePlateURL else {
             throw PlateAPIError.invalidURL
         }
-
-        // Prepara immagine come PNG (se alpha) o JPEG (altrimenti). iOS non esporta WEBP nativamente.
-        var imageBase64: String? = nil
-        var imageMime: String? = nil
-        if let uiImage = image {
-            if imageHasAlpha(uiImage), let data = uiImage.pngData() {
-                imageBase64 = data.base64EncodedString()
-                imageMime = "image/png"
-            } else if let data = uiImage.jpegData(compressionQuality: 0.9) {
-                imageBase64 = data.base64EncodedString()
-                imageMime = "image/jpeg"
+        
+        var imagesBase64: [String] = []
+        var imagesMime: [String] = []
+        for image in images {
+            if let uiImage = image {
+                if imageHasAlpha(uiImage), let data = uiImage.pngData() {
+                    imagesBase64.append(data.base64EncodedString())
+                    imagesMime.append("image/png")
+                } else if let data = uiImage.jpegData(compressionQuality: 0.9) {
+                    imagesBase64.append(data.base64EncodedString())
+                    imagesMime.append("image/jpeg")
+                }
             }
         }
-
+        
         let requestBody = PlateAPIRequest(
             plate: plateData.plate.uppercased(),
             make: plateData.make ?? "-",
             model: plateData.model ?? "-",
-            version: plateData.version,
             color: color.lowercased(),
             fuelType: plateData.fuelType ?? "-",
             powerKW: plateData.powerKW ?? "-",
@@ -186,8 +191,10 @@ class PlateAPIService {
             registrationDate: convertRegistrationDate(plateData.registrationDate),
             vin: plateData.vin ?? "-",
             userId: userId,
-            imageBase64: imageBase64,
-            imageMime: imageMime,
+            imagesBase64: imagesBase64,
+            imagesMime: imagesMime,
+            imagesAngle: [23,23,12,12],
+            imagesColor: imagesColor,
             insuranceCompany: plateData.insuranceCompany,
             insurancePolicyNumber: plateData.insurancePolicyNumber,
             insuranceExpiry: plateData.insuranceExpiry,
@@ -206,11 +213,11 @@ class PlateAPIService {
             traction: plateData.traction,
             revisioni: plateData.revisioni ?? []
         )
-
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
+        
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
@@ -218,18 +225,53 @@ class PlateAPIService {
         } catch {
             throw PlateAPIError.requestFailed(error)
         }
-
+        
         let (data, response) = try await URLSession.shared.data(for: request)
-
+        
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
         }
-
+        
         if (200...299).contains(httpResponse.statusCode) {
             // Success
             return
         } else {
             // Server error
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
+            throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)
+        }
+    }
+    
+    func associateVehicle2User(vehicleId: Int, userId: String) async throws -> (imageBase64: String?, mimeType: String?) {
+        guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
+            throw PlateAPIError.invalidURL
+        }
+        // Remove trailing slash if present
+        let urlString = "\(baseURLString)/v1/vehicles/\(vehicleId)/user/\(userId)"
+        
+        guard let url = URL(string: urlString) else {
+            throw PlateAPIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw PlateAPIError.invalidResponse
+        }
+        
+        if (200...299).contains(httpResponse.statusCode) {
+            struct AssociationResponse: Codable {
+                let message: String
+                let image_base64: String?
+                let mime_type: String?
+            }
+            let decoded = try JSONDecoder().decode(AssociationResponse.self, from: data)
+            return (decoded.image_base64, decoded.mime_type)
+        } else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
             throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)
         }

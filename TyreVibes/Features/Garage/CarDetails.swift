@@ -1,12 +1,23 @@
 import SwiftUI
 
+extension String {
+    func toUIImage() -> UIImage? {
+        guard let data = Data(base64Encoded: self),
+              let image = UIImage(data: data) else {
+            return nil
+        }
+        return image
+    }
+}
+
 struct CarDetailsView: View {
-    
+    let vehicle: VehicleResponse
     @Environment(\.dismiss) private var dismiss
     
     
+    
     var body: some View {
-        NavigationStack {
+        
             ZStack {
                 Color.customBackgroundColor.ignoresSafeArea()
 
@@ -18,27 +29,62 @@ struct CarDetailsView: View {
                             Image("ArrowIcon")
                         }
                         Spacer()
+                        
+                        
+                        VStack {
+                            Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
+                                .font(.customFont(size: 24, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        
+                        Spacer()
                     }
 
 
-                    VStack {
-                        Text("Audi Q3")
-                            .font(.customFont(size: 24, weight: .semibold))
-                    }
                     
+                                
                     VStack(alignment: .leading, spacing: 20) {
+                            
                         // Car Image
-                        Image("audiQ3")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
+                        if let base64String = vehicle.image?.imageBase64,
+                           let uiImage = base64String.toUIImage() {
+                            let trimmed = uiImage.trimmedTransparentPixels(threshold: 5)
+
+                            Image(uiImage: trimmed)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 50)
+                                .padding(.horizontal, 30)
+                        } else {
+                            Image("placeholder") // fallback se Base64 non valida
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity)
+                        }
                             //.padding(.horizontal)
 
                         // Details Section
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Audi Q3 Details")
-                                .font(.customFont(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                            HStack {
+                                Text("Details")
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                
+                                Button(action: {
+                                    // Azione da eseguire
+                                }) {
+                                    Image(systemName: "info.circle")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 20, height: 20)
+                                        .foregroundColor(.white)
+                                        .padding(.leading, 4)
+                                }
+ 
+                            }
+                            
 
                             // Details Grid
                             LazyVGrid(columns: [
@@ -46,14 +92,14 @@ struct CarDetailsView: View {
                                 GridItem(.flexible(), alignment: .leading),
                                 GridItem(.flexible(), alignment: .leading)
                             ], spacing: 10) {
-                                DetailItem(label: "Make", value: "Audi")
-                                DetailItem(label: "Year", value: "2024")
-                                DetailItem(label: "Color", value: "Orange")
-                                DetailItem(label: "Model", value: "Q3")
-                                DetailItem(label: "Engine", value: "40 TFSI")
-                                DetailItem(label: "License No", value: "FNB41WA")
-                                DetailItem(label: "Fuel Type", value: "Gasoline")
-                                DetailItem(label: "Horsepower", value: "154 CV")
+                                DetailItem(label: "Make", value: vehicle.vehicle.make?.uppercased() ?? "-")
+                                DetailItem(label: "Year", value: vehicle.plate?.year.map { "\($0)" } ?? "-")
+                                DetailItem(label: "Color", value: vehicle.vehicle.color?.uppercased() ?? "-")
+                                DetailItem(label: "Model", value: vehicle.vehicle.model?.uppercased() ?? "-")
+                                DetailItem(label: "Engine", value: vehicle.vehicle.engine?.uppercased() ?? "-")
+                                DetailItem(label: "License No", value: vehicle.plate?.plateNumber.uppercased() ?? "-")
+                                DetailItem(label: "Fuel Type", value: vehicle.vehicle.fuelType?.uppercased() ?? "-")
+                                DetailItem(label: "Horsepower", value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
                             }
                         }
                         .padding()
@@ -63,7 +109,7 @@ struct CarDetailsView: View {
                         Text("Add Your Tyres")
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
-                            //.padding(.horizontal)
+                            .padding(.horizontal, 5)
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 20) {
@@ -92,14 +138,15 @@ struct CarDetailsView: View {
                         }
                     }
                 }
-                .preferredColorScheme(.dark)
                 .padding(.horizontal,24)
                 
             }
-        }
+        
         
         
     }
+    
+    
     
     
 }
@@ -125,8 +172,4 @@ struct DetailItem: View {
             }
         }
     }
-}
-
-#Preview {
-    CarDetailsView()
 }

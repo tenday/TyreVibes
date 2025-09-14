@@ -77,8 +77,12 @@ struct PlateTextField: UIViewRepresentable {
 }
 
 struct EnterLicensePlateView: View {
+    var onDismiss: (() -> Void)? = nil
+    var onFullScreenDismiss: (() -> Void)? = nil
+
     @State private var licensePlate: String = ""
     @Environment(\.dismiss) private var dismiss
+    
 
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
@@ -184,7 +188,7 @@ struct EnterLicensePlateView: View {
                                 let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
                                 if data.make == ""  {
                                     licensePlate = ""
-                                    self.errorMessage = "Targa errata!"
+                                    self.errorMessage = "Targa inserita non trovata, si prega di riprovare"
                                     self.showErrorAlert = true
                                     self.isLoadingDetails = false
                                     return
@@ -194,12 +198,25 @@ struct EnterLicensePlateView: View {
                                 self.vehicleImage = data.vehicleImage
                                 licensePlate = ""
                                 self.navigateToCheckDetails = true
+                            }
+                            catch let apiError as PlateAPIError {
+                                switch apiError {
+                                case .alreadyInGarage:
+                                    self.errorMessage = "Questa targa è già presente nel tuo garage."
+                                default:
+                                    self.errorMessage = apiError.localizedDescription
+                            }
+                                self.showErrorAlert = true
+                                licensePlate = ""
+                                
                             } catch {
                                 self.errorMessage = error.localizedDescription
                                 self.showErrorAlert = true
                             }
                             self.isLoadingDetails = false
                         }
+                        
+                        self.showErrorAlert = false
                         
                     }) {
                         if  isLoadingDetails {
@@ -252,7 +269,13 @@ struct EnterLicensePlateView: View {
                     }
                 )
                 .navigationDestination(isPresented: $navigateToCheckDetails) {
-                    CheckDetailsView(vehicleImage: vehicleImage, plateData: data ?? nil, isContinueEnabled: .constant(false), viewModel: ConfirmDetailsViewModel())
+                    CheckDetailsView(
+                        onFullScreenDismiss: onFullScreenDismiss, // 👈 propaghi qui!
+                        vehicleImage: vehicleImage,
+                        plateData: data,
+                        isContinueEnabled: .constant(false),
+                        viewModel: ConfirmDetailsViewModel()
+                    )
                 }
                 .navigationDestination(isPresented: $showConfirmDetailsScreen) {
                     ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true, viewModel: ConfirmDetailsViewModel() )

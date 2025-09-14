@@ -20,17 +20,21 @@ struct BottomNavigationView: View {
             // aggiungiamo solo l'eccedenza della barra sopra la home indicator.
 
             ZStack {
-                // AREA CONTENUTO
+                // AREA CONTENUTOf
                 Group {
                     switch selectedIndex {
                     case 0:
                         GarageScreen()
                     case 1:
-                        ReportsView()
+                        Report()
                     case 2:
                         CalendarScreen()
-                    default:
+                    case 3:
                         SettingsScreen()
+                    case 4:
+                        SettingsScreen()
+                    default:
+                        GarageScreen()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -66,7 +70,7 @@ struct BottomNavigationView: View {
                       )
                     
                     
-                    HStack(spacing: 0) {
+                    HStack(spacing: -40) {
                         // Left side
                         Button(action: {
                             withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 0 }
@@ -83,12 +87,11 @@ struct BottomNavigationView: View {
                         }) {
                             TabItem(iconName: iconNames[1], isSelected: selectedIndex == 1, namespace: animationNamespace)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .contentShape(Rectangle())
+                                //.contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
-                        Spacer().frame(width: 84)
+                        Spacer().frame(width: 80)
 
                         // Right side
                         Button(action: {
@@ -112,10 +115,16 @@ struct BottomNavigationView: View {
                         .buttonStyle(.plain)
                     }
 
-                    // Pulsante centrale flottante (azione scan)
-                    CenterActionButton(action: {
-                        // TODO: collega all'azione di scan targa o alla view desiderata
-                    })
+                    // Pulsante centrale flottante sostituito con Button come TabItem
+                    Button(action: {
+                        withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 4 }
+                    }) {
+                        TabItem(iconName: "Archi", isSelected: selectedIndex == 4, namespace: animationNamespace)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                     .offset(y: -50)
                 }
                 .frame(width: width, height: barH)
@@ -139,25 +148,53 @@ struct TabItem: View {
     var body: some View {
         ZStack {
             if isSelected {
-                // Cerchio con gradiente che appare dietro l'icona selezionata
                 Circle()
                     .fill(LinearGradient(
                         stops: [
-                        Gradient.Stop(color: Color(red: 0.97, green: 0.56, blue: 0.09), location: 0.00),
-                        Gradient.Stop(color: Color(red: 1, green: 0.3, blue: 0.51), location: 1.00),
+                            Gradient.Stop(color: Color(red: 0.97, green: 0.56, blue: 0.09), location: 0.00),
+                            Gradient.Stop(color: Color(red: 1, green: 0.3, blue: 0.51), location: 1.00),
                         ],
                         startPoint: UnitPoint(x: 0.85, y: 0.22),
                         endPoint: UnitPoint(x: 0.09, y: 0.41)
                     ))
                     .frame(width: 48, height: 48)
                     .matchedGeometryEffect(id: "selected_tab", in: namespace)
+                    .overlay(
+                        iconName == "Archi"
+                        ? Image("Archi")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 50, height: 50)
+                        : nil
+                    )
+            } else {
+                if iconName == "Archi" {
+                    Circle()
+                        .fill(Color.init(hex: "1F1F1F"))
+                        .frame(width: 70, height: 70)
+                        .overlay(
+                            Image("Archi")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 50, height: 50)
+                        )
+                } else {
+                    Image(iconName)
+                        .renderingMode(.template)
+                        .font(.system(size: 22))
+                        .foregroundColor(.gray)
+                        .frame(width: 24, height: 24, alignment: .center)
+                }
             }
-
-            Image(iconName)
-                .renderingMode(.template)
-                .font(.system(size: 22))
-                .foregroundColor(isSelected ? .white : .gray)
-                .frame(width: 24, height: 24, alignment: .center)
+            
+            // Per le icone non "Archi" selezionate, metti sopra l'immagine bianca
+            if isSelected && iconName != "Archi" {
+                Image(iconName)
+                    .renderingMode(.template)
+                    .font(.system(size: 22))
+                    .foregroundColor(.white)
+                    .frame(width: 24, height: 24, alignment: .center)
+            }
         }
     }
 }

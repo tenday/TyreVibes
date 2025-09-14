@@ -22,7 +22,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
 
     @Published var formFocus: LoginFormFocus?
 
-    @AppStorage("useFaceID") private var useFaceID: Bool = false
+    @AppStorage("useFaceID") var useFaceID: Bool = false
 
     private let authService = AuthService()
 

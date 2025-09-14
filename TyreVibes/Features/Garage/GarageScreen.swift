@@ -1,4 +1,6 @@
+
 import SwiftUI
+import UIKit
 
 
 
@@ -7,21 +9,26 @@ struct GarageScreen: View {
     @State private var isPresentingSheet = false
     @State private var showScanPlate = false
     @State private var showEnterPlate = false
+
     
     @StateObject private var viewModel = GarageViewModel()
     
-    var filteredCars: [Car] {
-        if searchText.isEmpty {
-            return viewModel.cars
-        } else {
-            return viewModel.cars.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText) ||
-                $0.plateCode.localizedCaseInsensitiveContains(searchText) ||
-                $0.make.localizedCaseInsensitiveContains(searchText) ||
-                $0.model.localizedCaseInsensitiveContains(searchText) ||
-                $0.year.localizedCaseInsensitiveContains(searchText) ||
-                $0.engine.localizedCaseInsensitiveContains(searchText)
-            }
+    var filteredCars: [VehicleResponse] {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return viewModel.vehicles }
+        return Array(viewModel.vehicles).filter { vehicle in
+            let haystacks: [String] = [
+                vehicle.plate?.plateNumber,
+                vehicle.vehicle.make,
+                vehicle.vehicle.model,
+                vehicle.vehicle.modelDetail,
+                vehicle.plate?.registrationDate,
+                vehicle.vehicle.gearbox,
+                vehicle.vehicle.version,
+                vehicle.vehicle.fuelType,
+                vehicle.vehicle.color,
+            ].compactMap { $0 }
+            return haystacks.contains { $0.localizedCaseInsensitiveContains(q) }
         }
     }
 
@@ -185,12 +192,7 @@ struct GarageScreen: View {
                         VStack(spacing: 16) {
                             Button(action: {
                                 isPresentingSheet = false
-                                // Navigate to ScanPlate view
-                                // This assumes you have a ScanPlateView to present or push
-                                // For modal presentation:
                                 showScanPlate = true
-                                // For NavigationLink:
-                                // navigationPath.append("ScanPlate")
                             }) {
                                 HStack {
                                     Image(systemName: "camera")
@@ -295,15 +297,24 @@ struct GarageScreen: View {
                         .padding(.horizontal, 24)
                         
 
-                        Spacer()
+                        //Spacer()
                     }
                     .frame(maxWidth: .infinity)
                     //.background(Color.customBackgroundColor)
                     .presentationDetents([.fraction(0.45)])
                 }
-                
+                NavigationStack {
                 List {
-                    if viewModel.cars.isEmpty {
+                    if viewModel.isLoading {
+                        ForEach(0..<2, id: \.self) { _ in
+                                    CarCardShimmer()
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+
+                                }
+
+                    }
+                    else if viewModel.vehicles.isEmpty {
                         Text("No veichles found,pls add a new one")
                             .font(.customFont(size: 18, weight: .bold))
                             .foregroundColor(.gray)
@@ -311,46 +322,75 @@ struct GarageScreen: View {
                             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
-
-                    ForEach(filteredCars, id: \.id) { car in
-                        SwipeableCarRow(car: car) {
-                            delete(car)
+                    else {
+                        ForEach(filteredCars, id: \.vehicle.id) { car in
+                            SwipeableCarRow(vehicle: car) {
+                                delete(car)
+                            }
                         }
                         .padding(.horizontal, 24)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 0))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
+                    
+                    
                 }
                 .listStyle(.plain)
                 .scrollIndicators(.hidden)
                 .scrollContentBackground(.hidden)
-
-                .background(Color.customBackgroundColor)
                 .padding(.top,16)
+                .frame(maxHeight: .infinity)
+                }
+                    
+                    
+                }
+                .refreshable {
+                    await viewModel.fetchCars()
+                }
                
             }
             .fullScreenCover(isPresented: $showScanPlate) {
-                ScanPlateView()
+                ScanPlateView(
+                    onFullScreenDismiss: {
+                        showScanPlate = false
+                        Task { await viewModel.fetchCars() }
+                    }
+                )
             }
-            .fullScreenCover(isPresented: $showEnterPlate) {
-                EnterLicensePlateView()
+
+            .fullScreenCover(isPresented: $showEnterPlate, onDismiss: {
+            }) {
+                EnterLicensePlateView(
+                    onFullScreenDismiss: {
+                        showEnterPlate = false
+                        Task { await viewModel.fetchCars() }
+                    }
+                )
             }
             .edgesIgnoringSafeArea(.bottom)
             .onAppear {
-                viewModel.fetchCars()
+                // fetchCars is async but already launches its own Task internally.
+                // If you refactor fetchCars to not spawn a Task, consider using:
+                // Task { await viewModel.fetchCars() }
+                Task { await viewModel.fetchCars()}
             }
         }
-    }
-    private func delete(_ car: Car) {
-        viewModel.deleteCar(car)
+    
+    private func delete(_ v: VehicleResponse) {
+        viewModel.deleteCar(v.vehicle)
     }
 }
+   
+
 
 
 struct CarCardView: View {
-    let car: Car
+    let v: VehicleResponse
+    @State private var showDetails = false
+
     
     var body: some View {
         GeometryReader { geo in
@@ -372,13 +412,13 @@ struct CarCardView: View {
                     HStack {
                         VStack() {
                             HStack(spacing: 12) {
-                                Text(car.name)
+                                Text(v.vehicle.model ?? "")
                                     .foregroundColor(.black)
                                     .font(.customFont(size: 16, weight: .semibold))
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
 
-                                Text(car.plateCode)
+                                Text(v.plate?.plateNumber ?? "")
                                     .font(.customFont(size: 12, weight: .semibold))
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
@@ -397,7 +437,7 @@ struct CarCardView: View {
                             .buttonStyle(.plain)
 
                             Button(action: {
-                                
+                                showDetails = true
                             }) {
                                 Image("detailsIcon")
                                     .font(.system(size: 16))
@@ -410,107 +450,106 @@ struct CarCardView: View {
                     .padding(.top, w * -0.07 )
 
                     HStack(alignment: .center, spacing: w * 0.04) {
-                        Image(car.imageName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: w * 0.57)
+                        if let rawBase64 = v.image?.imageBase64,
+                           let data = Data(base64Encoded: rawBase64),
+                           let rawImage = UIImage(data: data) {
+                            
+                            let trimmed = rawImage.trimmedTransparentPixels(threshold: 5)
+
+                            Image(uiImage: trimmed)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: w * 0.57)
+                        }
 
                         // Technical Specs section
                         VStack(alignment: .leading, spacing: 12) {
+                            
+                            Text("Technical Specs")
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(Color.black)
 
                             VStack(alignment: .leading, spacing: 8) {
-                                SpecRow(label: "Make:", value: car.make)
-                                SpecRow(label: "Model:", value: car.model)
-                                SpecRow(label: "Year:", value: car.year)
-                                SpecRow(label: "Engine:", value: car.engine)
+                                SpecRow(label: "Make:", value: v.vehicle.make ?? "")
+                                SpecRow(
+                                    label: "Model",
+                                    value: v.vehicle.model?
+                                        .components(separatedBy: CharacterSet.decimalDigits)
+                                        .first?
+                                        .uppercased() ?? ""
+                                )
+                                SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
+                                SpecRow(label: "Engine:", value: v.vehicle.engine?.uppercased() ?? "")
                             }
                         }
                         .padding(.trailing, w * 0.04)
                     }
                 }
+
+            }
+            .navigationDestination(isPresented: $showDetails) {
+                CarDetailsView(vehicle: v)
+                    .navigationBarBackButtonHidden(true)
+                    .background(InteractivePopGestureEnabler())
             }
         }
         .aspectRatio(2.05, contentMode: .fit)
     }
 }
 
-// Custom swipeable row for car card with delete action revealed behind the card
+// Custom swipeable row for car card, swipes left but does not reveal delete or trigger deletion
 struct SwipeableCarRow: View {
-    let car: Car
+    let vehicle: VehicleResponse
     let onDelete: () -> Void
 
     @State private var offsetX: CGFloat = 0
     @State private var isDragging = false
     @State private var offsetStart: CGFloat = 0
 
-    private let revealWidth: CGFloat = 110.0   // quanto resta aperto dopo lo swipe
+    private let revealWidth: CGFloat = 180.0   // quanto resta aperto dopo lo swipe
     private let deleteTrigger: CGFloat = 180.0 // soglia per eliminazione con full swipe
 
     var body: some View {
-        ZStack {
-            // Background dietro la card: pulsante "Elimina" allineato a destra, nell'area della shadow
-            HStack {
-                Spacer()
-                Button(action: {
-                    withAnimation(.spring()) { onDelete() }
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("Elimina")
-                            .font(.customFont(size: 14, weight: .semibold))
+        // Only the card, no background or delete button
+        CarCardView(v: vehicle)
+            .offset(x: offsetX)
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8, coordinateSpace: .local)
+                    .onChanged { value in
+                        // Handle only horizontal drag; let verticals go to List
+                        let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
+                        guard isHorizontal else { return }
+                        if !isDragging { isDragging = true; offsetStart = offsetX }
+                        let proposed = offsetStart + value.translation.width
+                        // constrain between 0 and -revealWidth
+                        offsetX = min(0, max(-revealWidth, proposed))
                     }
-                    .foregroundColor(.white)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.red)
-                            .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
-                    )
-                }
-                .padding(.trailing, 24) // allineato con il padding orizzontale delle card
-            }
-
-            // Card che scorre a sinistra per rivelare il background
-            CarCardView(car: car)
-                .offset(x: offsetX)
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 8, coordinateSpace: .local)
-                        .onChanged { value in
-                            // Gestisci solo drag orizzontali; lascia i verticali alla List
-                            let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
-                            guard isHorizontal else { return }
-                            if !isDragging { isDragging = true; offsetStart = offsetX }
-                            let proposed = offsetStart + value.translation.width
-                            // vincola tra 0 e -revealWidth
-                            offsetX = min(0, max(-revealWidth, proposed))
-                        }
-                        .onEnded { value in
-                            let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
-                            guard isHorizontal else { isDragging = false; return }
-                            let dx = value.translation.width
-                            let opened = -min(0, max(-revealWidth, offsetStart + dx))
-                            if opened > deleteTrigger {
-                                withAnimation(.spring()) { onDelete() }
-                            } else if opened > revealWidth * 0.6 {
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = -revealWidth }
-                            } else {
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = 0 }
+                    .onEnded { value in
+                        let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
+                        guard isHorizontal else { isDragging = false; return }
+                        let dx = value.translation.width
+                        let opened = -min(0, max(-revealWidth, offsetStart + dx))
+                        if opened >= deleteTrigger {
+                            withAnimation(.spring()) {
+                                onDelete()
                             }
-                            isDragging = false
-                        }
-                )
-                .simultaneousGesture(
-                    TapGesture().onEnded {
-                        // Se è aperto, tocco sulla card la richiude
-                        if offsetX != 0 {
+                        } else if opened > revealWidth * 0.6 {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = -revealWidth }
+                        } else {
                             withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = 0 }
                         }
+                        isDragging = false
                     }
-                )
-        }
+            )
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    // If open, tap closes the card
+                    if offsetX != 0 {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = 0 }
+                    }
+                }
+            )
     }
 }
 

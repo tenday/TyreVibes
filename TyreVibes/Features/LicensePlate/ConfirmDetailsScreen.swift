@@ -1,15 +1,17 @@
 import SwiftUI
 
 struct ConfirmDetailsView: View {
+    var onFullScreenDismiss: (() -> Void)? = nil
     let plateData: PlateData?
     let manualEntryEnabled : Bool
     @State private var isContinueEnabled: Bool = false
     @State private var selectedColor: Color = .black
     @ObservedObject var viewModel: ConfirmDetailsViewModel
-    init(plateData: PlateData?, manualEntryEnabled: Bool, viewModel: ConfirmDetailsViewModel) {
+    init(plateData: PlateData?, manualEntryEnabled: Bool, viewModel: ConfirmDetailsViewModel, onFullScreenDismiss: (() -> Void)? = nil) {
         self.plateData = plateData
         self.manualEntryEnabled = manualEntryEnabled
         self._viewModel = ObservedObject(wrappedValue: viewModel)
+        self.onFullScreenDismiss = onFullScreenDismiss
     }
     @Environment(\.dismiss) private var dismiss
     
@@ -128,7 +130,17 @@ struct ConfirmDetailsView: View {
                 // Confirm button with navigationDestination
                 Button(action: {
                     guard let plate = plateData else { return }
-                    viewModel.savePlate(plateData: plate, color: ColorPickerView(selectedColor: $selectedColor).colorName(for: selectedColor))
+                    if LicensePlateReader.exists, !plate.plate.isEmpty {
+                        Task {
+                            await viewModel.associateVehicleWithUser(vehicleId: plate.vehicleId ?? 0)
+                        }
+                    }
+                    else {
+                        Task {
+                            await viewModel.savePlate(plateData: plate, color: ColorPickerView(selectedColor: $selectedColor).colorName(for: selectedColor), angle: 23)
+                            }
+                    }
+                    
                 }) {
                     if viewModel.isLoading {
                         Text("")
@@ -158,9 +170,12 @@ struct ConfirmDetailsView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 3)
                 .navigationDestination(isPresented: $navigateToCheckDetails) {
-                    CheckDetailsView(plateData: plateData,
-                                     isContinueEnabled: $isContinueEnabled,
-                                     viewModel: viewModel)
+                    CheckDetailsView(
+                        onFullScreenDismiss: onFullScreenDismiss,
+                        plateData: plateData,
+                        isContinueEnabled: $isContinueEnabled,
+                        viewModel: viewModel
+                    )
                 }
 
             }

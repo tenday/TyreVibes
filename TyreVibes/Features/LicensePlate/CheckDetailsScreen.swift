@@ -2,13 +2,16 @@ import SwiftUI
 
 struct CheckDetailsView: View {
     
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) private var navigationDismiss
+    var onFullScreenDismiss: (() -> Void)? = nil
+    
     var vehicleImage: UIImage?
     var plateData: PlateData?
     @State private var displayImage: UIImage?
     @State private var dateString: String = ""
     @State private var showConfirmDetailsScreen: Bool = false
     @State private var showCheckmark: Bool = false
+    @State private var goToGarage: Bool = false
     @Binding var isContinueEnabled: Bool
     @ObservedObject var viewModel: ConfirmDetailsViewModel
     var body: some View {
@@ -21,7 +24,7 @@ struct CheckDetailsView: View {
                 HStack {
                     if !isContinueEnabled  {
                         Button(action: {
-                           dismiss()
+                           navigationDismiss()
                         }) {
                             Image("ArrowIcon")
                             
@@ -128,9 +131,14 @@ struct CheckDetailsView: View {
                 
                 Spacer()
                 
-                // Continue button
                 Button(action: {
-                    //
+                    // Se ho una closure per chiudere la fullScreenCover (Scan/Enter), usala per tornare al Garage con animazione dall’alto al basso.
+                    if let closeFullScreen = onFullScreenDismiss {
+                        closeFullScreen()
+                    } else {
+                        // Altrimenti fai pop della navigation (caso di push da ConfirmDetailsView)
+                        navigationDismiss()
+                    }
                 }) {
                     Text("Continue")
                         .font(.customFont(size: 18, weight: .bold))
@@ -148,11 +156,19 @@ struct CheckDetailsView: View {
         }
         .navigationDestination(isPresented: $showConfirmDetailsScreen) {
             if let plateData = plateData {
-                ConfirmDetailsView(plateData: plateData, manualEntryEnabled: false, viewModel: viewModel)
-                    .navigationBarBackButtonHidden(true)
+                ConfirmDetailsView(
+                    plateData: plateData,
+                    manualEntryEnabled: false,
+                    viewModel: viewModel,
+                    onFullScreenDismiss: onFullScreenDismiss
+                )
+                .navigationBarBackButtonHidden(true)
             } else {
                 Text("Nessun dato disponibile")
             }
+        }
+        .navigationDestination(isPresented: $goToGarage) {
+            GarageScreen()
         }
         .navigationBarBackButtonHidden(true)
         .onAppear {

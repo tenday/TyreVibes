@@ -190,7 +190,7 @@ struct CameraPreview: UIViewControllerRepresentable {
                    !self.hasFiredDetection {
                     self.hasFiredDetection = true
                     DispatchQueue.main.async {
-                        self.captureSession.stopRunning()
+                        //self.captureSession.stopRunning()
                         self.onPlateDetected?(stablePlate)
                     }
                 }
@@ -463,7 +463,8 @@ struct CameraPreview: UIViewControllerRepresentable {
 
 struct ScanPlateView: View {
     var onDetected: ((String) -> Void)? = nil
-    @Environment(\.dismiss) private var dismiss
+    var onFullScreenDismiss: (() -> Void)? = nil
+    @Environment(\.dismiss) private var navigationDismiss
     @State private var plateText: String = ""
     @State private var isLoadingPlateData: Bool = false
     @State private var navigateToCheckDetails: Bool = false
@@ -494,7 +495,7 @@ struct ScanPlateView: View {
                             .font(.customFont(size: 24, weight: .semibold))
                             .foregroundColor(.white)
                         Spacer()
-                        Button(action: { dismiss() }) {
+                        Button(action: { navigationDismiss() }) {
                             Image(systemName: "xmark")
                                 .resizable()
                                 .scaledToFit()
@@ -531,13 +532,6 @@ struct ScanPlateView: View {
                     Spacer()
                     // Overlay guidato per l'utente
                     VStack(spacing: 0) {
-                        // Testo guida sopra il riquadro ROI
-                        if plateText.isEmpty {
-                            Text("Allinea la targa all’interno del riquadro")
-                                .font(.customFont(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.bottom, 16)
-                        }
                         // ZStack con bordo animato attorno alla ROI
                         ZStack {
                             if plateText.isEmpty {
@@ -569,7 +563,7 @@ struct ScanPlateView: View {
                         }
                         // Testo dinamico sotto al riquadro
                         if isLoadingPlateData {
-                            Text("Rimani fermo")
+                            Text("Hold On")
                                 .font(.customFont(size: 16, weight: .medium))
                                 .foregroundColor(.red)
                                 .padding(.top, 8)
@@ -627,6 +621,7 @@ struct ScanPlateView: View {
             .preferredColorScheme(.dark)
             .navigationDestination(isPresented: self.$navigateToCheckDetails) {
                 CheckDetailsView(
+                    onFullScreenDismiss: { onFullScreenDismiss?() },
                     vehicleImage: self.vehicleImage,
                     plateData: self.data,
                     isContinueEnabled: .constant(false),
@@ -641,11 +636,10 @@ struct ScanPlateView: View {
         DispatchQueue.global().async {
             // Simulazione ritardo rete
             sleep(2)
-            let scrapedInfo = "Dati veicolo per \(plate) ottenuti"
             DispatchQueue.main.async {
                 isLoadingPlateData = false
                 // Puoi usare scrapedInfo o passarla al view model
-                print(scrapedInfo)
+                //print(scrapedInfo)
                 self.onDetected?(plate)
             }
         }

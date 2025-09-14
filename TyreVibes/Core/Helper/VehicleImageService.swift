@@ -6,7 +6,7 @@ import Vision
 class VehicleImageService {
     struct VehicleImageOptions {
         var customer: String = "img"
-        var angle: Int = 23
+        var angle: Int = 12
         var fileType: String = "webp"
         var safeMode: Bool = false
         var origin: String = "https://docs.imagin.studio"
@@ -52,17 +52,17 @@ class VehicleImageService {
                                   options: VehicleImageOptions = VehicleImageOptions(),
                                   plate: String,
                                   completion: @escaping (Result<UIImage, Error>) -> Void) {
-        let cacheKey = NSNumber(value: angle)
-        if let cached = cache.object(forKey: cacheKey) {
-            completion(.success(cached))
-            return
-        }
+      //  let cacheKey = NSNumber(value: angle)
+      //  if let cached = cache.object(forKey: cacheKey) {
+      //      completion(.success(cached))
+      //      return
+      //  }
         var opt = options
         opt.angle = angle
         fetchVehicleImage(make: make, modelFamily: modelFamily, year: year, paintId: paintId, options: opt, plate: plate) { result in
-            if case .success(let img) = result {
-                cache.setObject(img, forKey: cacheKey)
-            }
+            //if case .success(let img) = result {
+            //cache.setObject(img, forKey: cacheKey)
+           // }
             completion(result)
         }
     }
@@ -106,24 +106,27 @@ class VehicleImageService {
                 completion(.failure(NSError(domain: "VehicleImageService", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid image data"])))
                 return
             }
-            if let ciImage = CIImage(image: image) {
-                do {
-                    let model = try VNCoreMLModel(for: LicensePlateDetector().model)
-                    let request = VNCoreMLRequest(model: model) { request, error in
-                        var annotatedImage = image
-                        if let results = request.results as? [VNRecognizedObjectObservation] {
-                            annotatedImage = Self.drawBoundingBoxes(on: image, results: results,plate: plate)
-                        }
-                        completion(.success(annotatedImage))
-                    }
-                    let handler = VNImageRequestHandler(ciImage: ciImage, options: [:])
-                    try handler.perform([request])
-                } catch {
-                    completion(.failure(error))
-                }
-            } else {
-                completion(.success(image)) // fallback se non riesce a creare CIImage
-            }
+            
+            completion(.success(image))
+                
+         //   if let ciImage = CIImage(image: image) {
+         //       do {
+         //           let model = try VNCoreMLModel(for: LicensePlateDetector().model)
+         //           let request = VNCoreMLRequest(model: model) { request, error in
+         //               var annotatedImage = image
+         //               if let results = request.results as? [VNRecognizedObjectObservation] {
+         //                   annotatedImage = Self.drawBoundingBoxes(on: image, results: results,plate: plate)
+         //               }
+         //               completion(.success(annotatedImage))
+         //           }
+         //           let handler = VNImageRequestHandler(ciImage: ciImage, options: [:])
+         //           try handler.perform([request])
+         //       } catch {
+                 //   completion(.failure(error))
+              //  }
+         //   } else {
+          //      completion(.success(image)) // fallback se non riesce a creare CIImage
+          //  }
         }
         task.resume()
     }
@@ -179,49 +182,62 @@ class VehicleImageService {
     }
     // Utility per disegnare i bounding box delle targhe rilevate
     private static func drawBoundingBoxes(on image: UIImage, results: [VNRecognizedObjectObservation], plate: String) -> UIImage {
-        UIGraphicsBeginImageContextWithOptions(image.size, false, 0.0)
+        // Imposta la dimensione finale
+        let targetSize = CGSize(width: 280, height: 180)
+        UIGraphicsBeginImageContextWithOptions(targetSize, false, 0.0)
         let context = UIGraphicsGetCurrentContext()!
 
-        // Disegna l'immagine originale
-        image.draw(in: CGRect(origin: .zero, size: image.size))
+        // Calcola aspectFit: dimensione di disegno e offset centrato
+        let imageSize = image.size
+        let scale = min(targetSize.width / imageSize.width, targetSize.height / imageSize.height)
+        let drawSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let drawOrigin = CGPoint(x: (targetSize.width - drawSize.width) / 2,
+                                 y: (targetSize.height - drawSize.height) / 2)
 
-        // Configura stile box
+        // Disegna l’immagine preservando il rapporto
+        image.draw(in: CGRect(origin: drawOrigin, size: drawSize))
+
+        // Stile box
         context.setStrokeColor(UIColor.red.cgColor)
         context.setLineWidth(1.0)
 
         for r in results {
-            let boundingBox = r.boundingBox
-            
-            let width = image.size.width * boundingBox.size.width
-            let height = image.size.height * boundingBox.size.height
-            
-            let x = image.size.width * boundingBox.origin.x
-            let y = image.size.height * (1 - boundingBox.origin.y - boundingBox.size.height)
-            
-            var rect = CGRect(x: x, y: y, width: width, height: height)
+            let bb = r.boundingBox // normalizzato (0..1) in coordinate Vision (origine in basso a sinistra)
 
-            // Espansione proporzionale del box (10% larghezza, 20% altezza)
-            let expandFactorX: CGFloat = 0.1
-            let expandFactorY: CGFloat = 0.2
-            rect = rect.insetBy(dx: -width * expandFactorX,
-                                dy: -height * expandFactorY)
+            // Rettangolo in coordinate "pixel" dell'immagine originale
+            let rectInImage = CGRect(
+                x: bb.origin.x * imageSize.width,
+                y: (1 - bb.origin.y - bb.height) * imageSize.height,
+                width: bb.width * imageSize.width,
+                height: bb.height * imageSize.height
+            )
+
+            // Proietta nel contesto tenendo conto di scala uniforme e offset (letterboxing)
+            let rect = CGRect(
+                x: drawOrigin.x + rectInImage.origin.x * scale,
+                y: drawOrigin.y + rectInImage.origin.y * scale,
+                width: rectInImage.width * scale,
+                height: rectInImage.height * scale
+            )
+
+            // Espansione proporzionale
+            let expandFactorX: CGFloat = 0.02
+            let expandFactorY: CGFloat = 0.05
+            let expanded = rect.insetBy(dx: -rect.width * expandFactorX,
+                                        dy: -rect.height * expandFactorY)
 
             context.setFillColor(UIColor.white.cgColor)
-            context.fill(rect)
+            context.fill(expanded)
 
-            // Bordo nero sottile
             context.setStrokeColor(UIColor.black.cgColor)
             context.setLineWidth(1.0)
-            context.stroke(rect)
+            context.stroke(expanded)
 
-            // Testo della targa
+            // --- Testo e icona ---
             let plateText = plate
-            // Dimensioni icona proporzionali
-            let iconSize = CGSize(width: rect.height * 0.6, height: rect.height * 0.6)
-
-            // Calcolo dinamico della dimensione del font in base alla larghezza disponibile
-            let availableWidth = rect.width - iconSize.width - 24 // margini e spazio tra icona e testo
-            var fontSize = rect.height * 0.5
+            let iconSize = CGSize(width: expanded.height * 0.6, height: expanded.height * 0.6)
+            let availableWidth = expanded.width - iconSize.width - 24
+            var fontSize = expanded.height * 0.5
             var attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.monospacedSystemFont(ofSize: fontSize, weight: .bold),
                 .foregroundColor: UIColor.black
@@ -233,11 +249,10 @@ class VehicleImageService {
                 textSize = plateText.size(withAttributes: attributes)
             }
 
-
             if let icon = UIImage(named: "LogoImage") {
                 let iconRect = CGRect(
-                    x: rect.minX + 8,
-                    y: rect.midY - iconSize.height / 2,
+                    x: expanded.minX + 8,
+                    y: expanded.midY - iconSize.height / 2,
                     width: iconSize.width,
                     height: iconSize.height
                 )
@@ -245,15 +260,15 @@ class VehicleImageService {
 
                 let textRect = CGRect(
                     x: iconRect.maxX + 8,
-                    y: rect.midY - textSize.height / 2,
+                    y: expanded.midY - textSize.height / 2,
                     width: textSize.width,
                     height: textSize.height
                 )
                 plateText.draw(in: textRect, withAttributes: attributes)
             } else {
                 let textRect = CGRect(
-                    x: rect.midX - textSize.width / 2,
-                    y: rect.midY - textSize.height / 2,
+                    x: expanded.midX - textSize.width / 2,
+                    y: expanded.midY - textSize.height / 2,
                     width: textSize.width,
                     height: textSize.height
                 )

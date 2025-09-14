@@ -1,6 +1,8 @@
 import SwiftUI
+import LocalAuthentication
 
 struct CreationSuccessScreen: View {
+    @StateObject private var viewModel = LoginViewModel()
     @Environment(\.presentationMode) var presentationMode
     @State private var goHome = false
     
@@ -40,7 +42,7 @@ struct CreationSuccessScreen: View {
                 
                 // Pulsante Get Started
                 Button(action: {
-                    goHome = true
+                    authenticateUser()
                 }) {
                     Text("Get Started")
                         .font(.customFont(size: 18, weight: .semibold))
@@ -59,132 +61,157 @@ struct CreationSuccessScreen: View {
                 .navigationBarBackButtonHidden(true)
         }
     }
-}
-
-// Animazione pneumatico per TyreVibes
-struct SuccessAnimationView: View {
-    @State private var showTyre = false
-    @State private var tyreRotation: Double = 0
-    @State private var showCheckmark = false
-    @State private var showSparks = false
-    @State private var bounceEffect = false
     
-    var body: some View {
-        ZStack (alignment: .center){
-            // Pneumatico esterno (cerchio nero)
-            Circle()
-                .stroke(Color.black, lineWidth: 25)
-                .frame(width: 140, height: 140)
-                .scaleEffect(showTyre ? 1.0 : 0.3)
-                .rotationEffect(.degrees(tyreRotation))
-                .opacity(showTyre ? 1.0 : 0.0)
-                .animation(.easeOut(duration: 0.6), value: showTyre)
+    func authenticateUser() {
+        let context = LAContext()
+        var error: NSError?
+        
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let reason = "Please authenticate to continue"
             
-            // Cerchio interno del pneumatico (grigio scuro)
-            Circle()
-                .fill(Color.gray.opacity(0.8))
-                .frame(width: 100, height: 100)
-                .scaleEffect(showTyre ? 1.0 : 0.3)
-                .opacity(showTyre ? 1.0 : 0.0)
-                .animation(.easeOut(duration: 0.6).delay(0.1), value: showTyre)
-            
-            // Cerchio centrale (cromato/argento)
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [Color.white, Color.gray]),
-                        center: .center,
-                        startRadius: 10,
-                        endRadius: 30
-                    )
-                )
-                .frame(width: 60, height: 60)
-                .scaleEffect(showTyre ? 1.0 : 0.3)
-                .opacity(showTyre ? 1.0 : 0.0)
-                .animation(.easeOut(duration: 0.6).delay(0.2), value: showTyre)
-            
-            // Pattern del battistrada (linee decorative)
-            ForEach(0..<12, id: \.self) { index in
-                Circle()
-                    .frame(width: 5, height: 25)
-                    .offset(y: -70)
-                    .foregroundColor(.white)
-                    .rotationEffect(.degrees(Double(index) * 30 + tyreRotation))
-                    .opacity(showTyre ? 1.0 : 0.0)
-                    .animation(.easeOut(duration: 0.6).delay(0.3), value: showTyre)
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
+                DispatchQueue.main.async {
+                    if success {
+                        viewModel.useFaceID.toggle()
+                        goHome = true
+                    } else {
+                        // Mostra un alert di errore
+                        print("Authentication failed: \(authenticationError?.localizedDescription ?? "Unknown error")")
+                    }
+                }
             }
-            
-            // Checkmark di successo al centro
-            Image(systemName: "checkmark")
-                .font(.system(size: 32, weight: .bold))
-                .foregroundColor(.green)
-                .scaleEffect(showCheckmark ? (bounceEffect ? 1.2 : 1.0) : 0.1)
-                .opacity(showCheckmark ? 1.0 : 0.0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0), value: showCheckmark)
-                .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true), value: bounceEffect)
-            
-            // Scintille/particelle intorno al pneumatico
-            ForEach(0..<6, id: \.self) { index in
-                Image(systemName: "sparkle")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.yellow)
-                    .offset(
-                        x: cos(Double(index) * .pi / 3) * (showSparks ? 90 : 60),
-                        y: sin(Double(index) * .pi / 3) * (showSparks ? 90 : 60)
-                    )
-                    .opacity(showSparks ? 0.0 : 1.0)
-                    .scaleEffect(showSparks ? 1.5 : 1.0)
-                    .animation(.easeOut(duration: 1.2).delay(0.7), value: showSparks)
-            }
-        }
-        .onAppear {
-            // Sequenza di animazioni a tema pneumatico
-            withAnimation(.easeOut(duration: 0.6)) {
-                showTyre = true
-            }
-            
-            // Rotazione continua del pneumatico
-            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false).delay(0.6)) {
-                tyreRotation = 360
-            }
-            
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.6).delay(1.0)) {
-                showCheckmark = true
-            }
-            
-            withAnimation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(1.2)) {
-                bounceEffect = true
-            }
-            
-            withAnimation(.easeOut(duration: 1.2).delay(1.3)) {
-                showSparks = true
-            }
+        } else {
+            // Nessun Face ID/Touch ID disponibile → fallback
+            print("Biometric authentication not available")
+            goHome = true
         }
     }
     
-    struct PasswordRequirementRow: View {
-        let requirement: PasswordRequirement
+    // Animazione pneumatico per TyreVibes
+    struct SuccessAnimationView: View {
+        @State private var showTyre = false
+        @State private var tyreRotation: Double = 0
+        @State private var showCheckmark = false
+        @State private var showSparks = false
+        @State private var bounceEffect = false
         
         var body: some View {
-            HStack(spacing: 8) {
-                Image(systemName: requirement.isValid ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundColor(requirement.isValid ? .green : .red)
+            ZStack (alignment: .center){
+                // Pneumatico esterno (cerchio nero)
+                Circle()
+                    .stroke(Color.black, lineWidth: 25)
+                    .frame(width: 140, height: 140)
+                    .scaleEffect(showTyre ? 1.0 : 0.3)
+                    .rotationEffect(.degrees(tyreRotation))
+                    .opacity(showTyre ? 1.0 : 0.0)
+                    .animation(.easeOut(duration: 0.6), value: showTyre)
                 
-                Text(requirement.text)
-                    .font(.customFont(size: 12, weight: .regular))
-                    .foregroundColor(requirement.isValid ? .green : .white)
-                    .strikethrough(!requirement.isValid, color: .gray)
+                // Cerchio interno del pneumatico (grigio scuro)
+                Circle()
+                    .fill(Color.gray.opacity(0.8))
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(showTyre ? 1.0 : 0.3)
+                    .opacity(showTyre ? 1.0 : 0.0)
+                    .animation(.easeOut(duration: 0.6).delay(0.1), value: showTyre)
                 
-                Spacer()
+                // Cerchio centrale (cromato/argento)
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [Color.white, Color.gray]),
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 30
+                        )
+                    )
+                    .frame(width: 60, height: 60)
+                    .scaleEffect(showTyre ? 1.0 : 0.3)
+                    .opacity(showTyre ? 1.0 : 0.0)
+                    .animation(.easeOut(duration: 0.6).delay(0.2), value: showTyre)
+                
+                // Pattern del battistrada (linee decorative)
+                ForEach(0..<12, id: \.self) { index in
+                    Circle()
+                        .frame(width: 5, height: 25)
+                        .offset(y: -70)
+                        .foregroundColor(.white)
+                        .rotationEffect(.degrees(Double(index) * 30 + tyreRotation))
+                        .opacity(showTyre ? 1.0 : 0.0)
+                        .animation(.easeOut(duration: 0.6).delay(0.3), value: showTyre)
+                }
+                
+                // Checkmark di successo al centro
+                Image(systemName: "checkmark")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.green)
+                    .scaleEffect(showCheckmark ? (bounceEffect ? 1.2 : 1.0) : 0.1)
+                    .opacity(showCheckmark ? 1.0 : 0.0)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0), value: showCheckmark)
+                    .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true), value: bounceEffect)
+                
+                // Scintille/particelle intorno al pneumatico
+                ForEach(0..<6, id: \.self) { index in
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.yellow)
+                        .offset(
+                            x: cos(Double(index) * .pi / 3) * (showSparks ? 90 : 60),
+                            y: sin(Double(index) * .pi / 3) * (showSparks ? 90 : 60)
+                        )
+                        .opacity(showSparks ? 0.0 : 1.0)
+                        .scaleEffect(showSparks ? 1.5 : 1.0)
+                        .animation(.easeOut(duration: 1.2).delay(0.7), value: showSparks)
+                }
+            }
+            .onAppear {
+                // Sequenza di animazioni a tema pneumatico
+                withAnimation(.easeOut(duration: 0.6)) {
+                    showTyre = true
+                }
+                
+                // Rotazione continua del pneumatico
+                withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false).delay(0.6)) {
+                    tyreRotation = 360
+                }
+                
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.6).delay(1.0)) {
+                    showCheckmark = true
+                }
+                
+                withAnimation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(1.2)) {
+                    bounceEffect = true
+                }
+                
+                withAnimation(.easeOut(duration: 1.2).delay(1.3)) {
+                    showSparks = true
+                }
+            }
+        }
+        
+        struct PasswordRequirementRow: View {
+            let requirement: PasswordRequirement
+            
+            var body: some View {
+                HStack(spacing: 8) {
+                    Image(systemName: requirement.isValid ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundColor(requirement.isValid ? .green : .red)
+                    
+                    Text(requirement.text)
+                        .font(.customFont(size: 12, weight: .regular))
+                        .foregroundColor(requirement.isValid ? .green : .white)
+                        .strikethrough(!requirement.isValid, color: .gray)
+                    
+                    Spacer()
+                }
             }
         }
     }
-}
-
-struct AccountCreatedView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationStack {
-                    CreationSuccessScreen()
-                }
+    
+    struct AccountCreatedView_Previews: PreviewProvider {
+        static var previews: some View {
+            NavigationStack {
+                CreationSuccessScreen()
+            }
+        }
     }
 }
