@@ -34,7 +34,7 @@ class ConfirmDetailsViewModel: ObservableObject {
         Task {
             do {
                 let (imageBase64, mimeType) = try await plateAPIService.associateVehicle2User(vehicleId: vehicleId, userId: userId)
-                if let base64 = imageBase64, let mime = mimeType,
+                if let base64 = imageBase64,
                    let data = Data(base64Encoded: base64),
                    let uiImage = UIImage(data: data) {
                     self.vehicleImage = uiImage

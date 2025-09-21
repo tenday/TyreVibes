@@ -34,7 +34,8 @@ struct ConfirmDetailsView: View {
                 HStack {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
-                            .font(.title2)
+                            .resizable()
+                            .frame(width: 15, height: 24)
                             .foregroundColor(.white)
                     }
                     
@@ -217,7 +218,7 @@ struct DetailRow: View {
             Spacer().frame(width: 20)
             
         }
-        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 140)
+        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 50)
         .background(Color.customFieldColor)
         .cornerRadius(12)
     }

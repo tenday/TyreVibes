@@ -1,4 +1,4 @@
-struct Vehicle: Identifiable, Codable {
+struct Vehicle: Identifiable, Codable, Hashable {
     let id: Int
     let modelDetail: String?
     let engine: String?
@@ -50,7 +50,7 @@ struct Vehicle: Identifiable, Codable {
     }
 }
 
-struct Plate: Codable, Identifiable {
+struct Plate: Codable, Identifiable, Hashable {
     let id: Int
     let plateNumber: String
     let registrationDate: String?
@@ -68,7 +68,7 @@ struct Plate: Codable, Identifiable {
     }
 }
 
-struct VehicleImage: Codable, Identifiable {
+struct VehicleImage: Codable, Identifiable, Hashable {
     let id: Int
     let mimeType: String?
     let color: String?
@@ -88,7 +88,7 @@ struct VehicleImage: Codable, Identifiable {
     }
 }
 
-struct VehicleTyre: Codable, Identifiable {
+struct VehicleTyre: Codable, Identifiable, Hashable {
     let id: Int
     let width: Int?
     let diameter: Int?
@@ -108,7 +108,7 @@ struct VehicleTyre: Codable, Identifiable {
     }
 }
 
-struct VehicleRevision: Codable, Identifiable {
+struct VehicleRevision: Codable, Identifiable, Hashable {
     let id: Int
     let plateId: Int
     let kmRevisione: String?
@@ -121,5 +121,23 @@ struct VehicleRevision: Codable, Identifiable {
         case kmRevisione
         case dataRevisione
         case esitoRevisione
+    }
+}
+
+struct VehicleInsurance: Codable, Identifiable, Hashable {
+    let id: Int
+    let plateId: Int
+    let rcaCompany: String?
+    let rcaPolicyNumber: String?
+    let rcaExpiry: String?
+    let rcaInsurancePresent: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case plateId = "plate_id"
+        case rcaCompany = "rca_company"
+        case rcaPolicyNumber = "rca_policy_number"
+        case rcaExpiry = "rca_expiry"
+        case rcaInsurancePresent = "rca_insurance_present"
     }
 }

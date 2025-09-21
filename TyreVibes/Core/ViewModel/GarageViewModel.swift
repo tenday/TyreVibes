@@ -1,54 +1,64 @@
 import Foundation
 import SwiftUI
 
-struct VehicleResponse: Codable {
+struct VehicleResponse: Codable, Hashable {
     let vehicle: Vehicle
     let plate: Plate?
     let image: VehicleImage?
     let tyres: [VehicleTyre]?
     let revisions: [VehicleRevision]?
+    let insurances: [VehicleInsurance]?
 }
 
 @MainActor
 class GarageViewModel: ObservableObject {
     @Published var vehicles: [VehicleResponse] = []
     @Published var isLoading = true
+    @Published var showCarDetails = false
+    @Published var selectedVehicle: VehicleResponse?
 
     private let authService = AuthService()
     static let apiConfig = PlateAPIService.apiConfig
     
 
     func fetchCars() async {
-        // Show cached vehicles first if available
-        if let cachedData = UserDefaults.standard.data(forKey: "cachedVehicles") {
+        // Show cached vehicles first if available, but only if not loading
+        if isLoading, let cachedData = UserDefaults.standard.data(forKey: "cachedVehicles") {
             if let cachedVehicles = try? JSONDecoder().decode([VehicleResponse].self, from: cachedData) {
                 vehicles = cachedVehicles
             }
         }
-            Task {
-                do {
-                    let userId = await AuthService.currentUserId ?? ""
+        
+        do {
+            let userId = await AuthService.currentUserId ?? ""
 
-                    guard let baseURL = GarageViewModel.apiConfig["BASE_URL"] as? String else {
-                        print("API_BASE_URL not found in Info.plist")
-                        return
-                    }
-                    guard let url = URL(string: "\(baseURL)/v1/vehicles/\(userId)") else {
-                        print("Invalid URL")
-                        return
-                    }
-                    let (data, _) = try await URLSession.shared.data(from: url)
-                    // Save raw data to UserDefaults before decoding
-                    UserDefaults.standard.set(data, forKey: "cachedVehicles")
-                    let decodedResponse = try JSONDecoder().decode([VehicleResponse].self, from: data)
-                    vehicles = decodedResponse.map { $0 }
-                    isLoading = false
-                } catch {
-                    // Handle the error appropriately, e.g., show an alert to the user
-                    print("Error fetching cars: \(error)")
-                }
+            guard let baseURL = GarageViewModel.apiConfig["BASE_URL"] as? String else {
+                print("API_BASE_URL not found in Info.plist")
+                return
             }
-       
+            guard let url = URL(string: "\(baseURL)/v1/vehicles/\(userId)") else {
+                print("Invalid URL")
+                return
+            }
+            let (data, _) = try await URLSession.shared.data(from: url)
+            // Save raw data to UserDefaults before decoding
+            UserDefaults.standard.set(data, forKey: "cachedVehicles")
+            let decodedResponse = try JSONDecoder().decode([VehicleResponse].self, from: data)
+            
+            // Force a clean update by creating a new array
+            vehicles = decodedResponse
+            isLoading = false
+        } catch {
+            // Handle the error appropriately, e.g., show an alert to the user
+            print("Error fetching cars: \(error)")
+            vehicles = []
+            isLoading = false
+        }
+    }
+
+    func showDetails(for vehicle: VehicleResponse) {
+        selectedVehicle = vehicle
+        showCarDetails = true
     }
 
     func deleteCar(_ vehicle: Vehicle) {

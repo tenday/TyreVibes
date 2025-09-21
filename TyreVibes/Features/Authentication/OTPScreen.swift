@@ -70,7 +70,7 @@ var body: some View {
                     }) {
                         Image(systemName: "chevron.left")
                             .resizable()
-                            .frame(width: 24, height: 24)
+                            .frame(width: 15, height: 24)
                             .foregroundColor(.white)
                     }
                     Spacer()
@@ -241,6 +241,7 @@ var body: some View {
             CreationSuccessScreen()
         }
         .navigationBarBackButtonHidden(true)
+        .background(InteractivePopGestureEnabler())
     }
 }
     

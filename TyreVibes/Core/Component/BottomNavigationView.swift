@@ -26,7 +26,7 @@ struct BottomNavigationView: View {
                     case 0:
                         GarageScreen()
                     case 1:
-                        Report()
+                        ReportsView()
                     case 2:
                         CalendarScreen()
                     case 3:
@@ -70,59 +70,60 @@ struct BottomNavigationView: View {
                       )
                     
                     
-                    HStack(spacing: -40) {
-                        // Left side
+                    HStack(spacing: 0) {
+                        // Left side - Garage
                         Button(action: {
                             withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 0 }
                         }) {
                             TabItem(iconName: iconNames[0], isSelected: selectedIndex == 0, namespace: animationNamespace)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
+                                .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
+                        // Reports
                         Button(action: {
                             withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 1 }
                         }) {
                             TabItem(iconName: iconNames[1], isSelected: selectedIndex == 1, namespace: animationNamespace)
-                                .frame(maxWidth: .infinity)
-                                //.contentShape(Rectangle())
+                                .frame(width: width * 0.2, height: 60)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
-                        Spacer().frame(width: 80)
+                        // Central spacer for floating button
+                        Spacer()
+                            .frame(width: width * 0.2)
 
-                        // Right side
+                        // Right side - Store
                         Button(action: {
                             withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 2 }
                         }) {
                             TabItem(iconName: iconNames[2], isSelected: selectedIndex == 2, namespace: animationNamespace)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
+                                .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
+                        // Settings
                         Button(action: {
                             withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 3 }
                         }) {
                             TabItem(iconName: iconNames[3], isSelected: selectedIndex == 3, namespace: animationNamespace)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
+                                .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, width * 0.05)
 
-                    // Pulsante centrale flottante sostituito con Button come TabItem
+                    // Central floating button - positioned precisely
                     Button(action: {
                         withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 4 }
                     }) {
                         TabItem(iconName: "Archi", isSelected: selectedIndex == 4, namespace: animationNamespace)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .contentShape(Rectangle())
+                            .frame(width: 80, height: 80)
+                            .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
                     .offset(y: -50)
@@ -147,53 +148,106 @@ struct TabItem: View {
 
     var body: some View {
         ZStack {
-            if isSelected {
-                Circle()
-                    .fill(LinearGradient(
-                        stops: [
-                            Gradient.Stop(color: Color(red: 0.97, green: 0.56, blue: 0.09), location: 0.00),
-                            Gradient.Stop(color: Color(red: 1, green: 0.3, blue: 0.51), location: 1.00),
-                        ],
-                        startPoint: UnitPoint(x: 0.85, y: 0.22),
-                        endPoint: UnitPoint(x: 0.09, y: 0.41)
-                    ))
-                    .frame(width: 48, height: 48)
-                    .matchedGeometryEffect(id: "selected_tab", in: namespace)
-                    .overlay(
-                        iconName == "Archi"
-                        ? Image("Archi")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 50, height: 50)
-                        : nil
-                    )
-            } else {
-                if iconName == "Archi" {
+            if iconName == "Archi" {
+                // Central floating button with liquid glass effect
+                ZStack {
+                    // Base glass circle
                     Circle()
-                        .fill(Color.init(hex: "1F1F1F"))
-                        .frame(width: 70, height: 70)
+                        .fill(.ultraThinMaterial)
                         .overlay(
-                            Image("Archi")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 50, height: 50)
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: isSelected ?
+                                            [.white.opacity(0.3), .white.opacity(0.1)] :
+                                            [.white.opacity(0.3), .white.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: isSelected ? 2 : 1
+                                )
                         )
-                } else {
+                        .shadow(
+                            color: isSelected ? .black.opacity(0.3) : .black.opacity(0.3),
+                            radius: isSelected ? 15 : 10,
+                            x: 0,
+                            y: isSelected ? 8 : 5
+                        )
+                        .frame(width: isSelected ? 75 : 70, height: isSelected ? 75 : 70)
+
+                    // Inner glow effect
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: isSelected ?
+                                    [.white.opacity(0.1), .clear] :
+                                    [.white.opacity(0.1), .clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: isSelected ? 40 : 35
+                            )
+                        )
+                        .frame(width: isSelected ? 75 : 70, height: isSelected ? 75 : 70)
+                        .opacity(0.8)
+
+                    // Icon overlay
+                    Image("Archi")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 50, height: 50)
+                }
+                .scaleEffect(isSelected ? 1.1 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+            } else {
+                // Regular tab items with liquid glass effect
+                ZStack {
+                    if isSelected {
+                        ZStack {
+                            // Base glass circle
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    Circle()
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [.white.opacity(0.3), .white.opacity(0.1)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 2
+                                        )
+                                )
+                                .shadow(
+                                    color: .black.opacity(0.3),
+                                    radius: 10,
+                                    x: 0,
+                                    y: 5
+                                )
+                                .frame(width: 44, height: 44)
+
+                            // Inner glow
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [.white.opacity(0.1), .clear],
+                                        center: .center,
+                                        startRadius: 0,
+                                        endRadius: 25
+                                    )
+                                )
+                                .frame(width: 44, height: 44)
+                                .opacity(0.8)
+                        }
+                        .matchedGeometryEffect(id: "selected_tab", in: namespace)
+                    }
+
                     Image(iconName)
                         .renderingMode(.template)
-                        .font(.system(size: 22))
-                        .foregroundColor(.gray)
-                        .frame(width: 24, height: 24, alignment: .center)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(isSelected ? .white : .gray)
                 }
-            }
-            
-            // Per le icone non "Archi" selezionate, metti sopra l'immagine bianca
-            if isSelected && iconName != "Archi" {
-                Image(iconName)
-                    .renderingMode(.template)
-                    .font(.system(size: 22))
-                    .foregroundColor(.white)
-                    .frame(width: 24, height: 24, alignment: .center)
             }
         }
     }

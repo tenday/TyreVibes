@@ -18,11 +18,17 @@ struct PlateTextField: UIViewRepresentable {
         tf.autocapitalizationType = .allCharacters
         tf.keyboardType = .asciiCapable
         tf.textColor = .clear
-        // Font similar to plate font (fallback to monospaced bold)
+
+        // Font originale
         let font = UIFont(name: "FE-Font", size: 32) ?? UIFont.monospacedSystemFont(ofSize: 32, weight: .bold)
         tf.font = font
-        // Kerning/tracking to match previous plate spacing
+
+        // Kerning originale
         tf.defaultTextAttributes[.kern] = 6
+
+        // Cursore originale
+        // tf.tintColor = .white
+
         tf.addTarget(context.coordinator, action: #selector(Coordinator.textChanged(_:)), for: .editingChanged)
         tf.delegate = context.coordinator
         return tf
@@ -63,7 +69,6 @@ struct PlateTextField: UIViewRepresentable {
         }
 
         func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-            // Allow only allowed characters and enforce length as user types
             let upper = string.uppercased()
             if upper.unicodeScalars.contains(where: { !allowed.contains($0) }) {
                 return false
@@ -286,6 +291,7 @@ struct EnterLicensePlateView: View {
                 .navigationBarBackButtonHidden(true)
             }
         }
+        .background(InteractivePopGestureEnabler())
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)

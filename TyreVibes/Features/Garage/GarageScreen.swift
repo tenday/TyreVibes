@@ -1,15 +1,17 @@
-
 import SwiftUI
 import UIKit
 
 
 
 struct GarageScreen: View {
+    @StateObject private var viewModelLogin = LoginViewModel()
+    @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
     @State private var searchText = ""
     @State private var isPresentingSheet = false
     @State private var showScanPlate = false
     @State private var showEnterPlate = false
-
+    
+    
     private let sheetSpacing: CGFloat = 20
     
     @StateObject private var viewModel = GarageViewModel()
@@ -32,7 +34,7 @@ struct GarageScreen: View {
             return haystacks.contains { $0.localizedCaseInsensitiveContains(q) }
         }
     }
-
+    
     var body: some View {
         ZStack {
             Color.customBackgroundColor
@@ -48,7 +50,33 @@ struct GarageScreen: View {
                     
                     HStack(spacing: 12) {
                         HStack(alignment: .center) {
-                            Button(action: {}) {
+                            Button(action: {
+                                Task { @MainActor in
+                                    do {
+                                        try await AuthService().logout()
+                                        
+                                        // Clear Keychain and UserDefaults
+                                        KeychainHelper.delete()
+                                        UserDefaults.standard.set(false, forKey: "rememberMe")
+                                        UserDefaults.standard.set(false, forKey: "useFaceID")
+                                        UserDefaults.standard.removeObject(forKey: "cachedVehicles")
+                                        
+                                        // Clear any cached data in the view model
+                                        viewModel.vehicles.removeAll()
+                                        
+                                        // Reset login view model state
+                                        viewModelLogin.showHomeScreen = false
+                                        viewModelLogin.email = ""
+                                        viewModelLogin.password = ""
+                                        viewModelLogin.rememberMe = false
+                                        
+                                        // Finally logout
+                                        isLoggedIn = false
+                                    } catch {
+                                        print("Errore durante il logout: \(error.localizedDescription)")
+                                    }
+                                }
+                            }) {
                                 Image(systemName: "bell")
                                     .resizable()
                                     .scaledToFit()
@@ -93,7 +121,7 @@ struct GarageScreen: View {
                                         ZStack {
                                             Circle()
                                                 .fill(Color.customBackgroundColor)
-
+                                            
                                             Circle()
                                                 .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
                                                 .blur(radius: 1)
@@ -113,7 +141,7 @@ struct GarageScreen: View {
                                                 .opacity(0.8)
                                         }
                                     )
-                                    
+                                
                                 
                             }
                         }
@@ -126,7 +154,7 @@ struct GarageScreen: View {
                 .padding(.top, 10)
                 
                 HStack(spacing: 10) {
-                   
+                    
                     HStack (spacing: 12 ) {
                         Image("searchIcon")
                             .resizable()
@@ -169,7 +197,7 @@ struct GarageScreen: View {
                                 .scaledToFit()
                                 .frame(width: 32, height: 32)
                                 .shadow(color: Color.black.opacity(0.22), radius: 2 , x: 0 , y: 4)
-    
+                            
                         }
                     }
                     .frame(width: 80, height: 48)
@@ -185,10 +213,10 @@ struct GarageScreen: View {
                         Capsule()
                             .fill(Color(red: 0.85, green: 0.85, blue: 0.85))
                             .frame(width: 88, height: 4)
-                            
-
+                        
+                        
                         Spacer().frame(height: 15)
-
+                        
                         VStack(spacing: sheetSpacing) {
                             Button(action: {
                                 isPresentingSheet = false
@@ -239,7 +267,7 @@ struct GarageScreen: View {
                                 )
                             }
                             .padding(.bottom, sheetSpacing + 11)
-
+                            
                             HStack {
                                 Rectangle()
                                     .fill(Color.white.opacity(0.4))
@@ -253,7 +281,7 @@ struct GarageScreen: View {
                             }
                             .padding(.bottom, sheetSpacing + 21)
                             
-
+                            
                             Button(action: {
                                 isPresentingSheet = false
                                 showEnterPlate = true
@@ -296,7 +324,7 @@ struct GarageScreen: View {
                         }
                         .padding(.horizontal, 24)
                         
-
+                        
                         //Spacer()
                     }
                     .frame(maxWidth: .infinity)
@@ -304,53 +332,69 @@ struct GarageScreen: View {
                     .presentationDetents([.fraction(0.45)])
                 }
                 NavigationStack {
-                List {
-                    if viewModel.isLoading {
-                        ForEach(0..<2, id: \.self) { _ in
-                                    CarCardShimmer()
-                                        .listRowBackground(Color.clear)
-                                        .listRowSeparator(.hidden)
-
-                                }
-
-                    }
-                    else if viewModel.vehicles.isEmpty {
-                        Text("No veichles found,pls add a new one")
-                            .font(.customFont(size: 18, weight: .bold))
-                            .foregroundColor(.gray)
+                    List {
+                        if viewModel.isLoading {
+                            ForEach(0..<2, id: \.self) { _ in
+                                CarCardShimmer()
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                
+                            }
+                            
+                        }
+                        else if viewModel.vehicles.isEmpty {
+                            Text("No veichles found,pls add a new one")
+                                .font(.customFont(size: 18, weight: .bold))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal, 24)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        else {
+                            ForEach(filteredCars, id: \.vehicle.id) { car in
+                                SwipeableCarRow(
+                                    vehicle: car,
+                                    onShowDetails: {
+                                        viewModel.showDetails(for: car)
+                                    },
+                                    onShare: {
+                                        shareVehicle(car)
+                                    },
+                                    onDelete: {
+                                        delete(car)
+                                    }
+                                )
+                            }
                             .padding(.horizontal, 24)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 0))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    else {
-                        ForEach(filteredCars, id: \.vehicle.id) { car in
-                            SwipeableCarRow(vehicle: car) {
-                                delete(car)
-                            }
                         }
-                        .padding(.horizontal, 24)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 0))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        
+                        
                     }
-                    
-                    
-                }
-                .listStyle(.plain)
-                .scrollIndicators(.hidden)
-                .scrollContentBackground(.hidden)
-                .padding(.top,16)
-                .frame(maxHeight: .infinity)
-                }
+                    .listStyle(.plain)
+                    .scrollIndicators(.hidden)
+                    .scrollContentBackground(.hidden)
+                    .padding(.top,16)
+                    .frame(maxHeight: .infinity)
+                    .safeAreaInset(edge: .bottom) {
+                        Color.clear.frame(height: 60)
+                    }
+                    .navigationDestination(isPresented: $viewModel.showCarDetails) {
+                        if let selectedVehicle = viewModel.selectedVehicle {
+                            CarDetailsView(vehicle: selectedVehicle)
+                        }
+                    }
                     
                     
                 }
                 .refreshable {
                     await viewModel.fetchCars()
                 }
-               
+                
             }
             .fullScreenCover(isPresented: $showScanPlate) {
                 ScanPlateView(
@@ -360,7 +404,7 @@ struct GarageScreen: View {
                     }
                 )
             }
-
+            
             .fullScreenCover(isPresented: $showEnterPlate, onDismiss: {
             }) {
                 EnterLicensePlateView(
@@ -372,231 +416,319 @@ struct GarageScreen: View {
             }
             .edgesIgnoringSafeArea(.bottom)
             .onAppear {
-                // fetchCars is async but already launches its own Task internally.
-                // If you refactor fetchCars to not spawn a Task, consider using:
-                // Task { await viewModel.fetchCars() }
-                Task { await viewModel.fetchCars()}
+                Task {
+                    await viewModel.fetchCars()
+                }
             }
         }
+        
+      
+    }
     
-    private func delete(_ v: VehicleResponse) {
+    func delete(_ v: VehicleResponse) {
         viewModel.deleteCar(v.vehicle)
     }
-}
-   
 
+    func shareVehicle(_ vehicle: VehicleResponse) {
+        // Prepara i dati da condividere
+        let vehicleInfo = """
+        🚗 My Vehicle - TyreVibes
 
+        📋 Details:
+        • Make: \(vehicle.vehicle.make ?? "N/A")
+        • Model: \(vehicle.vehicle.model ?? "N/A")
+        • Year: \(vehicle.plate?.year.map { "\($0)" } ?? "N/A")
+        • License Plate: \(vehicle.plate?.plateNumber ?? "N/A")
+        • Engine: \(vehicle.vehicle.engine ?? "N/A")
+        • Fuel Type: \(vehicle.vehicle.fuelType ?? "N/A")
+        • Color: \(vehicle.vehicle.color ?? "N/A")
 
-struct CarCardView: View {
-    let v: VehicleResponse
-    @State private var showDetails = false
+        📱 Shared from TyreVibes App
+        """
 
+        // Crea gli elementi da condividere
+        var itemsToShare: [Any] = [vehicleInfo]
+
+        // Aggiungi l'immagine se disponibile
+        if let base64String = vehicle.image?.imageBase64,
+           let data = Data(base64Encoded: base64String),
+           let image = UIImage(data: data) {
+            let trimmedImage = image.trimmedTransparentPixels(threshold: 5)
+            itemsToShare.append(trimmedImage)
+        }
+
+        // Presenta il sheet di condivisione
+        let activityViewController = UIActivityViewController(
+            activityItems: itemsToShare,
+            applicationActivities: nil
+        )
+
+        // Configura per iPad
+        if let popover = activityViewController.popoverPresentationController {
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                popover.sourceView = window
+            }
+            popover.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+
+        // Escludi alcune attività non necessarie
+        activityViewController.excludedActivityTypes = [
+            .assignToContact,
+            .addToReadingList,
+            .openInIBooks
+        ]
+
+        // Presenta il controller
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootViewController = window.rootViewController {
+            rootViewController.present(activityViewController, animated: true)
+        }
+    }
     
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            ZStack {
-                // Card background fills the available size responsively
-                ZStack(alignment: .leading) {
-                    Image("CardModel")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: w, height: h)
-                        .clipped()
-                        .shadow(color: Color(red: 0.36, green: 0.92, blue: 1), radius: 0, x: 10, y: 0)
-                        .shadow(color: .black.opacity(0.25), radius: 2, x: 2, y: 0)
-                }
-
-                VStack(alignment: .leading, spacing: h * 0.05) {
-                    HStack {
-                        VStack() {
-                            HStack(spacing: 12) {
-                                Text(v.vehicle.model ?? "")
-                                    .foregroundColor(.black)
-                                    .font(.customFont(size: 16, weight: .semibold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-
-                                Text(v.plate?.plateNumber ?? "")
+    
+    struct CarCardView: View {
+        let v: VehicleResponse
+        let onShowDetails: () -> Void
+        let onShare: () -> Void
+        
+        
+        var body: some View {
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                ZStack {
+                    // Card background fills the available size responsively
+                    ZStack(alignment: .leading) {
+                        Image("CardModel")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: w, height: h)
+                            .clipped()
+                            .shadow(color: Color(red: 0.36, green: 0.92, blue: 1), radius: 0, x: 10, y: 0)
+                            .shadow(color: .black.opacity(0.25), radius: 2, x: 2, y: 0)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: h * 0.05) {
+                        HStack {
+                            VStack() {
+                                HStack(spacing: 12) {
+                                    Text(v.vehicle.model ?? "")
+                                        .foregroundColor(.black)
+                                        .font(.customFont(size: 16, weight: .semibold))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    
+                                    Text(v.plate?.plateNumber ?? "")
+                                        .font(.customFont(size: 12, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 6) {
+                                Button(action: {
+                                    onShare()
+                                }) {
+                                    Image("shareIcon")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.gray)
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Button(action: {
+                                    onShowDetails()
+                                }) {
+                                    Image("detailsIcon")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.gray)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, w * 0.04)
+                        .padding(.top, w * -0.07 )
+                        
+                        HStack(alignment: .center, spacing: w * 0.04) {
+                            if let rawBase64 = v.image?.imageBase64,
+                               let data = Data(base64Encoded: rawBase64),
+                               let rawImage = UIImage(data: data) {
+                                
+                                let trimmed = rawImage.trimmedTransparentPixels(threshold: 5)
+                                
+                                Image(uiImage: trimmed)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: w * 0.57)
+                            }
+                            
+                            // Technical Specs section
+                            VStack(alignment: .leading, spacing: 12) {
+                                
+                                Text("Technical Specs")
                                     .font(.customFont(size: 12, weight: .semibold))
-                                    .foregroundColor(.gray)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
+                                    .foregroundColor(Color.black)
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    SpecRow(label: "Make:", value: v.vehicle.make ?? "")
+                                    SpecRow(
+                                        label: "Model",
+                                        value: v.vehicle.model?
+                                            .components(separatedBy: CharacterSet.decimalDigits)
+                                            .first?
+                                            .uppercased() ?? ""
+                                    )
+                                    SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
+                                    SpecRow(label: "Engine:", value: v.vehicle.engine ?? "")
+                                }
                             }
-                        }
-
-                        Spacer()
-
-                        HStack(spacing: 6) {
-                            Button(action: {}) {
-                                Image("shareIcon")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.gray)
-                            }
-                            .buttonStyle(.plain)
-
-                            Button(action: {
-                                showDetails = true
-                            }) {
-                                Image("detailsIcon")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.gray)
-                            }
-                            .buttonStyle(.plain)
+                            .padding(.trailing, w * 0.04)
                         }
                     }
-                    .padding(.horizontal, w * 0.04)
-                    .padding(.top, w * -0.07 )
-
-                    HStack(alignment: .center, spacing: w * 0.04) {
-                        if let rawBase64 = v.image?.imageBase64,
-                           let data = Data(base64Encoded: rawBase64),
-                           let rawImage = UIImage(data: data) {
-                            
-                            let trimmed = rawImage.trimmedTransparentPixels(threshold: 5)
-
-                            Image(uiImage: trimmed)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: w * 0.57)
-                        }
-
-                        // Technical Specs section
-                        VStack(alignment: .leading, spacing: 12) {
-                            
-                            Text("Technical Specs")
-                                .font(.customFont(size: 12, weight: .semibold))
-                                .foregroundColor(Color.black)
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                SpecRow(label: "Make:", value: v.vehicle.make ?? "")
-                                SpecRow(
-                                    label: "Model",
-                                    value: v.vehicle.model?
-                                        .components(separatedBy: CharacterSet.decimalDigits)
-                                        .first?
-                                        .uppercased() ?? ""
-                                )
-                                SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
-                                SpecRow(label: "Engine:", value: v.vehicle.engine ?? "")
-                            }
-                        }
-                        .padding(.trailing, w * 0.04)
-                    }
+                    
                 }
-
             }
-            .navigationDestination(isPresented: $showDetails) {
-                CarDetailsView(vehicle: v)
-                    .navigationBarBackButtonHidden(true)
-                    .background(InteractivePopGestureEnabler())
-            }
+            .aspectRatio(2.05, contentMode: .fit)
         }
-        .aspectRatio(2.05, contentMode: .fit)
     }
-}
-
-// Custom swipeable row for car card, swipes left but does not reveal delete or trigger deletion
-struct SwipeableCarRow: View {
-    let vehicle: VehicleResponse
-    let onDelete: () -> Void
-
-    @State private var offsetX: CGFloat = 0
-    @State private var isDragging = false
-    @State private var offsetStart: CGFloat = 0
-
-    private let revealWidth: CGFloat = 180.0   // quanto resta aperto dopo lo swipe
-    private let deleteTrigger: CGFloat = 180.0 // soglia per eliminazione con full swipe
-
-    var body: some View {
-        // Only the card, no background or delete button
-        CarCardView(v: vehicle)
-            .offset(x: offsetX)
-            .contentShape(Rectangle())
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 8, coordinateSpace: .local)
-                    .onChanged { value in
-                        // Handle only horizontal drag; let verticals go to List
-                        let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
-                        guard isHorizontal else { return }
-                        if !isDragging { isDragging = true; offsetStart = offsetX }
-                        let proposed = offsetStart + value.translation.width
-                        // constrain between 0 and -revealWidth
-                        offsetX = min(0, max(-revealWidth, proposed))
-                    }
-                    .onEnded { value in
-                        let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
-                        guard isHorizontal else { isDragging = false; return }
-                        let dx = value.translation.width
-                        let opened = -min(0, max(-revealWidth, offsetStart + dx))
-                        if opened >= deleteTrigger {
-                            withAnimation(.spring()) {
-                                onDelete()
+    
+    // Custom swipeable row for car card, swipes left but does not reveal delete or trigger deletion
+    struct SwipeableCarRow: View {
+        let vehicle: VehicleResponse
+        let onShowDetails: () -> Void
+        let onShare: () -> Void
+        let onDelete: () -> Void
+        
+        @State private var offsetX: CGFloat = 0
+        @State private var isDragging = false
+        @State private var offsetStart: CGFloat = 0
+        @State private var shouldHandleGesture = false
+        
+        private let revealWidth: CGFloat = 180.0
+        private let deleteTrigger: CGFloat = 180.0
+        
+        var body: some View {
+            CarCardView(v: vehicle, onShowDetails: onShowDetails, onShare: onShare)
+                .offset(x: offsetX)
+                .contentShape(Rectangle())
+                .id(vehicle.vehicle.id) // Force view identity based on vehicle ID
+                .onAppear {
+                    // Reset offset when view appears to ensure original position
+                    offsetX = 0
+                }
+                .gesture(
+                    DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                        .onChanged { value in
+                            // Determina se il gesture è principalmente orizzontale
+                            let isHorizontal = abs(value.translation.width) > abs(value.translation.height) * 2
+                            
+                            if !isDragging {
+                                // Prima volta che il gesture viene rilevato
+                                shouldHandleGesture = isHorizontal
+                                if shouldHandleGesture {
+                                    isDragging = true
+                                    offsetStart = offsetX
+                                }
                             }
-                        } else if opened > revealWidth * 0.6 {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = -revealWidth }
-                        } else {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = 0 }
+                            
+                            // Gestisci solo se è stato determinato come orizzontale
+                            if shouldHandleGesture && isDragging {
+                                let proposed = offsetStart + value.translation.width
+                                offsetX = min(0, max(-revealWidth, proposed))
+                            }
                         }
-                        isDragging = false
-                    }
-            )
-            .simultaneousGesture(
-                TapGesture().onEnded {
-                    // If open, tap closes the card
+                        .onEnded { value in
+                            guard shouldHandleGesture && isDragging else {
+                                // Reset per permettere scroll verticale
+                                isDragging = false
+                                shouldHandleGesture = false
+                                return
+                            }
+                            
+                            let dx = value.translation.width
+                            let opened = -min(0, max(-revealWidth, offsetStart + dx))
+                            
+                            if opened >= deleteTrigger {
+                                withAnimation(.spring()) {
+                                    onDelete()
+                                }
+                            } else if opened > revealWidth * 0.6 {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                                    offsetX = -revealWidth
+                                }
+                            } else {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                                    offsetX = 0
+                                }
+                            }
+                            
+                            isDragging = false
+                            shouldHandleGesture = false
+                        }
+                )
+                .onTapGesture {
+                    // Chiudi se aperta
                     if offsetX != 0 {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) { offsetX = 0 }
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                            offsetX = 0
+                        }
                     }
                 }
-            )
-    }
-}
-
-struct SpecRow: View {
-    let label: String
-    let value: String
-    
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(label)
-                .font(.customFont(size: 12, weight: .semibold))
-                .foregroundColor(.gray)
-            
-            Text(value)
-                .font(.customFont(size: 12, weight: .semibold))
-                .foregroundColor(.black)
         }
     }
-}
-
-
-
-struct TabBarItem: View {
-    let icon: String
-    let isSelected: Bool
     
-    var body: some View {
-        Button(action: {}) {
-            ZStack {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(.orange)
-                        .frame(width: 60, height: 40)
-                }
+    struct SpecRow: View {
+        let label: String
+        let value: String
+        
+        var body: some View {
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.customFont(size: 12, weight: .semibold))
+                    .foregroundColor(.gray)
                 
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(isSelected ? .white : .gray)
+                Text(value)
+                    .font(.customFont(size: 12, weight: .semibold))
+                    .foregroundColor(.black)
             }
         }
-        .frame(maxWidth: .infinity)
     }
+    
+    
+    
+    struct TabBarItem: View {
+        let icon: String
+        let isSelected: Bool
+        
+        var body: some View {
+            Button(action: {}) {
+                ZStack {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(.orange)
+                            .frame(width: 60, height: 40)
+                    }
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(isSelected ? .white : .gray)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+    
+    struct GarageScreen_Previews: PreviewProvider {
+        static var previews: some View {
+            GarageScreen()
+                .preferredColorScheme(.dark)
+        }
+    }
+    
 }
 
-struct GarageScreen_Previews: PreviewProvider {
-    static var previews: some View {
-        GarageScreen()
-            .preferredColorScheme(.dark)
-    }
-}

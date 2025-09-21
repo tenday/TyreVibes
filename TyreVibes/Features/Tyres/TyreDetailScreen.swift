@@ -695,7 +695,7 @@ struct TireConditionBar: View {
                     
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {}) {
-                            Image(systemName: "arrow.down.to.line")
+                            Image(systemName: "arrow.r.to.line")
                                 .foregroundColor(.white)
                                 .font(.system(size: 18, weight: .medium))
                         }

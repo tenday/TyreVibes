@@ -5,6 +5,7 @@ struct CreationSuccessScreen: View {
     @StateObject private var viewModel = LoginViewModel()
     @Environment(\.presentationMode) var presentationMode
     @State private var goHome = false
+    @State private var showFaceIDPrompt = false
     
     var body: some View {
         ZStack {
@@ -59,6 +60,19 @@ struct CreationSuccessScreen: View {
         .navigationDestination(isPresented: $goHome) {
             BottomNavigationView()
                 .navigationBarBackButtonHidden(true)
+                .background(InteractivePopGestureEnabler())
+        }
+        .alert("Enable Face ID?", isPresented: $showFaceIDPrompt) {
+            Button("Yes") {
+                viewModel.useFaceID = true
+                UserDefaults.standard.set(true, forKey: "useFaceID")
+                goHome = true
+            }
+            Button("No", role: .cancel) {
+                viewModel.useFaceID = false
+                UserDefaults.standard.set(false, forKey: "useFaceID")
+                goHome = true
+            }
         }
     }
     
@@ -72,17 +86,20 @@ struct CreationSuccessScreen: View {
             context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
                 DispatchQueue.main.async {
                     if success {
-                        viewModel.useFaceID.toggle()
-                        goHome = true
+                        showFaceIDPrompt = true
                     } else {
                         // Mostra un alert di errore
                         print("Authentication failed: \(authenticationError?.localizedDescription ?? "Unknown error")")
+                        viewModel.useFaceID = false
+                        UserDefaults.standard.set(false, forKey: "useFaceID")
                     }
                 }
             }
         } else {
             // Nessun Face ID/Touch ID disponibile → fallback
             print("Biometric authentication not available")
+            viewModel.useFaceID = false
+            UserDefaults.standard.set(false, forKey: "useFaceID")
             goHome = true
         }
     }

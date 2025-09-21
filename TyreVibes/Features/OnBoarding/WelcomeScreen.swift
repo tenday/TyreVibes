@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct WelcomeScreen: View {
-    
+
     @StateObject private var viewModel = LoginViewModel()
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @State private var goToLogin = false
     @State private var goToSignUp = false
-    
+
     var body: some View {
         NavigationStack {
             Group {
@@ -23,7 +23,7 @@ struct WelcomeScreen: View {
                     GeometryReader { geometry in
                         let screenWidth = geometry.size.width
                         let screenHeight = geometry.size.height
-                        
+
                         // Calcola le dimensioni dinamiche basate sullo schermo
                         let titleFontSize = screenWidth * 0.065 // ~25pt per iPhone 16 Pro
                         let headerCircleSize = screenWidth * 0.025
@@ -37,35 +37,35 @@ struct WelcomeScreen: View {
                         let socialButtonFontSize = screenWidth * 0.04 // ~16pt
                         let iconSize = screenWidth * 0.06 // ~20pt
                         let horizontalPadding = screenWidth * 0.06
-                        
+
                         ZStack {
                             // Background
                             Color.customBackgroundColor.edgesIgnoringSafeArea(.all)
-                            
+
                             VStack(spacing: 0) {
                                 // Header
                                 HStack {
                                     Text("TyreVibes")
                                         .font(.customFont(size: titleFontSize, weight: .bold))
                                         .foregroundColor(.white)
-                                    
+
                                     Circle()
                                         .fill(Color.customSandyBrown)
                                         .frame(width: headerCircleSize, height: headerCircleSize)
                                         .offset(x: 0, y: screenHeight * 0.007) // ~6pt
-                                    
+
                                     Spacer()
                                 }
                                 //.padding(.top, geometry.safeAreaInsets.top + screenHeight * 0.00)
                                 .padding(.horizontal, screenWidth * 0.05)
-                                
+
                                 // Car Image with Orange Circle Background
                                 ZStack {
                                     Circle()
                                         .fill(Color.customSandyBrown)
                                         .frame(width: min(circleBackgroundSize, 320), height: min(circleBackgroundSize, 320))
                                         .offset(x: screenWidth * 0.22, y: -screenHeight * 0.01)
-                                    
+
                                     // Replace this with your actual car image
                                     Image("carSample")
                                         .resizable()
@@ -75,17 +75,17 @@ struct WelcomeScreen: View {
                                 }
                                 .padding(.top, screenHeight * 0.02)
                                 .padding(.bottom, screenHeight * -0.02)
-                                
+
                                 // Let's Get Started Text
                                 VStack(alignment: .leading, spacing: screenHeight * 0.01) {
                                     Text("Let's")
                                         .font(.customFont(size: mainTitleFontSize, weight: .bold))
                                         .foregroundColor(.white)
-                                    
+
                                     Text("Get Started")
                                         .font(.customFont(size: mainTitleFontSize, weight: .bold))
                                         .foregroundColor(.white)
-                                    
+
                                     Text("Everything start from here")
                                         .font(.customFont(size: subtitleFontSize, weight: .regular))
                                         .foregroundColor(.gray)
@@ -93,12 +93,12 @@ struct WelcomeScreen: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, horizontalPadding)
                                 .padding(.bottom, screenHeight * 0.05)
-                                
+
                                 Spacer()
-                                
+
                                 // Login Buttons
                                 VStack(spacing: screenHeight * 0.015) {
-                                    
+
                                     Button(action: {
                                         goToLogin = true
                                     }) {
@@ -110,8 +110,8 @@ struct WelcomeScreen: View {
                                             .background(Color.customBitterSweet)
                                             .cornerRadius(screenWidth * 0.133)
                                     }
-                                
-                                    
+
+
                                     Button(action: {
                                         goToSignUp = true
                                     }) {
@@ -127,24 +127,24 @@ struct WelcomeScreen: View {
                                                     .stroke(Color.customBitterSweet.opacity(1), lineWidth: 1)
                                             )
                                     }
-                                    
+
                                     // Or Continue With
                                     HStack {
                                         Rectangle()
                                             .fill(Color(hex: "FFFFFF"))
                                             .frame(width: screenWidth * 0.25, height: 0.5)
-                                        
+
                                         Text("Or Continue With")
                                             .font(.customFont(size: screenWidth * 0.031, weight: .regular)) // ~12pt
                                             .foregroundColor(Color(hex: "FFFFFF"))
                                             .padding(.horizontal, screenWidth * 0.025)
-                                        
+
                                         Rectangle()
                                             .fill(Color(hex: "FFFFFF"))
                                             .frame(width: screenWidth * 0.25, height: 0.5)
                                     }
                                     .padding(.vertical, screenHeight * 0.02)
-                                    
+
                                     // Social Login Buttons
                                     HStack(spacing: screenWidth * 0.04) {
                                         Button(action: {
@@ -156,7 +156,7 @@ struct WelcomeScreen: View {
                                                     .scaledToFit()
                                                     .frame(width: iconSize, height: iconSize)
                                                     .foregroundColor(.white)
-                                                
+
                                                 Text("Google")
                                                     .font(.customFont(size: socialButtonFontSize, weight: .semibold))
                                                     .foregroundColor(.white)
@@ -165,9 +165,9 @@ struct WelcomeScreen: View {
                                             .frame(height: socialButtonHeight)
                                             .background(Color(hex: "3A3A3A").opacity(0.3))
                                             .cornerRadius(screenWidth * 0.075) // ~28pt radius
-                                            
+
                                         }
-                                        
+
                                         Button(action: {
                                             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                                                let window = windowScene.windows.first {
@@ -181,7 +181,7 @@ struct WelcomeScreen: View {
                                                     .scaledToFit()
                                                     .frame(width: iconSize, height: iconSize)
                                                     .foregroundColor(.white)
-                                                
+
                                                 Text("Apple")
                                                     .font(.customFont(size: socialButtonFontSize, weight: .semibold))
                                                     .foregroundColor(.white)
@@ -200,6 +200,7 @@ struct WelcomeScreen: View {
                         .preferredColorScheme(.dark)
                         .navigationBarHidden(true)
                         .navigationBarBackButtonHidden(true)
+
                     }
                 }
             }
@@ -214,10 +215,12 @@ struct WelcomeScreen: View {
             .navigationDestination(isPresented: $goToLogin) {
                 LoginScreen()
                     .navigationBarBackButtonHidden(true)
+                    .background(InteractivePopGestureEnabler())
             }
             .navigationDestination(isPresented: $goToSignUp) {
                 SignUpScreen()
                     .navigationBarBackButtonHidden(true)
+                    .background(InteractivePopGestureEnabler())
             }
         }
     }

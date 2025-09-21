@@ -9,6 +9,7 @@ enum AuthServiceError: Error {
     case invalidMail(String)
     case otpInvalid
     case otpExpired
+
 }
 
 import AuthenticationServices
@@ -132,6 +133,14 @@ class AuthService {
     func signIn(email: String, password: String) async throws {
             try await SupabaseManager.client.auth.signIn(email: email, password: password)
         }
+    
+    func logout() async throws {
+        do {
+            try await SupabaseManager.client.auth.signOut()
+        } catch {
+            throw AuthServiceError.signUpFailed("Logout fallito: \(error.localizedDescription)")
+        }
+    }
     
     @MainActor
     func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws {

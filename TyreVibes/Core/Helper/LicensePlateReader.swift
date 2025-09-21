@@ -538,8 +538,8 @@ public class LicensePlateReader {
                                                                 if let nome = infocar["nome"] as? String {
                                                                     let parts = nome.components(separatedBy: " - ")
                                                                     if parts.count > 0 { mapped["make"] = parts[0] }
-                                                                    if parts.count > 1 { mapped["model"] = parts[1].replacingOccurrences(of: "--&gt;", with: "") }
-                                                                    if parts.count > 2 { mapped["modelDetails"] = parts[2] }
+                                                                    if parts.count > 1 { mapped["model"] = parts[1].replacingOccurrences(of: "--&gt;", with: "").replacingOccurrences(of: "&amp;", with: "&") }
+                                                                    if parts.count > 2 { mapped["modelDetails"] = parts[2].replacingOccurrences(of: "&amp;", with: "&")}
                                                                 }
                                                                 // Mappatura estesa: tutti i valori presenti nella risposta
                                                                 for (key, value) in infocar {
@@ -2278,6 +2278,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
                 var plateData = PlateData(plate: plate)
                 plateData.make = vehicleDict["make"] as? String ?? ""
                 plateData.model = vehicleDict["model"] as? String ?? ""
+                plateData.year = vehicleDict["year"] as? String ?? ""
                 plateData.modelDetails = vehicleDict["model_detail"] as? String ?? ""
                 // Handle displacementCC (can be String, NSNumber, Int, Double, or nil)
                 if let disp = vehicleDict["displacement"] {

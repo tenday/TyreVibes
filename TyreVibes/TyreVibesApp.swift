@@ -10,12 +10,22 @@ import GoogleSignIn
 
 @main
 struct TyreVibesApp: App {
+    @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
+
+
     var body: some Scene {
         WindowGroup {
-            SplashScreen()
-                .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
+            ZStack {
+                if isLoggedIn {
+                    BottomNavigationView()
+                } else {
+                    LoginScreen()
                 }
+                SplashScreen()
+                    .onOpenURL { url in
+                        GIDSignIn.sharedInstance.handle(url)
+                    }
+            }
         }
     }
 }

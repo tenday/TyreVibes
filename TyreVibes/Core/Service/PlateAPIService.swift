@@ -270,7 +270,7 @@ class PlateAPIService {
                 let mime_type: String?
             }
             let decoded = try JSONDecoder().decode(AssociationResponse.self, from: data)
-            return (decoded.image_base64, decoded.mime_type)
+            return (decoded.image_base64, "image/png")
         } else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
             throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)

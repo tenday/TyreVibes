@@ -3,11 +3,11 @@ import SwiftUI
 import LocalAuthentication
 
 struct LoginScreen: View {
-    
+
     @StateObject private var viewModel = LoginViewModel()
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var showPassword = false
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @State private var showAlert = false
@@ -40,7 +40,7 @@ struct LoginScreen: View {
                             }) {
                                 Image(systemName: "chevron.left")
                                     .resizable()
-                                    .frame(width: 24, height: 24)
+                                    .frame(width: 15, height: 24)
                                     .foregroundColor(.white)
                             }
                             Spacer()
@@ -128,29 +128,30 @@ struct LoginScreen: View {
                                 .frame(height: 62)
                             }
                             
-                            // Remember Me & Forgot Password
-                            HStack {
-                                HStack(spacing: 0) {
-                                    Toggle("", isOn: $viewModel.rememberMe)
-                                        .labelsHidden()
-                                        .toggleStyle(CheckboxToggleStyle())
+                            // Remember Me & Face ID
+                            VStack(spacing: 8) {
+                                HStack {
+                                    HStack(spacing: 0) {
+                                        Toggle("", isOn: $viewModel.rememberMe)
+                                            .labelsHidden()
+                                            .toggleStyle(CheckboxToggleStyle())
 
-                                    Text("Remember me")
-                                        .foregroundColor(.white)
-                                        .font(.customFont(size: 12, weight: .regular))
+                                        Text("Remember me")
+                                            .foregroundColor(.white)
+                                            .font(.customFont(size: 12, weight: .regular))
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    Spacer()
+
+                                    NavigationLink(destination: ForgotPasswordScreen()) {
+                                        Text("Forgot Password")
+                                            .foregroundColor(.customBitterSweet)
+                                            .font(.customFont(size: 14, weight: .semibold))
+                                            .underline()
+                                    }
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                Spacer()
-                                
-                                NavigationLink(destination: ForgotPasswordScreen()) {
-                                    Text("Forgot Password")
-                                        .foregroundColor(.customBitterSweet)
-                                        .font(.customFont(size: 14, weight: .semibold))
-                                        .underline()
-                                }
-                                
-                                
+
                             }
                             .padding(.top, -16)
                             
@@ -163,20 +164,31 @@ struct LoginScreen: View {
                                     viewModel.password = ""
                                 }
                             }) {
-                                Text("Log in")
-                                    .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                    .foregroundColor(Color.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: buttonHeight)
-                                    .background(Color.customBitterSweet)
-                                    .cornerRadius(screenWidth * 0.133)
-                                    .opacity(viewModel.isLoading ? 0 : 1)
-                                    .overlay {
-                                        if viewModel.isLoading {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        }
-                                    }
+                                if viewModel.isLoading {
+                                    Text("")
+                                        .foregroundColor(Color.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: buttonHeight)
+                                        .background(Color.customBitterSweet)
+                                        .cornerRadius(screenWidth * 0.133)
+                                        .overlay(ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .scaleEffect(1.2)
+                                            .frame(maxWidth: .infinity))
+                                        .disabled(true)
+                                }
+                                else {
+                                    Text("Log in")
+                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                        .foregroundColor(Color.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: buttonHeight)
+                                        .background(Color.customBitterSweet)
+                                        .cornerRadius(screenWidth * 0.133)
+                                        .opacity(viewModel.isLoading ? 0 : 1)
+                                }
+                                
+                                
                             }
                             .disabled(viewModel.email.isEmpty || viewModel.password.isEmpty || viewModel.isLoading)
                             .opacity(viewModel.email.isEmpty || viewModel.password.isEmpty ? 0.6 : 1.0)
@@ -249,7 +261,7 @@ struct LoginScreen: View {
                     }
                 }
                 .onAppear {
-                    authenticateWithFaceID()
+                    viewModel.attemptAutoLogin()
                 }
                 .customAlert(
                     isPresented: $showAlert,
@@ -265,10 +277,12 @@ struct LoginScreen: View {
             .navigationDestination(isPresented: $viewModel.showHomeScreen) {
                 BottomNavigationView()
                     .navigationBarBackButtonHidden(true)
+                    .background(InteractivePopGestureEnabler())
             }
             .navigationBarHidden(true)
             .navigationBarBackButtonHidden(true)
         }
+        .background(InteractivePopGestureEnabler())
         .preferredColorScheme(.dark)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -276,26 +290,6 @@ struct LoginScreen: View {
         
     }
     
-    private func authenticateWithFaceID() {
-        let context = LAContext()
-        var error: NSError?
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-            let reason = "Log in with Face ID"
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, authenticationError in
-                if success {
-                    DispatchQueue.main.async {
-                        // Mark user as logged in and navigate
-                        isLoggedIn = true
-                        viewModel.showHomeScreen = true
-                    }
-                } else {
-                    // Handle failed authentication
-                }
-            }
-        } else {
-            // Face ID not available
-        }
-    }
 }
 
 // MARK: - Reusable Components

@@ -172,7 +172,6 @@ struct CameraPreview: UIViewControllerRepresentable {
 
         override func viewDidLoad() {
             super.viewDidLoad()
-            print("CameraViewController viewDidLoad")
             loadModels()
             handleCameraAuthorization()
         }
@@ -205,20 +204,15 @@ struct CameraPreview: UIViewControllerRepresentable {
             }
 
         private func handleCameraAuthorization() {
-            print("handleCameraAuthorization chiamato")
             switch AVCaptureDevice.authorizationStatus(for: .video) {
             case .authorized:
-                print("Camera autorizzata")
                 setupSession()
             case .notDetermined:
-                print("Camera: richiesta permesso")
                 AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                     DispatchQueue.main.async {
                         if granted {
-                            print("Permesso fotocamera garantito")
                             self?.setupSession()
                         } else {
-                            print("Permesso fotocamera NEGATO")
                             self?.showPermissionLabel(text: "Accesso fotocamera negato.\nAbilitalo in Impostazioni > Privacy > Fotocamera.")
                         }
                     }
@@ -266,8 +260,7 @@ struct CameraPreview: UIViewControllerRepresentable {
             view.layer.insertSublayer(layer, at: 0)
             self.previewLayer = layer
 
-            print("setupSession: avvio captureSession")
-            print("▶️ captureSession.startRunning chiamato")
+            
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 self?.captureSession.startRunning()
                 DispatchQueue.main.async {
@@ -375,7 +368,6 @@ struct CameraPreview: UIViewControllerRepresentable {
 
                         // Raccogli al massimo 2 candidati per osservazione
                         let rawCandidates: [String] = filteredObservations.flatMap { $0.topCandidates(2).map { $0.string } }
-                        print("Candidati OCR raw: \(rawCandidates)")
 
                         // Normalizzazione
                         let cleanedCandidates: [String] = rawCandidates.map { cand in
@@ -412,7 +404,6 @@ struct CameraPreview: UIViewControllerRepresentable {
                         if let best = scored.sorted(by: { $0.1 > $1.1 }).first?.0 {
                            self.handleDetectedPlate(best)
                         } else if let fallback = cleanedCandidates.first, !fallback.isEmpty {
-                            print("⚠️ Nessun match regex, uso fallback:", fallback)
                             self.handleDetectedPlate(fallback)
                         }
                     }
@@ -473,6 +464,12 @@ struct ScanPlateView: View {
     @State private var errorMessage: String = ""
     @State private var showErrorAlert: Bool = false
 
+    // Nuovi stati per le guide UX
+    @State private var showInstructions: Bool = true
+    @State private var pulseAnimation: Bool = false
+    @State private var guideStep: Int = 0
+    @State private var scanningIndicatorOpacity: Double = 0.0
+
     var body: some View {
         let plateWidth: CGFloat = 280
         let plateHeight: CGFloat = 80
@@ -530,91 +527,172 @@ struct ScanPlateView: View {
                     .padding(.horizontal,24)
                     
                     Spacer()
-                    // Overlay guidato per l'utente
-                    VStack(spacing: 0) {
-                        // ZStack con bordo animato attorno alla ROI
-                        ZStack {
-                            if plateText.isEmpty {
-                                DashedROI(cornerRadius: plateHeight * 0.18)
-                                    .frame(width: plateWidth, height: plateHeight)
-                                    .foregroundColor(.clear)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: plateHeight * 0.18)
-                                            .stroke(Color.yellow, lineWidth: 3)
-                                            .opacity(0.6)
-                                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: plateText.isEmpty)
+
+                    // Istruzioni iniziali animate
+                    if showInstructions && plateText.isEmpty && !isLoadingPlateData {
+                        VStack(spacing: 16) {
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 50))
+                                .foregroundColor(.white.opacity(0.9))
+                                .scaleEffect(pulseAnimation ? 1.1 : 1.0)
+                                .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: pulseAnimation)
+
+                            VStack(spacing: 8) {
+                                Text("Scansione Targa")
+                                    .font(.customFont(size: 22, weight: .bold))
+                                    .foregroundColor(.white)
+
+                                Text("Posiziona la targa del veicolo\nall'interno del riquadro")
+                                    .font(.customFont(size: 16, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .multilineTextAlignment(.center)
+                                    .lineSpacing(4)
+                            }
+
+                            // Indicatori di suggerimento
+                            HStack(spacing: 20) {
+                                ScanTipView(icon: "light.max", text: "Luce\nbuona")
+                                ScanTipView(icon: "rectangle.center.inset.filled", text: "Targa\ncentrata")
+                                ScanTipView(icon: "hand.raised", text: "Tieni\nfermo")
+                            }
+
+                            Button(action: {
+                                withAnimation(.easeOut(duration: 0.5)) {
+                                    showInstructions = false
+                                }
+                            }) {
+                                Text("Inizia Scansione")
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        Capsule()
+                                            .fill(.white)
                                     )
                             }
+                        }
+                        .padding(24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(.white.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+                        .padding(.horizontal, 32)
+                        .transition(.scale.combined(with: .opacity))
+                    }
 
-                            LicensePlateView(text: plateText, width: plateWidth, height: plateHeight, countryCode: "I")
-                                .padding(.horizontal)
-                                .scaleEffect(plateText.isEmpty ? 1.0 : 1.1)
-                                .opacity(plateText.isEmpty ? 0.7 : 1.0)
-                                .animation(.easeOut(duration: 0.4), value: plateText.isEmpty)
+                    // Overlay guidato per la scansione
+                    if !showInstructions {
+                        VStack(spacing: 16) {
+                            // ZStack con bordo animato e guide di allineamento
+                            ZStack {
+                                // Guide di allineamento negli angoli
+                                if plateText.isEmpty {
+                                    CornerGuidesView(width: plateWidth, height: plateHeight)
+                                        .opacity(scanningIndicatorOpacity)
+                                        .animation(.easeInOut(duration: 0.5), value: scanningIndicatorOpacity)
+                                }
 
-                            if !plateText.isEmpty {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.green)
-                                    .transition(.scale.combined(with: .opacity))
-                                    .padding(.top, -plateHeight * 1.4)
-                                    .animation(.spring(response: 0.5, dampingFraction: 0.7), value: plateText)
+                                // ROI principale
+                                if plateText.isEmpty {
+                                    DashedROI(cornerRadius: plateHeight * 0.18)
+                                        .frame(width: plateWidth, height: plateHeight)
+                                        .foregroundColor(.clear)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: plateHeight * 0.18)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [.yellow, .orange],
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    ),
+                                                    lineWidth: 3
+                                                )
+                                                .opacity(pulseAnimation ? 0.8 : 0.4)
+                                                .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulseAnimation)
+                                        )
+                                }
+
+                                LicensePlateView(text: plateText, width: plateWidth, height: plateHeight, countryCode: "I")
+                                    .padding(.horizontal)
+                                    .scaleEffect(plateText.isEmpty ? 1.0 : 1.1)
+                                    .opacity(plateText.isEmpty ? 0.7 : 1.0)
+                                    .animation(.easeOut(duration: 0.4), value: plateText.isEmpty)
+
+                                if !plateText.isEmpty {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 40))
+                                            .foregroundColor(.green)
+                                            .transition(.scale.combined(with: .opacity))
+                                            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: plateText)
+
+                                        Text("Targa Rilevata!")
+                                            .font(.customFont(size: 14, weight: .semibold))
+                                            .foregroundColor(.green)
+                                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                                    }
+                                    .offset(y: -plateHeight * 0.8)
+                                }
+                            }
+
+                            // Testo dinamico e suggerimenti sotto al riquadro
+                            VStack(spacing: 8) {
+                                if isLoadingPlateData {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(1.2)
+                                    Text("Ricerca targa in corso...")
+                                        .font(.customFont(size: 16, weight: .medium))
+                                        .foregroundColor(.white)
+                                } else if plateText.isEmpty {
+                                    Text("Inquadra la targa nel riquadro")
+                                        .font(.customFont(size: 18, weight: .semibold))
+                                        .foregroundColor(.white)
+
+                                    Text("Assicurati che la targa sia ben illuminata e leggibile")
+                                        .font(.customFont(size: 14, weight: .regular))
+                                        .foregroundColor(.white.opacity(0.7))
+                                        .multilineTextAlignment(.center)
+                                } else {
+                                    Text("Targa: \(plateText)")
+                                        .font(.customFont(size: 16, weight: .semibold))
+                                        .foregroundColor(.green)
+                                }
                             }
                         }
-                        // Testo dinamico sotto al riquadro
-                        if isLoadingPlateData {
-                            Text("Hold On")
-                                .font(.customFont(size: 16, weight: .medium))
-                                .foregroundColor(.red)
-                                .padding(.top, 8)
-                        } else if plateText.isEmpty {
-                            Text("Inquadra la targa all’interno del riquadro")
-                                .font(.customFont(size: 16, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                                .padding(.top, 8)
+                        .padding(.horizontal)
+                        .onAppear {
+                            pulseAnimation = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    scanningIndicatorOpacity = 1.0
+                                }
+                            }
                         }
                     }
-                    .padding(.horizontal)
+
                     Spacer()
                 }
-                ZStack {
-                    if isLoadingPlateData {
-                        Color.black.opacity(0.5)
-                            .ignoresSafeArea()
-                            .transition(.opacity)
-                            .overlay(
-                                Color.clear.customAlert(
-                                    isPresented: $isLoadingPlateData,
-                                    title: "",
-                                    message: "Ricerca targa in corso...",
-                                    showprogress: false,
-                                    primaryButtonTitle: "OK",
-                                    primaryButtonAction: {
-
-                                    }
-                                )
+                // Loading overlay persistente
+                if isLoadingPlateData {
+                    Color.black.opacity(0.5)
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                        .overlay(
+                            CustomAlertView(
+                                title: "Ricerca targa in corso...",
+                                showProgress: true
                             )
-                            .task {
-                                let trimmed = plateText.trimmingCharacters(in: .whitespacesAndNewlines)
-                                guard !trimmed.isEmpty else {
-                                    self.isLoadingPlateData = false
-                                    return
-                                }
-                                // Interrompe subito la ricerca visuale
-                                self.isLoadingPlateData = false
-                                do {
-                                    let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
-                                    self.data = data
-                                    self.vehicleImage = data.vehicleImage
-                                    self.navigateToCheckDetails = true
-                                } catch {
-                                    self.errorMessage = error.localizedDescription
-                                    self.showErrorAlert = true
-                                }
-                            }
-                    }
+                        )
+                        .onAppear {
+                            performPlateSearch()
+                        }
                 }
-                .animation(.easeInOut(duration: 0.4), value: isLoadingPlateData)
             }
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
@@ -628,9 +706,62 @@ struct ScanPlateView: View {
                     viewModel: ConfirmDetailsViewModel()
                 )
             }
+            .alert("Errore", isPresented: $showErrorAlert) {
+                Button("OK") {
+                    showErrorAlert = false
+                    plateText = ""
+                    // Reset per permettere nuova scansione
+                }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
     
+    private func performPlateSearch() {
+        let trimmed = plateText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            self.isLoadingPlateData = false
+            return
+        }
+
+        Task {
+            do {
+                let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
+
+                await MainActor.run {
+                    if data.make == "" {
+                        self.errorMessage = "Targa inserita non trovata, si prega di riprovare"
+                        self.showErrorAlert = true
+                        self.isLoadingPlateData = false
+                    } else {
+                        self.data = data
+                        self.vehicleImage = data.vehicleImage
+                        self.isLoadingPlateData = false
+                        self.navigateToCheckDetails = true
+                    }
+                }
+            } catch let apiError as PlateAPIError {
+                await MainActor.run {
+                    switch apiError {
+                    case .alreadyInGarage:
+                        self.errorMessage = "Questa targa è già presente nel tuo garage."
+                    default:
+                        self.errorMessage = apiError.localizedDescription
+                    }
+                    self.showErrorAlert = true
+                    self.isLoadingPlateData = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.showErrorAlert = true
+                    self.isLoadingPlateData = false
+                }
+            }
+        }
+    }
+
     private func fetchPlateData(for plate: String) {
         // Simula chiamata di scraping in background
         DispatchQueue.global().async {
@@ -647,6 +778,128 @@ struct ScanPlateView: View {
 }
 
 
+
+// MARK: - Helper Views per le guide UX
+
+struct ScanTipView: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(.yellow)
+
+            Text(text)
+                .font(.customFont(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
+        }
+        .frame(width: 60)
+    }
+}
+
+struct CornerGuidesView: View {
+    let width: CGFloat
+    let height: CGFloat
+
+    var body: some View {
+        ZStack {
+            // Angolo superiore sinistro
+            VStack {
+                HStack {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 20, height: 3)
+                    Spacer()
+                }
+                Spacer()
+            }
+            .frame(width: width, height: height)
+
+            VStack {
+                HStack {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 3, height: 20)
+                    Spacer()
+                }
+                Spacer()
+            }
+            .frame(width: width, height: height)
+
+            // Angolo superiore destro
+            VStack {
+                HStack {
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 20, height: 3)
+                }
+                Spacer()
+            }
+            .frame(width: width, height: height)
+
+            VStack {
+                HStack {
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 3, height: 20)
+                }
+                Spacer()
+            }
+            .frame(width: width, height: height)
+
+            // Angolo inferiore sinistro
+            VStack {
+                Spacer()
+                HStack {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 20, height: 3)
+                    Spacer()
+                }
+            }
+            .frame(width: width, height: height)
+
+            VStack {
+                Spacer()
+                HStack {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 3, height: 20)
+                    Spacer()
+                }
+            }
+            .frame(width: width, height: height)
+
+            // Angolo inferiore destro
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 20, height: 3)
+                }
+            }
+            .frame(width: width, height: height)
+
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.yellow)
+                        .frame(width: 3, height: 20)
+                }
+            }
+            .frame(width: width, height: height)
+        }
+    }
+}
 
 #Preview {
     ScanPlateView()

@@ -85,12 +85,15 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
         Task {
             do {
                 try await authService.signIn(email: email, password: password)
+
                 
                 if rememberMe {
                     try KeychainHelper.save(email: email, password: password)
                 } else {
                     KeychainHelper.delete()
                 }
+
+                UserDefaults.standard.set(rememberMe, forKey: "rememberMe")
 
                 showHomeScreen = true
             } catch {
@@ -102,7 +105,10 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
     }
     
     public func attemptAutoLogin() {
-        if let credentials = KeychainHelper.load() {
+        self.rememberMe = UserDefaults.standard.bool(forKey: "rememberMe")
+        self.useFaceID = UserDefaults.standard.bool(forKey: "useFaceID")
+
+        if rememberMe, let credentials = KeychainHelper.load() {
             self.email = credentials.email
             self.password = credentials.password
             self.rememberMe = true
@@ -118,18 +124,23 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
         let context = LAContext()
         var error: NSError?
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            if !useFaceID {
+                Task { @MainActor in
+                    self.signIn()
+                }
+                return
+            }
             let reason = "Accedi con Face ID"
             context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
                 if success {
+                    UserDefaults.standard.set(true, forKey: "useFaceID")
                     Task { @MainActor in
                         self.signIn()
                     }
-                } else {
-                    // Opzionalmente gestire fallimento autenticazione biometrica
                 }
             }
         } else {
-            // Face ID non disponibile, fallback a login normale
+            // Face ID non disponibile → login normale
             Task { @MainActor in
                 self.signIn()
             }

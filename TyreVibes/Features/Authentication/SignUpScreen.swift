@@ -26,7 +26,7 @@ struct SignUpScreen: View {
                         }) {
                                 Image(systemName: "chevron.left")
                                     .resizable()
-                                    .frame(width: 24, height: 24)
+                                    .frame(width: 15, height: 24)
                                     .foregroundColor(.white)
                         }
                         Spacer()
@@ -176,6 +176,7 @@ struct SignUpScreen: View {
                     OTPVerificationView(viewModel: viewModel)
                 }
                 .navigationBarBackButtonHidden(true)
+                .background(InteractivePopGestureEnabler())
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .onTapGesture {
@@ -204,9 +205,13 @@ struct PasswordRequirementRow: View {
                 .fill(requirement.isValid ? Color.green : Color(hex: "3A3A3A"))
                 .frame(width: 24, height: 24)
                 .overlay(
-                    Image(systemName: requirement.isValid ? "checkmark" : "")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
+                    Group {
+                        if requirement.isValid {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
                 )
 
             Text(requirement.text)
@@ -354,17 +359,40 @@ struct PasswordField: View {
     let isConfirmPasswordValid: Bool
     let requirements: [PasswordRequirement]
 
+    @State private var showPassword = false
+    @State private var showConfirmPassword = false
+
     var body: some View {
         VStack(spacing: 12) {
+            // Primo campo
             HStack {
                 Image("PasswordIcon")
                     .resizable()
                     .scaledToFit()
                     .frame(height: 24)
-                SecureField("Enter Password", text: $password)
-                    .frame(maxHeight: .infinity)
-                    .font(.customFont(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+
+                if showPassword {
+                    TextField("Enter Password", text: $password)
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                } else {
+                    SecureField("Enter Password", text: $password)
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                }
+
+                Spacer()
+                Button(action: { showPassword.toggle() }) {
+                    Image(systemName: showPassword ? "eye.fill" : "eye.slash.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .foregroundColor(.white)
+                }
             }
             .padding()
             .background(Color.customFieldColor)
@@ -381,19 +409,39 @@ struct PasswordField: View {
                 .padding(.top, 4)
             }
 
+            // Conferma password
             HStack {
                 Image("PasswordConfirmationIcon")
                     .resizable()
                     .scaledToFit()
                     .frame(height: 24)
-                SecureField("Confirm Password", text: $confirmPassword)
-                    .frame(maxHeight: .infinity)
-                    .font(.customFont(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+
+                if showConfirmPassword {
+                    TextField("Confirm Password", text: $confirmPassword)
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                } else {
+                    SecureField("Confirm Password", text: $confirmPassword)
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                }
 
                 if !confirmPassword.isEmpty {
                     Image(systemName: isConfirmPasswordValid ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .foregroundColor(isConfirmPasswordValid ? .green : .red)
+                }
+
+                Spacer()
+                Button(action: { showConfirmPassword.toggle() }) {
+                    Image(systemName: showConfirmPassword ? "eye.fill" : "eye.slash.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .foregroundColor(.white)
                 }
             }
             .padding()
