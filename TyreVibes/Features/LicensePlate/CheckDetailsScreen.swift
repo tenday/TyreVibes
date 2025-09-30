@@ -166,7 +166,6 @@ struct CheckDetailsView: View {
                     onFullScreenDismiss: onFullScreenDismiss
                 )
                 .navigationBarBackButtonHidden(true)
-                .background(InteractivePopGestureEnabler())
             } else {
                 Text("Nessun dato disponibile")
             }
@@ -175,7 +174,6 @@ struct CheckDetailsView: View {
             GarageScreen()
         }
         .navigationBarBackButtonHidden(true)
-        .background(InteractivePopGestureEnabler())
         .onAppear {
             if isContinueEnabled {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {

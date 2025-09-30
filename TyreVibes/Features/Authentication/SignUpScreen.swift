@@ -176,7 +176,6 @@ struct SignUpScreen: View {
                     OTPVerificationView(viewModel: viewModel)
                 }
                 .navigationBarBackButtonHidden(true)
-                .background(InteractivePopGestureEnabler())
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .onTapGesture {

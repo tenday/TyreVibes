@@ -1,27 +1,64 @@
-
 import SwiftUI
 
-// UIViewControllerRepresentable che riabilita il gesto di interactive pop quando si nasconde il back button nativo
 struct InteractivePopGestureEnabler: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        let vc = UIViewController()
-        vc.view.backgroundColor = .clear
-        DispatchQueue.main.async {
-            if let nav = vc.navigationController {
-                nav.interactivePopGestureRecognizer?.delegate = context.coordinator
-                nav.interactivePopGestureRecognizer?.isEnabled = true
-            }
-        }
-        return vc
+    typealias UIViewControllerType = PopGestureViewController
+    
+    func makeUIViewController(context: Context) -> PopGestureViewController {
+        PopGestureViewController()
     }
 
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: PopGestureViewController, context: Context) {
+        // Manteniamo vuoto se non ci sono aggiornamenti necessari
+    }
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            return true
+    // MARK: - Embedded Types
+    
+    final class PopGestureViewController: UIViewController {
+        
+        override func loadView() {
+            view = UIView()
+            view.backgroundColor = .clear
+            view.isHidden = true // Nasconde completamente la view
         }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            configureInteractivePopGesture()
+        }
+        
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            resetInteractivePopGesture()
+        }
+        
+        private func configureInteractivePopGesture() {
+            guard let navigationController = navigationController,
+                  let popGesture = navigationController.interactivePopGestureRecognizer else {
+                return
+            }
+            
+            popGesture.delegate = self
+            popGesture.isEnabled = true
+        }
+        
+        private func resetInteractivePopGesture() {
+            navigationController?.interactivePopGestureRecognizer?.delegate = nil
+        }
+    }
+}
+
+// MARK: - UIGestureRecognizerDelegate
+
+extension InteractivePopGestureEnabler.PopGestureViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Controlla che ci siano view controllers da cui tornare indietro
+        guard let navigationController = navigationController else { return false }
+        return navigationController.viewControllers.count > 1
+    }
+    
+    // Opzionale: permette il riconoscimento simultaneo di più gesture
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                          shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return false
     }
 }

@@ -215,12 +215,10 @@ struct WelcomeScreen: View {
             .navigationDestination(isPresented: $goToLogin) {
                 LoginScreen()
                     .navigationBarBackButtonHidden(true)
-                    .background(InteractivePopGestureEnabler())
             }
             .navigationDestination(isPresented: $goToSignUp) {
                 SignUpScreen()
                     .navigationBarBackButtonHidden(true)
-                    .background(InteractivePopGestureEnabler())
             }
         }
     }

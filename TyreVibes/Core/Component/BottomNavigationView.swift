@@ -250,6 +250,7 @@ struct TabItem: View {
                 }
             }
         }
+        .background(InteractivePopGestureEnabler())
     }
 }
 // MARK: - Central Floating Button

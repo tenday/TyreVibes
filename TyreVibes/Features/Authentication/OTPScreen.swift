@@ -241,7 +241,6 @@ var body: some View {
             CreationSuccessScreen()
         }
         .navigationBarBackButtonHidden(true)
-        .background(InteractivePopGestureEnabler())
     }
 }
     

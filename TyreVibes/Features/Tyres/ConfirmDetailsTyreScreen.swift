@@ -1,26 +1,46 @@
+import Foundation
 import SwiftUI
 
 struct ConfirmDetailsTyreView: View {
     let tireData: TireData
+    var onConfirm: ((String, String) -> Void)? = nil
+    var onCancel: (() -> Void)? = nil
+    var onConfirmCompletion: (() -> Void)? = nil
 
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedSeason: String
+    @State private var modelText: String
+    @FocusState private var modelFieldFocused: Bool
+    @State private var showModelAlert = false
+    @StateObject private var viewModel = TyreViewModel()
 
-    init(tireData: TireData) {
+    
+    
+
+    init(tireData: TireData, onConfirm: ((String, String) -> Void)? = nil, onCancel: (() -> Void)? = nil, onConfirmCompletion: (() -> Void)? = nil) {
         self.tireData = tireData
+        self.onConfirm = onConfirm
+        self.onCancel = onCancel
+        self.onConfirmCompletion = onConfirmCompletion
         // Usa la stagionalità rilevata automaticamente, altrimenti default "Winter"
         self._selectedSeason = State(initialValue: tireData.season.isEmpty ? "Winter" : tireData.season)
+        self._modelText = State(initialValue: tireData.model)
     }
 
     private func displayValue(_ value: String) -> String {
         value.isEmpty ? "-" : value
     }
-    
+
+    private var isModelValid: Bool {
+        !modelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private func productionDate(from dot: String) -> String {
-        guard dot.count == 4,
-              let week = Int(dot.prefix(2)),
-              let year = Int(dot.suffix(2)) else { return "-" }
-        
+        let trimmedDOT = dot.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedDOT.count == 4,
+              let week = Int(trimmedDOT.prefix(2)),
+              let year = Int(trimmedDOT.suffix(2)) else { return "-" }
+
         let calendar = Calendar.current
         let yearFull = 2000 + year
         if let date = calendar.date(from: DateComponents(calendar: calendar, year: yearFull, weekday: 1, weekOfYear: week)) {
@@ -29,6 +49,13 @@ struct ConfirmDetailsTyreView: View {
             return formatter.string(from: date)
         }
         return "-"
+    }
+
+    private func dotDisplayValue() -> String {
+        let trimmedDOT = tireData.dot.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDOT.isEmpty else { return "" }
+        let dateString = productionDate(from: trimmedDOT)
+        return dateString == "-" ? trimmedDOT : "\(trimmedDOT) (\(dateString))"
     }
     
     var body: some View {
@@ -40,9 +67,7 @@ struct ConfirmDetailsTyreView: View {
             VStack(spacing: 0) {
                 // Navigation Bar
                 HStack {
-                    Button(action: {
-                        dismiss()
-                    }) {
+                    Button(action: handleCancel) {
                         Image(systemName: "chevron.left")
                             .font(.customFont(size: 24, weight: .semibold))
                             .foregroundColor(.white)
@@ -67,9 +92,14 @@ struct ConfirmDetailsTyreView: View {
                 // Details List
                 VStack(spacing: 14) {
                     DetailRow(label: "Size Label:", value: displayValue(tireData.size))
-                    DetailRow(label: "DOT:", value: displayValue("\(tireData.dot) (\(productionDate(from: tireData.dot)))"))
+                    DetailRow(label: "DOT:", value: displayValue(dotDisplayValue()))
                     DetailRow(label: "Make:", value: displayValue(tireData.brand))
-                    DetailRow(label: "Model:", value: displayValue(tireData.model))
+                    DetailRowTextField(
+                        label: "Model:",
+                        placeholder: "Enter model",
+                        text: $modelText
+                    )
+                    .focused($modelFieldFocused)
                     DetailRow(label: "Load Index:", value: displayValue(tireData.loadIndex))
                     DetailRow(label: "Speed Rating:", value: displayValue(tireData.speedRating))
                     DetailRowMenu(label: "Season:", value: $selectedSeason)
@@ -80,23 +110,89 @@ struct ConfirmDetailsTyreView: View {
                 Spacer()
                 
                 // Confirm Button
-                Button(action: {
-                    // Handle confirmation
-                    print("Confirmed")
-                }) {
+                Button(action: confirmAction) {
+                    if viewModel.isLoading {
+                        Text("")
+                            .foregroundColor(Color.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(Color.customBitterSweet)
+                            .cornerRadius(28)
+                            .overlay(ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                                .frame(maxWidth: .infinity))
+                            .disabled(true)
+                    }
+                    else {
                     Text("Confirm")
                         .font(.customFont(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.customBitterSweet)
+                        .background(isModelValid ? Color.customBitterSweet : Color.customBitterSweet.opacity(0.6))
                         .cornerRadius(28)
+                    }
+                    
                 }
+                .disabled(!isModelValid)
                 .padding(.horizontal, 24)
             }
         }
         .navigationBarHidden(true)
+        .overlay(
+            Group {
+                if showModelAlert {
+                    CustomAlertView(
+                        title: "Inserisci il modello del pneumatico per continuare.",
+                        showProgress: false
+                    )
+                }
+            }
+        )
         .preferredColorScheme(.dark)
+        .onAppear {
+            if !isModelValid {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    modelFieldFocused = true
+                }
+            }
+        }
+    }
+
+    private func confirmAction() {
+        let trimmedModel = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedModel.isEmpty else {
+            modelFieldFocused = true
+            showModelAlert = false
+            DispatchQueue.main.async {
+                showModelAlert = true
+            }
+            return
+        }
+        modelText = trimmedModel
+        
+        
+        viewModel.brand       = tireData.brand
+        viewModel.model       = trimmedModel
+        viewModel.size        = tireData.size
+        viewModel.dot         = tireData.dot
+        viewModel.loadIndex   = tireData.loadIndex
+        viewModel.speedRating = tireData.speedRating
+        viewModel.season      = selectedSeason
+        
+        viewModel.insertTyre(vehicleId: Int(tireData.vehicleId))
+        
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            onConfirmCompletion?()
+        }
+    }
+
+    private func handleCancel() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            onCancel?()
+        }
     }
 }
 
@@ -146,6 +242,35 @@ struct DetailRowMenu: View {
     }
 }
 
+struct DetailRowTextField: View {
+    var label: String
+    var placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack {
+            Spacer().frame(width: 10)
+            Text(label)
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white.opacity(0.6))
+
+            Spacer()
+
+            TextField(placeholder, text: $text)
+                .font(.customFont(size: 18, weight: .bold))
+                .foregroundColor(.white)
+                .disableAutocorrection(true)
+                .textInputAutocapitalization(.words)
+                .multilineTextAlignment(.trailing)
+
+            Spacer().frame(width: 20)
+        }
+        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 50)
+        .background(Color.customFieldColor)
+        .cornerRadius(12)
+    }
+}
+
 // Preview
 struct ConfirmDetailsView_Previews: PreviewProvider {
     static var previews: some View {
@@ -159,6 +284,7 @@ struct ConfirmDetailsView_Previews: PreviewProvider {
                 data.loadIndex = "91"
                 data.speedRating = "V"
                 data.season = "Winter"
+                data.vehicleId = 1
                 return data
             }()
         )

@@ -60,7 +60,6 @@ struct CreationSuccessScreen: View {
         .navigationDestination(isPresented: $goHome) {
             BottomNavigationView()
                 .navigationBarBackButtonHidden(true)
-                .background(InteractivePopGestureEnabler())
         }
         .alert("Enable Face ID?", isPresented: $showFaceIDPrompt) {
             Button("Yes") {

@@ -630,11 +630,6 @@ struct ScanPlateView: View {
                                             .foregroundColor(.green)
                                             .transition(.scale.combined(with: .opacity))
                                             .animation(.spring(response: 0.5, dampingFraction: 0.7), value: plateText)
-
-                                        Text("Targa Rilevata!")
-                                            .font(.customFont(size: 14, weight: .semibold))
-                                            .foregroundColor(.green)
-                                            .transition(.move(edge: .bottom).combined(with: .opacity))
                                     }
                                     .offset(y: -plateHeight * 0.8)
                                 }
@@ -658,10 +653,6 @@ struct ScanPlateView: View {
                                         .font(.customFont(size: 14, weight: .regular))
                                         .foregroundColor(.white.opacity(0.7))
                                         .multilineTextAlignment(.center)
-                                } else {
-                                    Text("Targa: \(plateText)")
-                                        .font(.customFont(size: 16, weight: .semibold))
-                                        .foregroundColor(.green)
                                 }
                             }
                         }

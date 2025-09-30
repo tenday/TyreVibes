@@ -18,6 +18,34 @@ struct SpringAnimation {
     static let fluid = Animation.interpolatingSpring(stiffness: 300, damping: 30)
 }
 
+fileprivate func formatVehicleInfoDate(_ dateString: String?) -> String {
+    guard let rawDate = dateString?.trimmingCharacters(in: .whitespacesAndNewlines), !rawDate.isEmpty else {
+        return "N/A"
+    }
+
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+
+    let outputFormatter = DateFormatter()
+    outputFormatter.dateFormat = "d MMMM yyyy"
+    outputFormatter.locale = Locale(identifier: "it_IT")
+
+    let inputFormats = [
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+        "yyyy-MM-dd"
+    ]
+
+    for format in inputFormats {
+        formatter.dateFormat = format
+        if let date = formatter.date(from: rawDate) {
+            return outputFormatter.string(from: date)
+        }
+    }
+
+    return rawDate
+}
+
 struct GlassCardStyle: ViewModifier {
     let isSelected: Bool
     let gradientColors: [Color]
@@ -104,18 +132,21 @@ struct GlassCardStyle: ViewModifier {
 struct CarDetailsView: View {
     let vehicle: VehicleResponse
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var tyreViewModel = TyreViewModel()
     @State private var showTyreRegistration: Bool = false
+    @State private var showTyreDetails: Bool = false
     @State private var showInfoDialog: Bool = false
     @State private var infoDialogOffset: CGFloat = 0
     @State private var selectedRevisionIndex: Int? = nil
     @State private var selectedTyreIndex: Int? = nil
     @State private var selectedInsuranceIndex: Int? = nil
-    
-    
-    
-    
-    var body: some View {
+    @State private var selectedTyre: TyreRegistered? = nil
 
+
+
+
+    var body: some View {
+        NavigationStack {
             ZStack {
                 Color.customBackgroundColor.ignoresSafeArea()
 
@@ -214,55 +245,129 @@ struct CarDetailsView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
 
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 20) {
-                                ForEach(0..<1, id: \.self) { _ in
+                        if tyreViewModel.isLoading {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(1.5)
+                                Spacer()
+                            }
+                            .frame(height: 231)
+                            .padding(.horizontal, 8)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 20) {
+                                    // Add Button
                                     Button(action: {
                                         showTyreRegistration = true
                                     }) {
                                         ZStack {
-                                            RoundedRectangle(cornerRadius: 12)
+                                            RoundedRectangle(cornerRadius: 16)
                                                 .fill(Color.customFieldColor)
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 12)
+                                                    RoundedRectangle(cornerRadius: 16)
                                                         .stroke(Color.customGray, lineWidth: 1)
                                                         .frame(width: 188, height: 231)
                                                 )
                                                 .frame(width: 174, height: 215)
-                                            
+
                                             Image("plusIcon")
                                                 .resizable()
                                                 .scaledToFit()
                                                 .frame(width: 37, height: 37)
                                         }
                                     }
+
+                                    // Registered Tyres
+                                    ForEach(tyreViewModel.registeredTyres) { tyre in
+                                        Button(action: {
+                                            selectedTyre = tyre
+                                            showTyreDetails = true
+                                        }) {
+                                            ZStack {
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .fill(Color.customFieldColor)
+                                                    .frame(width: 188, height: 231)
+
+                                                VStack {
+                                                    ZStack {
+                                                        RoundedRectangle(cornerRadius: 12)
+                                                            .fill(Color.white.opacity(0.2))
+                                                            .frame(width: 172, height: 122)
+                                                            .cornerRadius(12)
+
+                                                        Image("tyreSample")
+                                                            .resizable()
+                                                            .aspectRatio(contentMode: .fill)
+                                                            .frame(width: 95, height: 100)
+                                                            .clipped()
+                                                    }
+
+                                                    Text("\(tyre.brand) \(tyre.model)")
+                                                        .font(.customFont(size: 16, weight: .semibold))
+                                                        .multilineTextAlignment(.center)
+                                                        .foregroundColor(.white)
+                                                        .lineLimit(1)
+                                                    Spacer().frame(height: 6)
+                                                    Text(tyre.season)
+                                                        .multilineTextAlignment(.center)
+                                                        .font(.customFont(size: 16, weight: .semibold))
+                                                        .foregroundColor(.white.opacity(0.6))
+                                                    Spacer().frame(height: 11)
+                                                    Text(tyre.size)
+                                                        .font(.customFont(size: 16, weight: .semibold))
+                                                        .multilineTextAlignment(.center)
+                                                        .foregroundColor(.white)
+                                                        .padding(.bottom, 10)
+
+                                                }
+
+                                            }
+                                        }
+                                    }
                                 }
+                                .padding(.vertical, 9)
+                                .padding(.horizontal, 8)
                             }
-                            .padding(.vertical, 9)
-                            .padding(.horizontal, 8)
-                        }
-                        .fullScreenCover(isPresented: $showTyreRegistration) {
-                            TyreRegistrationView()
                         }
 
                     }
                 }
                 .padding(.horizontal,24)
-                
+
             }
             .navigationBarBackButtonHidden(true)
-            .background(InteractivePopGestureEnabler())
             .sheet(isPresented: $showInfoDialog) {
-                        AdvancedInfoSheet(
-                            vehicle: vehicle,
-                            selectedRevisionIndex: $selectedRevisionIndex,
-                            selectedTyreIndex: $selectedTyreIndex,
-                            selectedInsuranceIndex: $selectedInsuranceIndex
-                        )
+                AdvancedInfoSheet(
+                    vehicle: vehicle,
+                    selectedRevisionIndex: $selectedRevisionIndex,
+                    selectedTyreIndex: $selectedTyreIndex,
+                    selectedInsuranceIndex: $selectedInsuranceIndex
+                )
+                .presentationDragIndicator(.visible)
+                .presentationDetents([.medium, .large])
             }
-
-
-
+            .fullScreenCover(isPresented: $showTyreRegistration) {
+                TyreRegistrationView(
+                    onConfirmCompletion: {
+                        showTyreRegistration = false
+                        tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id)
+                    },
+                    vehicleid: vehicle.vehicle.id
+                )
+            }
+            .fullScreenCover(isPresented: $showTyreDetails) {
+                if let selectedTyre = selectedTyre {
+                    TyreDetailView(tyre: selectedTyre) {
+                        showTyreDetails = false
+                    }
+                }
+            }
+            .onAppear {
+                tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id)
+            }
+        }
     }
     
     
@@ -283,141 +388,143 @@ struct AdvancedInfoSheet: View {
     private let tabs = ["Revisions", "Tyres", "Assicurazioni"]
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Enhanced Tab Picker with Liquid Glass Design
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
-                            let isSelected = currentTab == index
-                            
-                            Button(action: {
-                                withAnimation(SpringAnimation.bouncy) {
-                                    currentTab = index
-                                    isTabTransitioning = true
-                                }
-                                
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    isTabTransitioning = false
-                                }
-                            }) {
-                                VStack(spacing: 8) {
-                                    HStack(spacing: 6) {
-                                        // Tab Icon
-                                        Image(systemName: tabIcon(for: index))
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-                                            .scaleEffect(isSelected ? 1.1 : 1.0)
-                                            .animation(SpringAnimation.snappy, value: isSelected)
-                                        
-                                        Text(tab)
-                                            .font(.customFont(size: 14, weight: .semibold))
-                                            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-                                    }
-                                    .padding(.vertical, 12)
-                                    .frame(maxWidth: .infinity)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(.ultraThinMaterial)
-                                            .opacity(isSelected ? 1.0 : 0.0)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .stroke(
-                                                        LinearGradient(
-                                                            colors: tabGradientColors(for: index),
-                                                            startPoint: .topLeading,
-                                                            endPoint: .bottomTrailing
-                                                        ),
-                                                        lineWidth: isSelected ? 2 : 0
-                                                    )
-                                                    .opacity(isSelected ? 0.8 : 0.0)
-                                            )
-                                            .shadow(
-                                                color: tabGradientColors(for: index).first?.opacity(0.3) ?? .clear,
-                                                radius: isSelected ? 10 : 0,
-                                                x: 0,
-                                                y: isSelected ? 5 : 0
-                                            )
-                                    )
-                                    .animation(SpringAnimation.fluid, value: isSelected)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
-                }
-                .background(.thinMaterial)
-                
-                // Content with spectacular transition animations
-                ZStack {
-                    if currentTab == 0 {
-                        AdvancedRevisionsTable(
-                            revisions: vehicle.revisions ?? [],
-                            selectedIndex: $selectedRevisionIndex
-                        )
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .leading).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        ))
-                    } else if currentTab == 1 {
-                        AdvancedTyresTable(
-                            tyres: vehicle.tyres ?? [],
-                            selectedIndex: $selectedTyreIndex
-                        )
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.8).combined(with: .opacity),
-                            removal: .scale(scale: 0.8).combined(with: .opacity)
-                        ))
-                    } else {
-                        AdvancedInsuranceTable(
-                            insurances: vehicle.insurances ?? [],
-                            selectedIndex: $selectedInsuranceIndex
-                        )
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                    }
-                }
-                .animation(SpringAnimation.fluid, value: currentTab)
+        VStack(spacing: 0) {
+            // Header with title and done button
+            HStack {
+                Text("Vehicle Info")
+                    .font(.customFont(size: 20, weight: .bold))
+                    .foregroundColor(.white)
                 
                 Spacer()
-            }
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.customBackgroundColor,
-                        Color.customBackgroundColor.opacity(0.8),
-                        Color.customFieldColor
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
-            .navigationTitle("Vehicle Info")
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Vehicle Info")
-                        .font(.customFont(size: 20, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                
+                if #available(iOS 26.0, *) {
                     Button(action: { dismiss() }) {
                         Text("Done")
                             .font(.customFont(size: 16, weight: .semibold))
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .frame(height: 36)
+                            .foregroundColor(.white)
                     }
+                    .buttonStyle(.glass)
+                } else {
+                    // Fallback on earlier versions
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 10)
+            
+            // Enhanced Tab Picker with Liquid Glass Design
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                        let isSelected = currentTab == index
+                        
+                        Button(action: {
+                            withAnimation(SpringAnimation.bouncy) {
+                                currentTab = index
+                                isTabTransitioning = true
+                            }
+                            
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                isTabTransitioning = false
+                            }
+                        }) {
+                            VStack(spacing: 8) {
+                                HStack(spacing: 6) {
+                                    // Tab Icon
+                                    Image(systemName: tabIcon(for: index))
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                        .scaleEffect(isSelected ? 1.1 : 1.0)
+                                        .animation(SpringAnimation.snappy, value: isSelected)
+                                    
+                                    Text(tab)
+                                        .font(.customFont(size: 14, weight: .semibold))
+                                        .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                }
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(.ultraThinMaterial)
+                                        .opacity(isSelected ? 1.0 : 0.0)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: tabGradientColors(for: index),
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    ),
+                                                    lineWidth: isSelected ? 2 : 0
+                                                )
+                                                .opacity(isSelected ? 0.8 : 0.0)
+                                        )
+                                        .shadow(
+                                            color: tabGradientColors(for: index).first?.opacity(0.3) ?? .clear,
+                                            radius: isSelected ? 10 : 0,
+                                            x: 0,
+                                            y: isSelected ? 5 : 0
+                                        )
+                                )
+                                .animation(SpringAnimation.fluid, value: isSelected)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+            }
+            .background(.thinMaterial)
+            
+            // Content with spectacular transition animations
+            ZStack {
+                if currentTab == 0 {
+                    AdvancedRevisionsTable(
+                        revisions: vehicle.revisions ?? [],
+                        selectedIndex: $selectedRevisionIndex
+                    )
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading).combined(with: .opacity),
+                        removal: .move(edge: .trailing).combined(with: .opacity)
+                    ))
+                } else if currentTab == 1 {
+                    AdvancedTyresTable(
+                        tyres: vehicle.tyres ?? [],
+                        selectedIndex: $selectedTyreIndex
+                    )
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
+                    ))
+                } else {
+                    AdvancedInsuranceTable(
+                        insurances: vehicle.insurances ?? [],
+                        selectedIndex: $selectedInsuranceIndex
+                    )
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+                }
+            }
+            .animation(SpringAnimation.fluid, value: currentTab)
+            
+            Spacer()
         }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.customBackgroundColor,
+                    Color.customBackgroundColor.opacity(0.8),
+                    Color.customFieldColor
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
     }
     
     private func tabIcon(for index: Int) -> String {
@@ -502,7 +609,7 @@ struct RevisionRow: View {
                             
                             Spacer()
                             
-                            Text(revision.dataRevisione ?? "N/A")
+                            Text(formatVehicleInfoDate(revision.dataRevisione))
                                 .font(.customFont(size: 14, weight: .medium))
                                 .foregroundColor(.white.opacity(0.7))
                         }
@@ -540,7 +647,7 @@ struct RevisionRow: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Divider().background(Color.customGray)
                         
-                        DetailRowItem(icon: "calendar", label: "Date", value: revision.dataRevisione ?? "N/A")
+                        DetailRowItem(icon: "calendar", label: "Date", value: formatVehicleInfoDate(revision.dataRevisione))
                         DetailRowItem(icon: "checkmark.seal", label: "Result", value: revision.esitoRevisione ?? "Unknown")
                         DetailRowItem(icon: "speedometer", label: "Mileage", value: (revision.kmRevisione ?? "N/A") + " km")
                     }
@@ -593,34 +700,509 @@ struct RevisionRow: View {
 struct AdvancedTyresTable: View {
     let tyres: [VehicleTyre]
     @Binding var selectedIndex: Int?
-    
+
+    // Enhanced filter states
+    @State private var selectedRadius: Int? = nil
+    @State private var selectedWidth: Int? = nil
+    @State private var selectedRatio: Int? = nil
+    @State private var selectedSpeedIndex: String? = nil
+    @State private var selectedLoadIndex: String? = nil
+    @State private var sortBy: TyreSortOption = .diameter
+    @State private var sortAscending: Bool = true
+    @State private var showFilters: Bool = false
+    @State private var searchText: String = ""
+    @State private var showSortDialog: Bool = false
+
+    enum TyreSortOption: String, CaseIterable {
+        case diameter = "Diametro"
+        case width = "Larghezza"
+        case ratio = "Rapporto"
+        case speedIndex = "Indice Velocità"
+        case loadIndex = "Indice Carico"
+        
+        var icon: String {
+            switch self {
+            case .diameter: return "circle"
+            case .width: return "ruler"
+            case .ratio: return "percent"
+            case .speedIndex: return "speedometer"
+            case .loadIndex: return "scalemass"
+            }
+        }
+    }
+
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                if tyres.isEmpty {
-                    EmptyStateView(
-                        icon: "car.circle",
-                        title: "No Tyres",
-                        subtitle: "No supported tyres available"
-                    )
-                } else {
-                    ForEach(Array(tyres.enumerated()), id: \.offset) { index, tyre in
-                        TyreRow(
-                            tyre: tyre,
-                            index: index,
-                            isSelected: selectedIndex == index
-                        ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedIndex = selectedIndex == index ? nil : index
+        // Available options for filters
+        let availableRadii = Array(Set(tyres.compactMap { $0.diameter })).sorted()
+        let availableWidths = Array(Set(tyres.compactMap { $0.width })).sorted()
+        let availableRatios = Array(Set(tyres.compactMap { $0.ratio })).sorted()
+        let availableSpeedIndices = Array(Set(tyres.compactMap { $0.speedIndex }.filter { !$0.isEmpty })).sorted()
+        let availableLoadIndices = Array(Set(tyres.compactMap { $0.loadIndex }.filter { !$0.isEmpty })).sorted()
+
+        VStack(alignment: .leading, spacing: 0) {
+            // Enhanced Filter Header
+            VStack(spacing: 12) {
+                // Search bar - full width
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+
+                    TextField("Cerca pneumatici...", text: $searchText)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .font(.customFont(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(10)
+
+                // Filter and Sort controls
+                HStack(spacing: 8) {
+                    // Filter toggle
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showFilters.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: showFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Filtri")
+                                .font(.customFont(size: 13, weight: .semibold))
+                            if hasActiveFilters {
+                                Text("(\(activeFilterTags.count))")
+                                    .font(.customFont(size: 11, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.8))
                             }
                         }
-                        Divider().background(Color.customGray.opacity(0.5))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(hasActiveFilters ? Color.orange.opacity(0.4) : Color.white.opacity(0.15))
+                        .cornerRadius(8)
                     }
+
+                    // Sort button - tap to change direction, long press for menu
+                    Button(action: {
+                        showSortDialog = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .font(.system(size: 12, weight: .medium))
+                            Text(sortBy.rawValue)
+                                .font(.customFont(size: 13, weight: .semibold))
+                                .lineLimit(1)
+                            Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.3))
+                        .cornerRadius(8)
+                    }
+                    .confirmationDialog("Ordina per", isPresented: $showSortDialog, titleVisibility: .visible) {
+                        // Sort by options
+                        ForEach(TyreSortOption.allCases, id: \.self) { option in
+                            Button(action: {
+                                sortBy = option
+                            }) {
+                                HStack {
+                                    Text(option.rawValue)
+                                    if sortBy == option {
+                                        Text("✓")
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        // Direction options
+                        Button(action: {
+                            sortAscending = true
+                        }) {
+                            HStack {
+                                Text("Crescente")
+                                if sortAscending {
+                                    Text("✓")
+                                }
+                            }
+                        }
+
+                        Button(action: {
+                            sortAscending = false
+                        }) {
+                            HStack {
+                                Text("Decrescente")
+                                if !sortAscending {
+                                    Text("✓")
+                                }
+                            }
+                        }
+
+                        Button("Annulla", role: .cancel) {}
+                    }
+
+                    // Quick toggle direction button
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            sortAscending.toggle()
+                        }
+                    }) {
+                        Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(8)
+                            .background(Color.blue.opacity(0.3))
+                            .cornerRadius(8)
+                    }
+
+                    Spacer()
+
+                    // Reset button (visible only when filters active)
+                    if hasActiveFilters {
+                        Button(action: resetFilters) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 13, weight: .medium))
+                                Text("Reset")
+                                    .font(.customFont(size: 13, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.4))
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+
+                // Expandable filters section - Grid Layout
+                if showFilters {
+                    VStack(spacing: 10) {
+                        // First row - 3 filters
+                        HStack(spacing: 8) {
+                            FilterPicker(
+                                title: "Raggio",
+                                selection: $selectedRadius,
+                                options: availableRadii,
+                                formatOption: { "R\($0)" }
+                            )
+
+                            FilterPicker(
+                                title: "Larghezza",
+                                selection: $selectedWidth,
+                                options: availableWidths,
+                                formatOption: { "\($0)" }
+                            )
+
+                            FilterPicker(
+                                title: "Rapporto",
+                                selection: $selectedRatio,
+                                options: availableRatios,
+                                formatOption: { "\($0)%" }
+                            )
+                        }
+
+                        // Second row - 2 filters
+                        HStack(spacing: 8) {
+                            FilterPicker(
+                                title: "Velocità",
+                                selection: $selectedSpeedIndex,
+                                options: availableSpeedIndices,
+                                formatOption: { $0 }
+                            )
+
+                            FilterPicker(
+                                title: "Carico",
+                                selection: $selectedLoadIndex,
+                                options: availableLoadIndices,
+                                formatOption: { $0 }
+                            )
+
+                            // Empty spacer to maintain layout
+                            Spacer()
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                // Active filters chips
+                if hasActiveFilters {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(activeFilterTags, id: \.self) { tag in
+                                FilterTag(text: tag) {
+                                    removeFilter(tag: tag)
+                                }
+                            }
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    let filteredAndSortedTyres: [(Int, VehicleTyre)] = {
+                        // Apply all filters
+                        let filtered = tyres.enumerated().filter { (_, tyre) in
+                            // Search filter
+                            if !searchText.isEmpty {
+                                let searchLower = searchText.lowercased()
+                                let tyreDescription = "\(tyre.width ?? 0)/\(tyre.ratio ?? 0) R\(tyre.diameter ?? 0) \(tyre.speedIndex ?? "") \(tyre.loadIndex ?? "")".lowercased()
+                                if !tyreDescription.contains(searchLower) {
+                                    return false
+                                }
+                            }
+                            
+                            // Diameter filter
+                            if let selected = selectedRadius, tyre.diameter != selected {
+                                return false
+                            }
+                            
+                            // Width filter
+                            if let selected = selectedWidth, tyre.width != selected {
+                                return false
+                            }
+                            
+                            // Ratio filter
+                            if let selected = selectedRatio, tyre.ratio != selected {
+                                return false
+                            }
+                            
+                            // Speed index filter
+                            if let selected = selectedSpeedIndex, tyre.speedIndex != selected {
+                                return false
+                            }
+                            
+                            // Load index filter
+                            if let selected = selectedLoadIndex, tyre.loadIndex != selected {
+                                return false
+                            }
+                            
+                            return true
+                        }
+                        
+                        // Sort by selected option
+                        let sorted = filtered.sorted { lhs, rhs in
+                            switch sortBy {
+                            case .diameter:
+                                let lhsValue = lhs.1.diameter ?? 0
+                                let rhsValue = rhs.1.diameter ?? 0
+                                return sortAscending ? (lhsValue < rhsValue) : (lhsValue > rhsValue)
+                            case .width:
+                                let lhsValue = lhs.1.width ?? 0
+                                let rhsValue = rhs.1.width ?? 0
+                                return sortAscending ? (lhsValue < rhsValue) : (lhsValue > rhsValue)
+                            case .ratio:
+                                let lhsValue = lhs.1.ratio ?? 0
+                                let rhsValue = rhs.1.ratio ?? 0
+                                return sortAscending ? (lhsValue < rhsValue) : (lhsValue > rhsValue)
+                            case .speedIndex:
+                                let lhsValue = lhs.1.speedIndex ?? ""
+                                let rhsValue = rhs.1.speedIndex ?? ""
+                                return sortAscending ? (lhsValue < rhsValue) : (lhsValue > rhsValue)
+                            case .loadIndex:
+                                let lhsValue = lhs.1.loadIndex ?? ""
+                                let rhsValue = rhs.1.loadIndex ?? ""
+                                return sortAscending ? (lhsValue < rhsValue) : (lhsValue > rhsValue)
+                            }
+                        }
+                        return sorted
+                    }()
+                    
+                    if tyres.isEmpty {
+                        EmptyStateView(
+                            icon: "car.circle",
+                            title: "Nessun Pneumatico",
+                            subtitle: "Non ci sono pneumatici disponibili"
+                        )
+                    } else if filteredAndSortedTyres.isEmpty {
+                        EmptyStateView(
+                            icon: "magnifyingglass",
+                            title: "Nessun Risultato",
+                            subtitle: "Nessun pneumatico corrisponde ai filtri selezionati"
+                        )
+                    } else {
+                        ForEach(filteredAndSortedTyres, id: \.0) { index, tyre in
+                            TyreRow(
+                                tyre: tyre,
+                                index: index,
+                                isSelected: selectedIndex == index
+                            ) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    selectedIndex = selectedIndex == index ? nil : index
+                                }
+                            }
+                            
+                            if index < filteredAndSortedTyres.count - 1 {
+                                Divider().background(Color.customGray.opacity(0.5))
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+            }
         }
+    }
+    
+    // MARK: - Helper Properties and Functions
+    private var hasActiveFilters: Bool {
+        selectedRadius != nil || selectedWidth != nil || selectedRatio != nil || 
+        selectedSpeedIndex != nil || selectedLoadIndex != nil || !searchText.isEmpty
+    }
+    
+    private var activeFilterTags: [String] {
+        var tags: [String] = []
+        
+        if let radius = selectedRadius {
+            tags.append("R\(radius)")
+        }
+        if let width = selectedWidth {
+            tags.append("\(width)mm")
+        }
+        if let ratio = selectedRatio {
+            tags.append("\(ratio)%")
+        }
+        if let speed = selectedSpeedIndex {
+            tags.append("Vel: \(speed)")
+        }
+        if let load = selectedLoadIndex {
+            tags.append("Carico: \(load)")
+        }
+        if !searchText.isEmpty {
+            tags.append("'\(searchText)'")
+        }
+        
+        return tags
+    }
+    
+    private func resetFilters() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            selectedRadius = nil
+            selectedWidth = nil
+            selectedRatio = nil
+            selectedSpeedIndex = nil
+            selectedLoadIndex = nil
+            searchText = ""
+        }
+    }
+    
+    private func removeFilter(tag: String) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            if tag.starts(with: "R") {
+                selectedRadius = nil
+            } else if tag.hasSuffix("mm") {
+                selectedWidth = nil
+            } else if tag.hasSuffix("%") {
+                selectedRatio = nil
+            } else if tag.starts(with: "Vel:") {
+                selectedSpeedIndex = nil
+            } else if tag.starts(with: "Carico:") {
+                selectedLoadIndex = nil
+            } else if tag.starts(with: "'") {
+                searchText = ""
+            }
+        }
+    }
+}
+
+// MARK: - Custom Filter Components
+struct FilterPicker<T: Hashable>: View {
+    let title: String
+    @Binding var selection: T?
+    let options: [T]
+    let formatOption: (T) -> String
+
+    @State private var showSheet = false
+
+    var body: some View {
+        Button(action: {
+            showSheet = true
+        }) {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.customFont(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 4) {
+                    if let selected = selection {
+                        Text(formatOption(selected))
+                            .font(.customFont(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    } else {
+                        Text("Tutti")
+                            .font(.customFont(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(selection != nil ? Color.blue.opacity(0.25) : Color.white.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(selection != nil ? Color.blue.opacity(0.4) : Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
+        }
+        .confirmationDialog(title, isPresented: $showSheet, titleVisibility: .visible) {
+            Button("Tutti") {
+                selection = nil
+            }
+
+            ForEach(options, id: \.self) { option in
+                Button(formatOption(option)) {
+                    selection = option
+                }
+            }
+
+            Button("Annulla", role: .cancel) {}
+        }
+    }
+}
+
+struct FilterTag: View {
+    let text: String
+    let onRemove: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.customFont(size: 12, weight: .medium))
+                .foregroundColor(.white)
+            
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Color.blue.opacity(0.3))
+        .cornerRadius(12)
     }
 }
 
@@ -895,6 +1477,9 @@ enum InsuranceStatus {
     }
 }
 
+
+
+
 struct InsuranceRow: View {
     let insurance: VehicleInsurance
     let index: Int
@@ -964,7 +1549,7 @@ struct InsuranceRow: View {
                                         .font(.system(size: 12))
                                         .foregroundColor(.white.opacity(0.6))
 
-                                    Text("Scade: \(formatDate(expiryDate))")
+                                    Text("Scade: \(formatVehicleInfoDate(expiryDate))")
                                         .font(.customFont(size: 12, weight: .medium))
                                         .foregroundColor(.white.opacity(0.8))
                                 }
@@ -991,7 +1576,7 @@ struct InsuranceRow: View {
                         }
 
                         HStack {
-                            DetailRowItem(icon: "calendar.badge.exclamationmark", label: "Scadenza", value: formatDate(insurance.rcaExpiry ?? "N/A"))
+                            DetailRowItem(icon: "calendar.badge.exclamationmark", label: "Scadenza", value: formatVehicleInfoDate(insurance.rcaExpiry))
                             Spacer()
                         }
                     }
@@ -1016,37 +1601,5 @@ struct InsuranceRow: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
     }
     
-    private func formatDate(_ dateString: String) -> String {
-        let formatter = DateFormatter()
-        
-        // Proviamo prima con il formato che include l'ora
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        if let date = formatter.date(from: dateString) {
-            let outputFormatter = DateFormatter()
-            outputFormatter.dateFormat = "d MMMM yyyy"
-            outputFormatter.locale = Locale(identifier: "it_IT")
-            return outputFormatter.string(from: date)
-        }
-        
-        // Se non funziona, proviamo con il formato ISO completo
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-        if let date = formatter.date(from: dateString) {
-            let outputFormatter = DateFormatter()
-            outputFormatter.dateFormat = "d MMMM yyyy"
-            outputFormatter.locale = Locale(identifier: "it_IT")
-            return outputFormatter.string(from: date)
-        }
-        
-        // Fallback al formato solo data
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let date = formatter.date(from: dateString) {
-            let outputFormatter = DateFormatter()
-            outputFormatter.dateFormat = "d MMMM yyyy"
-            outputFormatter.locale = Locale(identifier: "it_IT")
-            return outputFormatter.string(from: date)
-        }
-        
-        return dateString
-    }
 }
     

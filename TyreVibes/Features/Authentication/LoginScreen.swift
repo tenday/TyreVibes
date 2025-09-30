@@ -277,10 +277,11 @@ struct LoginScreen: View {
             .navigationDestination(isPresented: $viewModel.showHomeScreen) {
                 BottomNavigationView()
                     .navigationBarBackButtonHidden(true)
-                    .background(InteractivePopGestureEnabler())
             }
             .navigationBarHidden(true)
             .navigationBarBackButtonHidden(true)
+            .background(InteractivePopGestureEnabler())
+
         }
         .background(InteractivePopGestureEnabler())
         .preferredColorScheme(.dark)

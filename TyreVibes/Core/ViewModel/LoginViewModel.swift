@@ -23,6 +23,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
     @Published var formFocus: LoginFormFocus?
 
     @AppStorage("useFaceID") var useFaceID: Bool = false
+    @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
 
     private let authService = AuthService()
 
@@ -95,6 +96,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
 
                 UserDefaults.standard.set(rememberMe, forKey: "rememberMe")
 
+                isLoggedIn = true
                 showHomeScreen = true
             } catch {
                 let alert = mapErrorToAlert(error, fallbackTitle: "Login fallito")
@@ -153,6 +155,8 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
             do {
                 try await authService.signInWithApple(presentationAnchor: presentationAnchor)
                 // Login con successo. La navigazione avverrà in un altro punto.
+                isLoggedIn = true
+                showHomeScreen = true
             } catch {
                 let alert = mapErrorToAlert(error, fallbackTitle: "Login Apple fallito")
                 self.alertItem = AlertItem(title: alert.title, message: alert.message)
@@ -168,6 +172,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 try await authService.signInWithGoogle()
                 // On success, the session publisher in SupabaseManager will trigger the navigation
                 // so we just need to stop the loading indicator.
+                isLoggedIn = true
                 showHomeScreen = true
             } catch {
                 let alert = mapErrorToAlert(error, fallbackTitle: "Login Google fallito")
