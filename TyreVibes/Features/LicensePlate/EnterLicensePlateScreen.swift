@@ -96,6 +96,7 @@ struct EnterLicensePlateView: View {
     @State private var data : PlateData?
     @State private var isLoadingDetails: Bool = false
     @State private var showConfirmDetailsScreen : Bool = false
+    @StateObject private var interstitialAdManager = InterstitialAdManager()
     
     private let maxPlateLength: Int = 8 // es. formato IT: AA123AA (7) o formati estesi
     private var isContinueEnabled: Bool {
@@ -184,45 +185,14 @@ struct EnterLicensePlateView: View {
                     // Continue Button
                     Button(action: {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        isLoadingDetails = true
-                        let trimmed = licensePlate.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
                         
-                        Task {
-                            do {
-                                let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
-                                if data.make == ""  {
-                                    licensePlate = ""
-                                    self.errorMessage = "Targa inserita non trovata, si prega di riprovare"
-                                    self.showErrorAlert = true
-                                    self.isLoadingDetails = false
-                                    return
-                                }
-                                
-                                self.data = data
-                                self.vehicleImage = data.vehicleImage
-                                licensePlate = ""
-                                self.navigateToCheckDetails = true
+                        if let rootVC = getRootViewController() {
+                            interstitialAdManager.showAd(from: rootVC) {
+                                performPlateSearch()
                             }
-                            catch let apiError as PlateAPIError {
-                                switch apiError {
-                                case .alreadyInGarage:
-                                    self.errorMessage = "Questa targa è già presente nel tuo garage."
-                                default:
-                                    self.errorMessage = apiError.localizedDescription
-                            }
-                                self.showErrorAlert = true
-                                licensePlate = ""
-                                
-                            } catch {
-                                self.errorMessage = error.localizedDescription
-                                self.showErrorAlert = true
-                            }
-                            self.isLoadingDetails = false
+                        } else {
+                            performPlateSearch() // Fallback
                         }
-                        
-                        self.showErrorAlert = false
-                        
                     }) {
                         if  isLoadingDetails {
                             Text("")
@@ -295,6 +265,51 @@ struct EnterLicensePlateView: View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
+
+    private func performPlateSearch() {
+        isLoadingDetails = true
+        let trimmed = licensePlate.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            isLoadingDetails = false
+            return
+        }
+
+        Task {
+            do {
+                let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
+                if data.make == ""  {
+                    licensePlate = ""
+                    self.errorMessage = "Targa inserita non trovata, si prega di riprovare"
+                    self.showErrorAlert = true
+                    self.isLoadingDetails = false
+                    return
+                }
+
+                self.data = data
+                self.vehicleImage = data.vehicleImage
+                licensePlate = ""
+                self.navigateToCheckDetails = true
+            }
+            catch let apiError as PlateAPIError {
+                switch apiError {
+                case .alreadyInGarage:
+                    self.errorMessage = "Questa targa è già presente nel tuo garage."
+                default:
+                    self.errorMessage = apiError.localizedDescription
+                }
+                self.showErrorAlert = true
+                licensePlate = ""
+
+            } catch {
+                self.errorMessage = error.localizedDescription
+                self.showErrorAlert = true
+            }
+            self.isLoadingDetails = false
+        }
+
+        self.showErrorAlert = false
+    }
+
 }
 
 

@@ -463,6 +463,7 @@ struct ScanPlateView: View {
     @State private var vehicleImage: UIImage?
     @State private var errorMessage: String = ""
     @State private var showErrorAlert: Bool = false
+    @StateObject private var interstitialAdManager = InterstitialAdManager()
 
     // Nuovi stati per le guide UX
     @State private var showInstructions: Bool = true
@@ -478,10 +479,20 @@ struct ScanPlateView: View {
             ZStack(alignment: .top) {
                 CameraPreview(roiSize: CGSize(width: plateWidth, height: plateHeight)) { plate in
                     self.plateText = plate ?? ""
-                    self.isLoadingPlateData = true
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
-                    fetchPlateData(for: plate ?? "")
+
+                    if let rootVC = getRootViewController() {
+                        interstitialAdManager.showAd(from: rootVC) {
+                            // Azione da eseguire dopo la chiusura dell'annuncio
+                            self.isLoadingPlateData = true
+                            self.performPlateSearch()
+                        }
+                    } else {
+                        // Fallback se non è possibile mostrare l'annuncio
+                        self.isLoadingPlateData = true
+                        self.performPlateSearch()
+                    }
                 }
                 .ignoresSafeArea()
                 VStack {
@@ -680,9 +691,6 @@ struct ScanPlateView: View {
                                 showProgress: true
                             )
                         )
-                        .onAppear {
-                            performPlateSearch()
-                        }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -766,6 +774,7 @@ struct ScanPlateView: View {
             }
         }
     }
+
 }
 
 
