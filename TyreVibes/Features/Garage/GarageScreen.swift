@@ -15,6 +15,8 @@ struct GarageScreen: View {
     private let sheetSpacing: CGFloat = 20
     
     @StateObject private var viewModel = GarageViewModel()
+    @StateObject private var rewardedAdManager = RewardedAdManager()
+    @State private var showRewardAlert = false
     
     var filteredCars: [VehicleResponse] {
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -49,6 +51,34 @@ struct GarageScreen: View {
                     Spacer()
                     
                     HStack(spacing: 12) {
+                        // Pulsante per annuncio con premio
+                        Button(action: {
+                            if let rootVC = getRootViewController() {
+                                rewardedAdManager.showAd(from: rootVC) { rewarded in
+                                    if rewarded {
+                                        print("L'utente ha ricevuto la ricompensa!")
+                                        self.showRewardAlert = true
+                                    } else {
+                                        print("Annuncio non mostrato o non completato.")
+                                    }
+                                }
+                            }
+                        }) {
+                            Image(systemName: "gift.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 24, height: 24)
+                                .foregroundColor(rewardedAdManager.rewardedAd != nil ? .yellow : .gray)
+                                .padding(12)
+                                .background(
+                                    ZStack {
+                                        Circle().fill(Color.customBackgroundColor)
+                                        Circle().stroke(Color.white.opacity(0.22), lineWidth: 1.5)
+                                    }
+                                )
+                        }
+                        .disabled(rewardedAdManager.rewardedAd == nil)
+
                         HStack(alignment: .center) {
                             Button(action: {
                                 Task { @MainActor in
@@ -395,6 +425,10 @@ struct GarageScreen: View {
                     await viewModel.fetchCars()
                 }
                 
+                // AdMob Banner
+                BannerAd(adUnitID: "ca-app-pub-3940256099942544/2934735716")
+                    .frame(height: 50)
+                    .padding(.top, 10)
             }
             .fullScreenCover(isPresented: $showScanPlate) {
                 ScanPlateView(
@@ -420,9 +454,21 @@ struct GarageScreen: View {
                     await viewModel.fetchCars()
                 }
             }
+            .alert("Congratulazioni!", isPresented: $showRewardAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Hai ricevuto una ricompensa speciale!")
+            }
         }
-        
-      
+    }
+
+    private func getRootViewController() -> UIViewController? {
+        return UIApplication.shared.connectedScenes
+            .filter { $0.activationState == .foregroundActive }
+            .compactMap { $0 as? UIWindowScene }
+            .first?.windows
+            .filter { $0.isKeyWindow }
+            .first?.rootViewController
     }
     
     func delete(_ v: VehicleResponse) {

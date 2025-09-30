@@ -7,11 +7,15 @@
 
 import SwiftUI
 import GoogleSignIn
+import GoogleMobileAds
 
 @main
 struct TyreVibesApp: App {
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
 
+    init() {
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
+    }
 
     var body: some Scene {
         WindowGroup {
