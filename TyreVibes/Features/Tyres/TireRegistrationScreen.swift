@@ -1210,13 +1210,18 @@ struct TyreRegistrationView: View {
 
     // Computed property per verificare se tutti i dati essenziali sono stati raccolti
     private var allEssentialDataCollected: Bool {
+        return !ocrManager.extractedData.brand.isEmpty &&
+               !ocrManager.extractedData.size.isEmpty &&
+               !ocrManager.extractedData.loadIndex.isEmpty &&
+               !ocrManager.extractedData.speedRating.isEmpty &&
+               !ocrManager.extractedData.dot.isEmpty
+    }
+
+    // Computed property per ottenere i dati con vehicleId assegnato
+    private var tireDataWithVehicleId: TireData {
         var data = ocrManager.extractedData
         data.vehicleId = vehicleid
-        return !data.brand.isEmpty &&
-               !data.size.isEmpty &&
-               !data.loadIndex.isEmpty &&
-               !data.speedRating.isEmpty &&
-               !data.dot.isEmpty
+        return data
     }
     
     var body: some View {
@@ -1231,7 +1236,7 @@ struct TyreRegistrationView: View {
                 
                 // Header
                 HStack {
-                    Text("Tire Registration")
+                    Text(L10n.tireRegistration.localized)
                         .font(.customFont(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                     
@@ -1333,7 +1338,7 @@ struct TyreRegistrationView: View {
                 
                 // Istruzioni
                 VStack(spacing: 8) {
-                    Text("Tire Sidewall Scanning")
+                    Text(L10n.tireSidewallScanning.localized)
                         .font(.customFont(size: 20, weight: .semibold))
                         .foregroundColor(.white)
 
@@ -1384,12 +1389,21 @@ struct TyreRegistrationView: View {
             }
             .navigationDestination(isPresented: $navigateToConfirm) {
                 ConfirmDetailsTyreView(
-                    tireData: ocrManager.extractedData,
+                    tireData: tireDataWithVehicleId,
                     onConfirm: { selectedSeason, confirmedModel in
                         handleTyreConfirmation(withSeason: selectedSeason, model: confirmedModel)
                     },
                     onCancel: {
                         resetScanningSession()
+                    },
+                    onConfirmCompletion: {
+                        // Questa closure viene chiamata quando il viewModel.success diventa true
+                        // Chiudi la navigazione e poi il fullScreenCover
+                        navigateToConfirm = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            resetScanningSession()
+                            onConfirmCompletion?()
+                        }
                     }
                 )
                 .navigationBarBackButtonHidden(true)
@@ -1409,26 +1423,10 @@ struct TyreRegistrationView: View {
     }
 
     private func handleTyreConfirmation(withSeason season: String, model: String) {
-        navigateToConfirm = false
+        // Aggiorna solo i dati, la chiusura è gestita da onConfirmCompletion in ConfirmDetailsTyreView
         let normalizedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         ocrManager.extractedData.season = season
         ocrManager.extractedData.model = normalizedModel
-
-        let dismissAction = {
-            let completion = onConfirmCompletion
-            resetScanningSession()
-            if let completion {
-                completion()
-            } else {
-                dismiss()
-            }
-        }
-
-        DispatchQueue.main.async {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                dismissAction()
-            }
-        }
     }
 
     private func resetScanningSession() {
@@ -1462,7 +1460,7 @@ struct ExtractedDataView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Header con progress
             HStack {
-                Text("Tire Data")
+                Text(L10n.tireData.localized)
                     .font(.customFont(size: 20, weight: .semibold))
                     .foregroundColor(.white)
 

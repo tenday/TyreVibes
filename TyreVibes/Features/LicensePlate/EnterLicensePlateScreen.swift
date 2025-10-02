@@ -119,7 +119,7 @@ struct EnterLicensePlateView: View {
             NavigationStack {
                 HStack {
                     Spacer()
-                    Text("Enter License Plate")
+                    Text(L10n.enterLicensePlate.localized)
                         .font(.customFont(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                     Spacer()
@@ -237,7 +237,7 @@ struct EnterLicensePlateView: View {
                                     .frame(maxWidth: .infinity))
                                 .disabled(true)
                         } else {
-                            Text("Continue")
+                            Text(L10n.continue_.localized)
                                 .font(.customFont(size: 18, weight: .bold))
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)

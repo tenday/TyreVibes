@@ -1,17 +1,57 @@
 import SwiftUI
 import UIKit
 
+// Helper function to extract clean model name
+private func extractCleanModel(from model: String?) -> String {
+    guard let model = model else { return "" }
 
+    let trimmed = model.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    // If the model is only digits (like "500"), return it as is
+    if trimmed.rangeOfCharacter(from: CharacterSet.decimalDigits.inverted) == nil {
+        return trimmed
+    }
+
+    // Otherwise, extract only the first word/segment before any digit
+    let components = trimmed.components(separatedBy: CharacterSet.decimalDigits)
+    let cleanModel = components.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? trimmed
+
+    return cleanModel.isEmpty ? trimmed : cleanModel
+}
+
+// Helper function to extract clean engine info (e.g., "1.5 ETSI", "2.0 TDI")
+private func extractCleanEngine(from engine: String?) -> String {
+    guard let engine = engine else { return "" }
+
+    let trimmed = engine.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    // Extract displacement and engine type (e.g., "1.5 ETSI", "2.0 TDI")
+    // Pattern: number (with optional decimal) followed by optional space and letters
+    if let range = trimmed.range(of: #"\d+\.?\d*\s*[A-Za-z]+"#, options: .regularExpression) {
+        return String(trimmed[range])
+    }
+
+    // If no match, try to extract just the displacement
+    if let range = trimmed.range(of: #"\d+\.?\d*"#, options: .regularExpression) {
+        return String(trimmed[range])
+    }
+
+    return trimmed
+}
 
 struct GarageScreen: View {
     @StateObject private var viewModelLogin = LoginViewModel()
+    @StateObject private var paywallManager = PaywallManager.shared
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
     @State private var searchText = ""
     @State private var isPresentingSheet = false
     @State private var showScanPlate = false
     @State private var showEnterPlate = false
-    
-    
+    @State private var showPremiumScreen = false
+    @State private var showDeveloperSettings = false
+    @State private var tapCount = 0
+
+
     private let sheetSpacing: CGFloat = 20
     
     @StateObject private var viewModel = GarageViewModel()
@@ -42,10 +82,29 @@ struct GarageScreen: View {
             
             VStack(spacing: 0) {
                 HStack {
-                    Text("Garage")
-                        .font(.customFont(size: 36, weight: .semibold))
-                        .foregroundColor(.white)
-                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(L10n.garage.localized)
+                            .font(.customFont(size: 36, weight: .semibold))
+                            .foregroundColor(.white)
+                            .onTapGesture(count: 5) {
+                                // Tap 5 volte su "Garage" per aprire developer settings
+                                showDeveloperSettings = true
+                            }
+
+                        // Mostra badge premium o limite
+                        if paywallManager.isPremium {
+                            PremiumBadge(size: .small)
+                        } else {
+                            let vehicleCount = viewModel.vehicles.count
+                            if vehicleCount >= PaywallManager.FreeLimits.maxVehicles {
+                                LimitReachedBadge(
+                                    current: vehicleCount,
+                                    max: PaywallManager.FreeLimits.maxVehicles
+                                )
+                            }
+                        }
+                    }
+
                     Spacer()
                     
                     HStack(spacing: 12) {
@@ -190,14 +249,20 @@ struct GarageScreen: View {
                     
                     HStack {
                         Button(action: {
-                            isPresentingSheet = true
+                            // Verifica se l'utente può aggiungere un altro veicolo
+                            let vehicleCount = viewModel.vehicles.count
+                            if paywallManager.canAddVehicle(currentCount: vehicleCount) {
+                                isPresentingSheet = true
+                            } else {
+                                paywallManager.showPaywall(for: .unlimitedVehicles)
+                            }
                         }) {
                             Image("plusIcon")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 32, height: 32)
                                 .shadow(color: Color.black.opacity(0.22), radius: 2 , x: 0 , y: 4)
-                            
+
                         }
                     }
                     .frame(width: 80, height: 48)
@@ -228,10 +293,10 @@ struct GarageScreen: View {
                                         .font(.system(size: 20))
                                     Spacer().frame(width: 14)
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("Scan License Plate")
+                                        Text(L10n.scanLicensePlate.localized)
                                             .foregroundColor(.white)
                                             .font(.customFont(size: 16, weight: .semibold))
-                                        Text("Auto fill vehicles details")
+                                        Text(L10n.autoFillVehicleDetails.localized)
                                             .foregroundColor(.white.opacity(0.8))
                                             .font(.customFont(size: 12, weight: .regular))
                                     }
@@ -272,7 +337,7 @@ struct GarageScreen: View {
                                 Rectangle()
                                     .fill(Color.white.opacity(0.4))
                                     .frame(height: 1)
-                                Text("OR")
+                                Text("O")
                                     .foregroundColor(.white)
                                     .font(.customFont(size: 12, weight: .regular))
                                 Rectangle()
@@ -288,7 +353,7 @@ struct GarageScreen: View {
                                 
                             }) {
                                 HStack {
-                                    Text("Enter License Plate Manually")
+                                    Text(L10n.enterLicensePlateManually.localized)
                                         .foregroundColor(.white)
                                         .font(.customFont(size: 16, weight: .semibold))
                                     Spacer()
@@ -343,7 +408,7 @@ struct GarageScreen: View {
                             
                         }
                         else if viewModel.vehicles.isEmpty {
-                            Text("No veichles found,pls add a new one")
+                            Text(L10n.noVehiclesFound.localized)
                                 .font(.customFont(size: 18, weight: .bold))
                                 .foregroundColor(.gray)
                                 .padding(.horizontal, 24)
@@ -414,12 +479,40 @@ struct GarageScreen: View {
                     }
                 )
             }
+            .fullScreenCover(isPresented: $showPremiumScreen) {
+                PremiumSubscriptionScreen()
+            }
+            .sheet(isPresented: $showDeveloperSettings) {
+                DeveloperSettingsScreen()
+            }
             .edgesIgnoringSafeArea(.bottom)
             .onAppear {
                 Task {
                     await viewModel.fetchCars()
+                    paywallManager.updatePremiumStatus()
                 }
             }
+            .overlay(
+                Group {
+                    if paywallManager.showPaywall, let feature = paywallManager.paywallFeature {
+                        PaywallView(
+                            feature: feature,
+                            onDismiss: {
+                                withAnimation {
+                                    paywallManager.showPaywall = false
+                                }
+                            },
+                            onUpgrade: {
+                                withAnimation {
+                                    paywallManager.showPaywall = false
+                                }
+                                showPremiumScreen = true
+                            }
+                        )
+                        .transition(.opacity)
+                    }
+                }
+            )
         }
         
       
@@ -487,8 +580,7 @@ struct GarageScreen: View {
             rootViewController.present(activityViewController, animated: true)
         }
     }
-    
-    
+
     struct CarCardView: View {
         let v: VehicleResponse
         let onShowDetails: () -> Void
@@ -554,41 +646,46 @@ struct GarageScreen: View {
                         .padding(.horizontal, w * 0.04)
                         .padding(.top, w * -0.07 )
                         
-                        HStack(alignment: .center, spacing: w * 0.04) {
-                            if let rawBase64 = v.image?.imageBase64,
-                               let data = Data(base64Encoded: rawBase64),
-                               let rawImage = UIImage(data: data) {
-                                
-                                let trimmed = rawImage.trimmedTransparentPixels(threshold: 5)
-                                
-                                Image(uiImage: trimmed)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: w * 0.57)
-                            }
-                            
-                            // Technical Specs section
-                            VStack(alignment: .leading, spacing: 12) {
-                                
-                                Text("Technical Specs")
-                                    .font(.customFont(size: 12, weight: .semibold))
-                                    .foregroundColor(Color.black)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    SpecRow(label: "Make:", value: v.vehicle.make ?? "")
-                                    SpecRow(
-                                        label: "Model",
-                                        value: v.vehicle.model?
-                                            .components(separatedBy: CharacterSet.decimalDigits)
-                                            .first?
-                                            .uppercased() ?? ""
-                                    )
-                                    SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
-                                    SpecRow(label: "Engine:", value: v.vehicle.engine ?? "")
+                        GeometryReader { imageGeo in
+                            HStack(alignment: .center, spacing: 0) {
+                                // Image container with fixed width
+                                if let rawBase64 = v.image?.imageBase64,
+                                   let data = Data(base64Encoded: rawBase64),
+                                   let rawImage = UIImage(data: data) {
+
+                                    let trimmed = rawImage.trimmedTransparentPixels(threshold: 5)
+
+                                    Image(uiImage: trimmed)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: w * 0.57, height: h * 0.55)
+                                        .clipped()
+                                        .fixedSize(horizontal: true, vertical: true)
                                 }
+
+                                Spacer().frame(width: w * 0.04)
+
+                                // Technical Specs section with fixed position
+                                VStack(alignment: .leading, spacing: 12) {
+
+                                    Text(L10n.technicalSpecs.localized)
+                                        .font(.customFont(size: 12, weight: .semibold))
+                                        .foregroundColor(Color.black)
+                                        .fixedSize()
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        SpecRow(label: "Make:", value: v.vehicle.make ?? "")
+                                        SpecRow(label: "Model:", value: extractCleanModel(from: v.vehicle.model))
+                                        SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
+                                        SpecRow(label: "Engine:", value: extractCleanEngine(from: v.vehicle.engine))
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.trailing, w * 0.04)
+                                .layoutPriority(1)
                             }
-                            .padding(.trailing, w * 0.04)
                         }
+                        .frame(height: h * 0.55)
                     }
                     
                 }

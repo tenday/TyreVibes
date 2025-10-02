@@ -37,7 +37,7 @@ struct CheckDetailsView: View {
                     
                     Spacer()
                     
-                    Text("Check Details")
+                    Text(L10n.checkDetails.localized)
                         .font(.customFont(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                     
@@ -143,7 +143,7 @@ struct CheckDetailsView: View {
                         navigationDismiss()
                     }
                 }) {
-                    Text("Continue")
+                    Text(L10n.continue_.localized)
                         .font(.customFont(size: 18, weight: .bold))
                         .fontWeight(.bold)
                         .foregroundColor(.white)
@@ -167,7 +167,7 @@ struct CheckDetailsView: View {
                 )
                 .navigationBarBackButtonHidden(true)
             } else {
-                Text("Nessun dato disponibile")
+                Text(L10n.noDataAvailable.localized)
             }
         }
         .navigationDestination(isPresented: $goToGarage) {

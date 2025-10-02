@@ -1,0 +1,217 @@
+import SwiftUI
+
+struct ProfileView: View {
+    @State private var emailNotifications = true
+    @State private var productUpdates = true
+    @State private var smsNotifications = false
+    @State private var securityAlerts = true
+    @State private var marketingEmails = false
+    @State private var profileVisible = true
+    @State private var dataCollection = true
+    @State private var activityHistory = false
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.customBackgroundColor.ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Profile Header
+                        profileHeader
+                            .padding(.top, 20)
+                            .padding(.bottom, 40)
+                        
+                        // Communication Preferences
+                        sectionHeader(title: "Communication Preferences")
+                        
+                        VStack(spacing: 12) {
+                            toggleRow(title: "Receive email notifications", isOn: $emailNotifications)
+                            toggleRow(title: "Receive product updates", isOn: $productUpdates)
+                            toggleRow(title: "Receive SMS notifications", isOn: $smsNotifications)
+                            toggleRow(title: "Receive security alerts", isOn: $securityAlerts)
+                            toggleRow(title: "Receive marketing emails", isOn: $marketingEmails)
+                        }
+                        .padding(.bottom, 40)
+                        
+                        // Privacy Settings
+                        sectionHeader(title: "Privacy Settings")
+                        
+                        VStack(spacing: 12) {
+                            toggleRow(title: "Make profile visible to others", isOn: $profileVisible)
+                            toggleRow(title: "Allow data collection for service improvement", isOn: $dataCollection)
+                            toggleRow(title: "Store my activity history", isOn: $activityHistory)
+                        }
+                        .padding(.bottom, 40)
+                        
+                        // Recent Activity
+                        sectionHeader(title: "Recent Activity")
+                        
+                        VStack(spacing: 0) {
+                            activityRow(
+                                title: "Account Login",
+                                subtitle: "Logged in from Mobile Name",
+                                time: "2 hours ago"
+                            )
+                            
+                            activityRow(
+                                title: "Settings Changed",
+                                subtitle: "Updated communication preferences",
+                                time: "Yesterday"
+                            )
+                            
+                            activityRow(
+                                title: "Password Changed",
+                                subtitle: "Successfully updated your password",
+                                time: "3 days ago"
+                            )
+                            
+                            activityRow(
+                                title: "Account Login",
+                                subtitle: "Logged in from iOS",
+                                time: "5 days ago"
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Profile")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {}) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Profile Header
+    private var profileHeader: some View {
+        VStack(spacing: 12) {
+            ZStack(alignment: .bottomTrailing) {
+                Circle()
+                    .fill(Color.gray.opacity(0.6))
+                    .frame(width: 100, height: 100)
+                    .overlay(
+                        Image(systemName: "photo")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white.opacity(0.8))
+                    )
+                
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                    )
+            }
+            
+            HStack {
+                Text("Matteo Lamma")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Button(action: {}) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(Circle())
+                }
+            }
+            
+            Text("useremail@gmail.com")
+                .font(.system(size: 16))
+                .foregroundColor(.gray)
+            
+            Text("+39 123456789")
+                .font(.system(size: 16))
+                .foregroundColor(.white)
+        }
+    }
+    
+    // MARK: - Section Header
+    private func sectionHeader(title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.white)
+            Spacer()
+        }
+        .padding(.bottom, 16)
+    }
+    
+    // MARK: - Toggle Row
+    private func toggleRow(title: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 16))
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(.cyan)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+    
+    // MARK: - Activity Row
+    private func activityRow(title: String, subtitle: String, time: String) -> some View {
+        HStack(spacing: 16) {
+            Circle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white)
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                Text(subtitle)
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Text(time)
+                .font(.system(size: 12))
+                .foregroundColor(.gray)
+        }
+        .padding(.vertical, 16)
+    }
+}
+
+struct ProfileView_Previews: PreviewProvider {
+    static var previews: some View {
+        ProfileView()
+    }
+}

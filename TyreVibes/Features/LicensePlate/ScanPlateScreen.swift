@@ -126,6 +126,7 @@ struct LicensePlateView: View {
 struct CameraPreview: UIViewControllerRepresentable {
     var roiSize: CGSize
     var onPlateDetected: (String?) -> Void
+    @Binding var viewController: CameraViewController?
 
         class CameraViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
         private var lastRequestTime = Date(timeIntervalSince1970: 0)
@@ -136,6 +137,13 @@ struct CameraPreview: UIViewControllerRepresentable {
         var roiSize: CGSize = .zero
         var onPlateDetected: ((String) -> Void)?
         private var hasFiredDetection = false
+
+        // Metodo pubblico per resettare lo stato della camera
+        public func resetDetection() {
+            hasFiredDetection = false
+            lastPlates.removeAll()
+            resumeCamera()
+        }
 
         private var plateDetectorModel: VNCoreMLModel?
         private var plateOCRModel: VNCoreMLModel?
@@ -232,7 +240,6 @@ struct CameraPreview: UIViewControllerRepresentable {
             showPermissionLabel(text: "La fotocamera non è disponibile nel Simulator.\nEsegui su un dispositivo reale.")
             return
             #else
-            print("setupSession: inizializzo sessione fotocamera")
             captureSession.sessionPreset = .photo
 
             guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
@@ -264,7 +271,6 @@ struct CameraPreview: UIViewControllerRepresentable {
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 self?.captureSession.startRunning()
                 DispatchQueue.main.async {
-                    print("✅ captureSession in esecuzione: \(self?.captureSession.isRunning ?? false)")
                 }
             }
             #endif
@@ -443,6 +449,9 @@ struct CameraPreview: UIViewControllerRepresentable {
         let vc = CameraViewController()
         vc.roiSize = roiSize
         vc.onPlateDetected = onPlateDetected
+        DispatchQueue.main.async {
+            self.viewController = vc
+        }
         return vc
     }
 
@@ -463,6 +472,7 @@ struct ScanPlateView: View {
     @State private var vehicleImage: UIImage?
     @State private var errorMessage: String = ""
     @State private var showErrorAlert: Bool = false
+    @State private var cameraViewController: CameraPreview.CameraViewController?
 
     // Nuovi stati per le guide UX
     @State private var showInstructions: Bool = true
@@ -476,21 +486,21 @@ struct ScanPlateView: View {
 
         NavigationStack {
             ZStack(alignment: .top) {
-                CameraPreview(roiSize: CGSize(width: plateWidth, height: plateHeight)) { plate in
-                    self.plateText = plate ?? ""
-                    self.isLoadingPlateData = true
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
-                    fetchPlateData(for: plate ?? "")
-                }
+                CameraPreview(
+                    roiSize: CGSize(width: plateWidth, height: plateHeight),
+                    onPlateDetected: { plate in
+                        self.plateText = plate ?? ""
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                        // Avvia il caricamento senza chiamare fetchPlateData (deprecata)
+                        self.isLoadingPlateData = true
+                    },
+                    viewController: $cameraViewController
+                )
                 .ignoresSafeArea()
                 VStack {
                     HStack {
                         Spacer()
-                        
-                        Text("Scan License Plate")
-                            .font(.customFont(size: 24, weight: .semibold))
-                            .foregroundColor(.white)
                         Spacer()
                         Button(action: { navigationDismiss() }) {
                             Image(systemName: "xmark")
@@ -637,14 +647,7 @@ struct ScanPlateView: View {
 
                             // Testo dinamico e suggerimenti sotto al riquadro
                             VStack(spacing: 8) {
-                                if isLoadingPlateData {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(1.2)
-                                    Text("Ricerca targa in corso...")
-                                        .font(.customFont(size: 16, weight: .medium))
-                                        .foregroundColor(.white)
-                                } else if plateText.isEmpty {
+                                if plateText.isEmpty {
                                     Text("Inquadra la targa nel riquadro")
                                         .font(.customFont(size: 18, weight: .semibold))
                                         .foregroundColor(.white)
@@ -680,9 +683,18 @@ struct ScanPlateView: View {
                                 showProgress: true
                             )
                         )
-                        .onAppear {
-                            performPlateSearch()
-                        }
+                }
+            }
+            .onChange(of: isLoadingPlateData) { oldValue, newValue in
+                // Quando isLoadingPlateData diventa true, avvia la ricerca
+                if newValue && !oldValue {
+                    performPlateSearch()
+                }
+            }
+            .onChange(of: navigateToCheckDetails) { oldValue, newValue in
+                // Quando si torna indietro da CheckDetailsScreen (navigateToCheckDetails diventa false)
+                if !newValue && oldValue {
+                    resetScanningState()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -753,16 +765,32 @@ struct ScanPlateView: View {
         }
     }
 
+    // Funzione deprecata - ora la ricerca avviene in performPlateSearch() tramite onChange
     private func fetchPlateData(for plate: String) {
-        // Simula chiamata di scraping in background
-        DispatchQueue.global().async {
-            // Simulazione ritardo rete
-            sleep(2)
-            DispatchQueue.main.async {
-                isLoadingPlateData = false
-                // Puoi usare scrapedInfo o passarla al view model
-                //print(scrapedInfo)
-                self.onDetected?(plate)
+        // Non più utilizzata - rimossa la doppia chiamata
+    }
+
+    // Funzione per resettare lo stato quando si torna indietro
+    private func resetScanningState() {
+        // Reset di tutti gli stati UI
+        plateText = ""
+        isLoadingPlateData = false
+        data = nil
+        vehicleImage = nil
+        errorMessage = ""
+        showErrorAlert = false
+        showInstructions = false
+        pulseAnimation = false
+        scanningIndicatorOpacity = 0.0
+
+        // Reset della camera
+        cameraViewController?.resetDetection()
+
+        // Riavvia le animazioni
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation {
+                pulseAnimation = true
+                scanningIndicatorOpacity = 1.0
             }
         }
     }

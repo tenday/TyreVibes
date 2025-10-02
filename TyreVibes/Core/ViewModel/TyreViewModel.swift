@@ -1,5 +1,61 @@
 import Foundation
 
+// MARK: - Cache Manager
+class TyreCacheManager {
+    static let shared = TyreCacheManager()
+    private let defaults = UserDefaults.standard
+    private let cachePrefix = "tyres_cache_vehicle_"
+    private let timestampPrefix = "tyres_timestamp_vehicle_"
+    private let cacheValidityDuration: TimeInterval = 300 // 5 minuti
+
+    private init() {}
+
+    func saveTyres(_ tyres: [TyreRegistered], forVehicleId vehicleId: Int) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(tyres) {
+            defaults.set(encoded, forKey: cachePrefix + "\(vehicleId)")
+            defaults.set(Date().timeIntervalSince1970, forKey: timestampPrefix + "\(vehicleId)")
+            print("💾 Cache salvata per veicolo \(vehicleId): \(tyres.count) pneumatici")
+        }
+    }
+
+    func getTyres(forVehicleId vehicleId: Int) -> [TyreRegistered]? {
+        // Verifica se la cache è ancora valida
+        guard let timestamp = defaults.double(forKey: timestampPrefix + "\(vehicleId)") as Double?,
+              Date().timeIntervalSince1970 - timestamp < cacheValidityDuration else {
+            print("⏰ Cache scaduta per veicolo \(vehicleId)")
+            return nil
+        }
+
+        // Recupera i dati dalla cache
+        guard let data = defaults.data(forKey: cachePrefix + "\(vehicleId)") else {
+            print("❌ Nessuna cache trovata per veicolo \(vehicleId)")
+            return nil
+        }
+
+        let decoder = JSONDecoder()
+        if let tyres = try? decoder.decode([TyreRegistered].self, from: data) {
+            print("✅ Cache caricata per veicolo \(vehicleId): \(tyres.count) pneumatici")
+            return tyres
+        }
+
+        return nil
+    }
+
+    func invalidateCache(forVehicleId vehicleId: Int) {
+        defaults.removeObject(forKey: cachePrefix + "\(vehicleId)")
+        defaults.removeObject(forKey: timestampPrefix + "\(vehicleId)")
+        print("🗑️ Cache invalidata per veicolo \(vehicleId)")
+    }
+
+    func clearAllCache() {
+        let keys = Array(defaults.dictionaryRepresentation().keys)
+        keys.filter { $0.hasPrefix(cachePrefix) || $0.hasPrefix(timestampPrefix) }
+            .forEach { defaults.removeObject(forKey: $0) }
+        print("🗑️ Tutta la cache eliminata")
+    }
+}
+
 struct TyreRegistered: Codable, Identifiable {
     let id: Int
     let vehicleId: Int
@@ -38,7 +94,12 @@ class TyreViewModel: ObservableObject {
     @Published var success: Bool = false
 
     @Published var registeredTyres: [TyreRegistered] = []
-    
+
+    // Computed property per retrocompatibilità
+    var tyres: [TyreRegistered] {
+        return registeredTyres
+    }
+
     func insertTyre(vehicleId: Int) {
 
         guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
@@ -46,7 +107,7 @@ class TyreViewModel: ObservableObject {
             return
         }
 
-        guard let url = URL(string: baseURLString + "/tyres_vehicles") else {
+        guard let url = URL(string: baseURLString + "/v1/tyres_vehicles") else {
             errorMessage = "URL non valido"
             return
         }
@@ -77,29 +138,52 @@ class TyreViewModel: ObservableObject {
         errorMessage = nil
         success = false
 
+        print("🔄 Inviando richiesta insertTyre per vehicleId: \(vehicleId)")
+        print("📦 Dati: \(record)")
+
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isLoading = false
                 if let error = error {
+                    print("❌ Errore network: \(error.localizedDescription)")
                     self?.errorMessage = error.localizedDescription
                     return
                 }
-                if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-                    self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
-                    return
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Status code: \(httpResponse.statusCode)")
+                    if !(200...299).contains(httpResponse.statusCode) {
+                        if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                            print("📄 Response body: \(responseBody)")
+                        }
+                        self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
+                        return
+                    }
                 }
+                if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                    print("✅ Response: \(responseBody)")
+                }
+                print("✅ Inserimento completato con successo")
                 self?.success = true
+                // Invalida la cache dopo l'inserimento
+                TyreCacheManager.shared.invalidateCache(forVehicleId: vehicleId)
             }
         }.resume()
     }
 
-    func fetchTyres(vehicleId: Int) {
+    func fetchTyres(vehicleId: Int, forceRefresh: Bool = false) {
+        // Controlla prima la cache se non è richiesto un refresh forzato
+        if !forceRefresh, let cachedTyres = TyreCacheManager.shared.getTyres(forVehicleId: vehicleId) {
+            print("📦 Uso cache per veicolo \(vehicleId)")
+            self.registeredTyres = cachedTyres
+            return
+        }
+
         guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
             errorMessage = "Base URL non configurato"
             return
         }
 
-        guard let url = URL(string: baseURLString + "/tyres_vehicles/vehicle/\(vehicleId)") else {
+        guard let url = URL(string: baseURLString + "/v1/tyres_vehicles/vehicle/\(vehicleId)") else {
             errorMessage = "URL non valido"
             return
         }
@@ -110,6 +194,8 @@ class TyreViewModel: ObservableObject {
 
         isLoading = true
         errorMessage = nil
+
+        print("🌐 Fetch da server per veicolo \(vehicleId)")
 
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -133,6 +219,8 @@ class TyreViewModel: ObservableObject {
                 do {
                     let tyres = try JSONDecoder().decode([TyreRegistered].self, from: data)
                     self?.registeredTyres = tyres
+                    // Salva in cache
+                    TyreCacheManager.shared.saveTyres(tyres, forVehicleId: vehicleId)
                 } catch {
                     self?.errorMessage = "Errore nella decodifica: \(error.localizedDescription)"
                 }

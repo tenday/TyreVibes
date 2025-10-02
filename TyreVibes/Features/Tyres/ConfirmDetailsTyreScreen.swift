@@ -75,7 +75,7 @@ struct ConfirmDetailsTyreView: View {
                     
                     Spacer()
                     
-                    Text("Confirm Details")
+                    Text(L10n.confirmDetails.localized)
                         .font(.customFont(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                     
@@ -125,7 +125,7 @@ struct ConfirmDetailsTyreView: View {
                             .disabled(true)
                     }
                     else {
-                    Text("Confirm")
+                    Text(L10n.confirm.localized)
                         .font(.customFont(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -158,6 +158,18 @@ struct ConfirmDetailsTyreView: View {
                 }
             }
         }
+        .onChange(of: viewModel.success) { oldValue, newValue in
+            print("✅ Success changed: \(oldValue) -> \(newValue)")
+            if newValue {
+                print("✅ Chiamando onConfirmCompletion")
+                onConfirmCompletion?()
+            }
+        }
+        .onChange(of: viewModel.errorMessage) { oldValue, newValue in
+            if let error = newValue {
+                print("Errore inserimento pneumatico: \(error)")
+            }
+        }
     }
 
     private func confirmAction() {
@@ -171,8 +183,8 @@ struct ConfirmDetailsTyreView: View {
             return
         }
         modelText = trimmedModel
-        
-        
+
+
         viewModel.brand       = tireData.brand
         viewModel.model       = trimmedModel
         viewModel.size        = tireData.size
@@ -180,13 +192,8 @@ struct ConfirmDetailsTyreView: View {
         viewModel.loadIndex   = tireData.loadIndex
         viewModel.speedRating = tireData.speedRating
         viewModel.season      = selectedSeason
-        
+
         viewModel.insertTyre(vehicleId: Int(tireData.vehicleId))
-        
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            onConfirmCompletion?()
-        }
     }
 
     private func handleCancel() {
@@ -212,15 +219,15 @@ struct DetailRowMenu: View {
             
             Menu {
                 Button(action: { value = "Winter" }) {
-                    Text("Winter")
+                    Text(L10n.winter.localized)
                         .font(.customFont(size: 15, weight: .bold))
                 }
                 Button(action: { value = "Summer" }) {
-                    Text("Summer")
+                    Text(L10n.summer.localized)
                         .font(.customFont(size: 15, weight: .bold))
                 }
                 Button(action: { value = "All Season" }) {
-                    Text("All Season")
+                    Text(L10n.allSeason.localized)
                         .font(.customFont(size: 15, weight: .bold))
                 }
             } label: {

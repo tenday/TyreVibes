@@ -133,10 +133,12 @@ struct CarDetailsView: View {
     let vehicle: VehicleResponse
     @Environment(\.dismiss) private var dismiss
     @StateObject private var tyreViewModel = TyreViewModel()
+    @StateObject private var paywallManager = PaywallManager.shared
     @State private var showTyreRegistration: Bool = false
     @State private var showTyreDetails: Bool = false
     @State private var showInfoDialog: Bool = false
     @State private var infoDialogOffset: CGFloat = 0
+    @State private var showPremiumScreen = false
     @State private var selectedRevisionIndex: Int? = nil
     @State private var selectedTyreIndex: Int? = nil
     @State private var selectedInsuranceIndex: Int? = nil
@@ -245,91 +247,96 @@ struct CarDetailsView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
 
-                        if tyreViewModel.isLoading {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(1.5)
-                                Spacer()
-                            }
-                            .frame(height: 231)
-                            .padding(.horizontal, 8)
-                        } else {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 20) {
-                                    // Add Button
-                                    Button(action: {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 20) {
+                                // Add Button (sempre visibile)
+                                Button(action: {
+                                    // Verifica se l'utente può aggiungere altri pneumatici
+                                    let tireCount = tyreViewModel.tyres.count
+                                    if paywallManager.canAddTire(currentCount: tireCount) {
                                         showTyreRegistration = true
+                                    } else {
+                                        paywallManager.showPaywall(for: .unlimitedTires)
+                                    }
+                                }) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color.customFieldColor)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(Color.customGray, lineWidth: 1)
+                                                    .frame(width: 188, height: 231)
+                                            )
+                                            .frame(width: 174, height: 215)
+
+                                        Image("plusIcon")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 37, height: 37)
+                                    }
+                                }
+
+                                // Shimmer durante il caricamento
+                                if tyreViewModel.isLoading {
+                                    ForEach(0..<2, id: \.self) { _ in
+                                        TyreCardShimmer()
+                                    }
+                                }
+
+                                // Registered Tyres
+                                ForEach(tyreViewModel.registeredTyres) { tyre in
+                                    Button(action: {
+                                        selectedTyre = tyre
+                                        showTyreDetails = true
                                     }) {
                                         ZStack {
                                             RoundedRectangle(cornerRadius: 16)
                                                 .fill(Color.customFieldColor)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 16)
-                                                        .stroke(Color.customGray, lineWidth: 1)
-                                                        .frame(width: 188, height: 231)
-                                                )
-                                                .frame(width: 174, height: 215)
+                                                .frame(width: 188, height: 231)
 
-                                            Image("plusIcon")
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 37, height: 37)
-                                        }
-                                    }
+                                            VStack {
+                                                ZStack {
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(Color.white.opacity(0.2))
+                                                        .frame(width: 172, height: 122)
+                                                        .cornerRadius(12)
 
-                                    // Registered Tyres
-                                    ForEach(tyreViewModel.registeredTyres) { tyre in
-                                        Button(action: {
-                                            selectedTyre = tyre
-                                            showTyreDetails = true
-                                        }) {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 16)
-                                                    .fill(Color.customFieldColor)
-                                                    .frame(width: 188, height: 231)
-
-                                                VStack {
-                                                    ZStack {
-                                                        RoundedRectangle(cornerRadius: 12)
-                                                            .fill(Color.white.opacity(0.2))
-                                                            .frame(width: 172, height: 122)
-                                                            .cornerRadius(12)
-
-                                                        Image("tyreSample")
-                                                            .resizable()
-                                                            .aspectRatio(contentMode: .fill)
-                                                            .frame(width: 95, height: 100)
-                                                            .clipped()
-                                                    }
-
-                                                    Text("\(tyre.brand) \(tyre.model)")
-                                                        .font(.customFont(size: 16, weight: .semibold))
-                                                        .multilineTextAlignment(.center)
-                                                        .foregroundColor(.white)
-                                                        .lineLimit(1)
-                                                    Spacer().frame(height: 6)
-                                                    Text(tyre.season)
-                                                        .multilineTextAlignment(.center)
-                                                        .font(.customFont(size: 16, weight: .semibold))
-                                                        .foregroundColor(.white.opacity(0.6))
-                                                    Spacer().frame(height: 11)
-                                                    Text(tyre.size)
-                                                        .font(.customFont(size: 16, weight: .semibold))
-                                                        .multilineTextAlignment(.center)
-                                                        .foregroundColor(.white)
-                                                        .padding(.bottom, 10)
-
+                                                    Image("tyreSample")
+                                                        .resizable()
+                                                        .aspectRatio(contentMode: .fill)
+                                                        .frame(width: 95, height: 100)
+                                                        .clipped()
                                                 }
 
+                                                Text(tyre.brand)
+                                                    .font(.customFont(size: 16, weight: .semibold))
+                                                    .multilineTextAlignment(.center)
+                                                    .foregroundColor(.white)
+                                                    .lineLimit(1)
+                                                Spacer().frame(height: 6)
+                                                Text(tyre.season)
+                                                    .multilineTextAlignment(.center)
+                                                    .font(.customFont(size: 16, weight: .semibold))
+                                                    .foregroundColor(.white.opacity(0.6))
+                                                Spacer().frame(height: 11)
+                                                let radius: String = {
+                                                    let parts = tyre.size.components(separatedBy: "R")
+                                                    return parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : "-"
+                                                }()
+                                                Text("R\(radius)")
+                                                    .font(.customFont(size: 16, weight: .semibold))
+                                                    .multilineTextAlignment(.center)
+                                                    .foregroundColor(.white)
+                                                    .padding(.bottom, 10)
+
                                             }
+
                                         }
                                     }
                                 }
-                                .padding(.vertical, 9)
-                                .padding(.horizontal, 8)
                             }
+                            .padding(.vertical, 9)
+                            .padding(.horizontal, 8)
                         }
 
                     }
@@ -364,9 +371,34 @@ struct CarDetailsView: View {
                     }
                 }
             }
+            .fullScreenCover(isPresented: $showPremiumScreen) {
+                PremiumSubscriptionScreen()
+            }
             .onAppear {
                 tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id)
+                paywallManager.updatePremiumStatus()
             }
+            .overlay(
+                Group {
+                    if paywallManager.showPaywall, let feature = paywallManager.paywallFeature {
+                        PaywallView(
+                            feature: feature,
+                            onDismiss: {
+                                withAnimation {
+                                    paywallManager.showPaywall = false
+                                }
+                            },
+                            onUpgrade: {
+                                withAnimation {
+                                    paywallManager.showPaywall = false
+                                }
+                                showPremiumScreen = true
+                            }
+                        )
+                        .transition(.opacity)
+                    }
+                }
+            )
         }
     }
     
@@ -1059,7 +1091,7 @@ struct AdvancedTyresTable: View {
     
     // MARK: - Helper Properties and Functions
     private var hasActiveFilters: Bool {
-        selectedRadius != nil || selectedWidth != nil || selectedRatio != nil || 
+        selectedRadius != nil || selectedWidth != nil || selectedRatio != nil ||
         selectedSpeedIndex != nil || selectedLoadIndex != nil || !searchText.isEmpty
     }
     

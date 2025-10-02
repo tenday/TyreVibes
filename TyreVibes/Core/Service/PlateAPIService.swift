@@ -12,23 +12,25 @@ struct PlateAPIRequest: Codable {
     let modelDetails: String?
     let displacementCC: String?
     let registrationDate: String?
+    let year: Int?
+    let month: Int?
     let vin: String?
-    
+
     let userId: String
     let imagesBase64: [String]?
     let imagesMime: [String]?
     let imagesAngle: [Int]?
     let imagesColor: [String]
-    
+
     // RCA/Assicurazione
     let insuranceCompany: String?
     let insurancePolicyNumber: String?
     let insuranceExpiry: Date?
     let insurancePresent: Bool?
-    
+
     let emissionClass: String?
     let tyres: [[String: String]]?
-    
+
     // --- campi da /dettagli ---
     let view: String?
     let saleStart: String?
@@ -40,7 +42,7 @@ struct PlateAPIRequest: Codable {
     let seats: String?
     let consumption: String?
     let traction: String?
-    
+
     let revisioni: [Revisione]?
 }
 
@@ -111,6 +113,30 @@ class PlateAPIService {
             return formatterOutput.string(from: date)
         }
         return "-"
+    }
+
+    func extractYear(_ dateStr: String?) -> Int? {
+        guard let dateStr = dateStr else { return nil }
+        let formatterInput = DateFormatter()
+        formatterInput.dateFormat = "MM/yyyy"
+        formatterInput.locale = Locale(identifier: "it_IT_POSIX")
+        if let date = formatterInput.date(from: dateStr) {
+            let calendar = Calendar.current
+            return calendar.component(.year, from: date)
+        }
+        return nil
+    }
+
+    private func extractMonth(_ dateStr: String?) -> Int? {
+        guard let dateStr = dateStr else { return nil }
+        let formatterInput = DateFormatter()
+        formatterInput.dateFormat = "MM/yyyy"
+        formatterInput.locale = Locale(identifier: "it_IT_POSIX")
+        if let date = formatterInput.date(from: dateStr) {
+            let calendar = Calendar.current
+            return calendar.component(.month, from: date)
+        }
+        return nil
     }
     
     
@@ -189,6 +215,8 @@ class PlateAPIService {
             modelDetails: plateData.modelDetails ?? "-",
             displacementCC: plateData.displacementCC ?? "-",
             registrationDate: convertRegistrationDate(plateData.registrationDate),
+            year: extractYear(plateData.registrationDate),
+            month: extractMonth(plateData.registrationDate),
             vin: plateData.vin ?? "-",
             userId: userId,
             imagesBase64: imagesBase64,

@@ -2323,12 +2323,12 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
       
         // Fetch immagine veicolo
         if let make = plateData.make, let model = plateData.model {
-            let year = plateData.registrationDate?.components(separatedBy: "/").last ?? ""
+            plateData.year = plateData.registrationDate?.components(separatedBy: "/").last ?? ""
             do {
                 let image = try await VehicleImageService.fetchVehicleImageAsync(
                     make: make,
                     modelFamily: plateData.modelDetails ?? model,
-                    year: year,
+                    year: plateData.year ?? "",
                     paintId: plateData.color ?? "",
                     plate: plateData.plate,
                     angle: 23

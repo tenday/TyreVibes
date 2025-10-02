@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(xcodebuild:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git checkout:*)",
+      "Bash(swiftc:*)"
     ],
     "deny": [],
     "ask": []
