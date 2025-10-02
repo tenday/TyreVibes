@@ -143,6 +143,11 @@ struct CarDetailsView: View {
     @State private var selectedTyreIndex: Int? = nil
     @State private var selectedInsuranceIndex: Int? = nil
     @State private var selectedTyre: TyreRegistered? = nil
+    @State private var show360View: Bool = false
+    @State private var loadingProgress: Double = 0.0
+    @State private var isLoading360: Bool = false
+    @AppStorage("hasSeenDetailsHint") private var hasSeenDetailsHint: Bool = false
+    @State private var showFirstTimeHint = false
 
 
 
@@ -178,23 +183,27 @@ struct CarDetailsView: View {
                     
                                 
                     VStack(alignment: .leading, spacing: 20) {
-                            
-                        // Car Image
-                        if let base64String = vehicle.image?.imageBase64,
-                           let uiImage = base64String.toUIImage() {
-                            let trimmed = uiImage.trimmedTransparentPixels(threshold: 5)
 
-                            Image(uiImage: trimmed)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 50)
-                                .padding(.horizontal, 30)
-                        } else {
-                            Image("placeholder") // fallback se Base64 non valida
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: .infinity)
+                        // Car Image with 360 button
+                        ZStack(alignment: .topTrailing) {
+                            if let base64String = vehicle.image?.imageBase64,
+                               let uiImage = base64String.toUIImage() {
+                                let trimmed = uiImage.trimmedTransparentPixels(threshold: 5)
+
+                                Image(uiImage: trimmed)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.top, 50)
+                                    .padding(.horizontal, 30)
+                            } else {
+                                Image("placeholder")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity)
+                            }
+
+                            
                         }
                             //.padding(.horizontal)
 
@@ -211,6 +220,16 @@ struct CarDetailsView: View {
                                         showInfoDialog = true
                                     }
                                 }) {
+                                    Button(action: {
+                                        show360View = true
+                                    }) {
+                                        Image(systemName: "arkit")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 20, height: 20)
+                                            .foregroundColor(.white)
+                                            .padding(.leading, 4)
+                                    }
                                     Image(systemName: "info.circle")
                                         .resizable()
                                         .scaledToFit()
@@ -345,6 +364,16 @@ struct CarDetailsView: View {
 
             }
             .navigationBarBackButtonHidden(true)
+            .onAppear {
+                tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id)
+                paywallManager.updatePremiumStatus()
+                if hasSeenDetailsHint == false {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        showFirstTimeHint = true
+                        hasSeenDetailsHint = true
+                    }
+                }
+            }
             .sheet(isPresented: $showInfoDialog) {
                 AdvancedInfoSheet(
                     vehicle: vehicle,
@@ -374,9 +403,41 @@ struct CarDetailsView: View {
             .fullScreenCover(isPresented: $showPremiumScreen) {
                 PremiumSubscriptionScreen()
             }
-            .onAppear {
-                tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id)
-                paywallManager.updatePremiumStatus()
+            .sheet(isPresented: $show360View) {
+                if let make = vehicle.vehicle.make,
+                   let model = vehicle.vehicle.model,
+                   let year = vehicle.plate?.year {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                show360View = false
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 30))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding()
+                        }
+
+                        Vehicle360View(
+                            make: make.lowercased(),
+                            modelFamily: model.lowercased().components(separatedBy: " ").first ?? model.lowercased(),
+                            year: "\(year)",
+                            paintId: vehicle.vehicle.color?.uppercased() ?? "BLACK",
+                            loadingProgress: $loadingProgress,
+                            isLoading: $isLoading360
+                        )
+
+                        Text("Trascina per ruotare")
+                            .font(.customFont(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.6))
+                            .padding(.top, 20)
+
+                        Spacer()
+                    }
+                    .background(Color.customBackgroundColor.ignoresSafeArea())
+                }
             }
             .overlay(
                 Group {
@@ -398,7 +459,12 @@ struct CarDetailsView: View {
                         .transition(.opacity)
                     }
                 }
-            )
+        )
+        .alert("Benvenuto", isPresented: $showFirstTimeHint) {
+            Button("Ho capito") { showFirstTimeHint = false }
+        } message: {
+            Text("Qui trovi due funzioni utili: il pulsante AR mostra la vista 360° della tua auto, mentre il pulsante info ti dà dettagli avanzati sul veicolo.")
+        }
         }
     }
     
@@ -1632,6 +1698,5 @@ struct InsuranceRow: View {
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
     }
-    
 }
-    
+

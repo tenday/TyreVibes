@@ -2,6 +2,8 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileView: View {
+    var onDetected: ((String) -> Void)? = nil
+    var onFullScreenDismiss: (() -> Void)? = nil
     @StateObject private var viewModel = ProfileViewModel()
     @StateObject private var loginViewModel = LoginViewModel()
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
@@ -37,6 +39,14 @@ struct ProfileView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.white)
+                    }
+                }
                 ToolbarItem(placement: .principal) {
                     Text("Profilo").font(.customFont(size: 20, weight: .semibold)).foregroundColor(.white)
                 }
@@ -50,6 +60,7 @@ struct ProfileView: View {
                 viewModel.loadUserProfile()
                 viewModel.loadPreferences()
             }
+            .scrollIndicators(.hidden)
           //  .onChange(of: viewModel.preferences) { _, _ in
           //      Task { await viewModel.savePreferences() }
           //  }
@@ -178,11 +189,11 @@ struct ProfileView: View {
         Button(action: { showLogoutAlert = true }) {
             HStack {
                 Image(systemName: "arrow.right.square").font(.system(size: 20))
-                Text("Esci").font(.customFont(size: 18, weight: .semibold))
+                Text("Esci").font(.customFont(size: 18, weight: .semibold)).foregroundColor(.white)
             }
             .foregroundColor(.white).frame(maxWidth: .infinity).frame(height: 56)
-            .background(LinearGradient(colors: [Color.red.opacity(0.8), .red], startPoint: .leading, endPoint: .trailing))
-            .cornerRadius(16)
+            .background(Color.customBitterSweet)
+            .cornerRadius(100)
         }
     }
 

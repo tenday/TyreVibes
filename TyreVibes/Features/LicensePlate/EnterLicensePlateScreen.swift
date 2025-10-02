@@ -96,7 +96,17 @@ struct EnterLicensePlateView: View {
     @State private var data : PlateData?
     @State private var isLoadingDetails: Bool = false
     @State private var showConfirmDetailsScreen : Bool = false
-    
+
+    // Vehicle action selection
+    @State private var showActionSheet: Bool = true
+    @State private var selectedAction: VehicleAction?
+    @State private var hasSelectedAction: Bool = false
+
+    enum VehicleAction {
+        case addToGarage
+        case justConsult
+    }
+
     private let maxPlateLength: Int = 8 // es. formato IT: AA123AA (7) o formati estesi
     private var isContinueEnabled: Bool {
         !licensePlate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && licensePlate.count >= 5
@@ -293,6 +303,27 @@ struct EnterLicensePlateView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+        .confirmationDialog(
+            "Cosa vuoi fare?",
+            isPresented: $showActionSheet,
+            titleVisibility: .visible
+        ) {
+            Button("Aggiungi al Garage") {
+                selectedAction = .addToGarage
+                hasSelectedAction = true
+            }
+
+            Button("Solo Consultare Dati") {
+                selectedAction = .justConsult
+                hasSelectedAction = true
+            }
+
+            Button("Annulla", role: .cancel) {
+                dismiss()
+            }
+        } message: {
+            Text("Puoi aggiungere il veicolo al tuo garage per tenere traccia di manutenzioni e pneumatici, oppure consultare solo i dati del veicolo.")
         }
     }
 }

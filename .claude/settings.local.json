@@ -4,7 +4,9 @@
       "Bash(xcodebuild:*)",
       "Bash(tree:*)",
       "Bash(git checkout:*)",
-      "Bash(swiftc:*)"
+      "Bash(swiftc:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp list)"
     ],
     "deny": [],
     "ask": []

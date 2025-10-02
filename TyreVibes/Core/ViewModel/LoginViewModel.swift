@@ -3,6 +3,7 @@ import Combine
 import Security
 import AuthenticationServices
 import LocalAuthentication
+import Supabase
 
 enum LoginFormFocus {
     case email
@@ -79,15 +80,17 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
     
     func signIn() {
         formFocus = nil
-        
+
         guard isLoginButtonEnabled else { return }
-        
+
         isLoading = true
         Task {
             do {
                 try await authService.signIn(email: email, password: password)
 
-                
+                // Fetch and cache user profile immediately after login
+                await fetchAndCacheUserProfile()
+
                 if rememberMe {
                     try KeychainHelper.save(email: email, password: password)
                 } else {
@@ -154,6 +157,10 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
         Task {
             do {
                 try await authService.signInWithApple(presentationAnchor: presentationAnchor)
+
+                // Fetch and cache user profile immediately after login
+                await fetchAndCacheUserProfile()
+
                 // Login con successo. La navigazione avverrà in un altro punto.
                 isLoggedIn = true
                 showHomeScreen = true
@@ -170,6 +177,10 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
         Task {
             do {
                 try await authService.signInWithGoogle()
+
+                // Fetch and cache user profile immediately after login
+                await fetchAndCacheUserProfile()
+
                 // On success, the session publisher in SupabaseManager will trigger the navigation
                 // so we just need to stop the loading indicator.
                 isLoggedIn = true
@@ -179,6 +190,40 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 self.alertItem = AlertItem(title: alert.title, message: alert.message)
             }
             isLoading = false
+        }
+    }
+
+    // MARK: - Profile Fetching
+    private func fetchAndCacheUserProfile() async {
+        do {
+            // Get current user session
+            let session = try await SupabaseManager.client.auth.session
+            let userId = session.user.id
+
+            // Fetch user profile from Supabase
+            let response: Users = try await SupabaseManager.client
+                .from("users")
+                .select("*")
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+
+            // Create profile object
+            let profile = UserProfile(
+                name: response.fullName,
+                email: session.user.email ?? "",
+                phone: "\(response.countryDialCode ?? "") \(response.phoneNumber ?? "")",
+                profileImageUrl: nil
+            )
+
+            // Cache profile
+            if let encoded = try? JSONEncoder().encode(profile) {
+                UserDefaults.standard.set(encoded, forKey: "cachedUserProfile")
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "cachedUserProfileTimestamp")
+            }
+        } catch {
+            print("Failed to fetch user profile: \(error.localizedDescription)")
         }
     }
 }

@@ -23,6 +23,13 @@ struct ConfirmDetailsView: View {
     @State private var licenseText: String = ""
     @State private var fuelText: String = ""
     @State private var powerText: String = ""
+    @State private var showActionSheet: Bool = false
+    @State private var selectedAction: VehicleAction?
+
+    enum VehicleAction {
+        case addToGarage
+        case justConsult
+    }
     
     var body: some View {
         ZStack {
@@ -128,20 +135,9 @@ struct ConfirmDetailsView: View {
                 }
                 .padding(.horizontal, 24)
                 
-                // Confirm button with navigationDestination
+                // Confirm button - now shows action sheet
                 Button(action: {
-                    guard let plate = plateData else { return }
-                    if LicensePlateReader.exists, !plate.plate.isEmpty {
-                        Task {
-                            await viewModel.associateVehicleWithUser(vehicleId: plate.vehicleId ?? 0)
-                        }
-                    }
-                    else {
-                        Task {
-                            await viewModel.savePlate(plateData: plate, color: ColorPickerView(selectedColor: $selectedColor).colorName(for: selectedColor), angle: 23)
-                            }
-                    }
-                    
+                    showActionSheet = true
                 }) {
                     if viewModel.isLoading {
                         Text("")
@@ -186,7 +182,12 @@ struct ConfirmDetailsView: View {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                     isContinueEnabled = true
                 }
-                navigateToCheckDetails = true
+                if selectedAction == .addToGarage {
+                    navigateToCheckDetails = true
+                } else if selectedAction == .justConsult {
+                    // Just show success message, don't navigate
+                    navigateToCheckDetails = true
+                }
             }
         }
         .alert(item: $viewModel.alertItem) { alertItem in
@@ -195,6 +196,38 @@ struct ConfirmDetailsView: View {
                 message: Text(alertItem.message),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .confirmationDialog("Cosa vuoi fare con questo veicolo?", isPresented: $showActionSheet, titleVisibility: .visible) {
+            Button("Aggiungi al Garage") {
+                selectedAction = .addToGarage
+                performVehicleAction()
+            }
+
+            Button("Solo Consultare Dati") {
+                selectedAction = .justConsult
+                performVehicleAction()
+            }
+
+            Button("Annulla", role: .cancel) {
+                selectedAction = nil
+            }
+        } message: {
+            Text("Puoi aggiungere il veicolo al tuo garage per tenere traccia di manutenzioni e pneumatici, oppure consultare solo i dati del veicolo.")
+        }
+    }
+
+    private func performVehicleAction() {
+        guard let plate = plateData else { return }
+
+        if LicensePlateReader.exists, !plate.plate.isEmpty {
+            Task {
+                await viewModel.associateVehicleWithUser(vehicleId: plate.vehicleId ?? 0)
+            }
+        } else {
+            let colorName = ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor)
+            Task {
+                await viewModel.savePlate(plateData: plate, color: colorName, angle: 23)
+            }
         }
     }
 }

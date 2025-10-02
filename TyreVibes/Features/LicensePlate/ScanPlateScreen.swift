@@ -480,6 +480,16 @@ struct ScanPlateView: View {
     @State private var guideStep: Int = 0
     @State private var scanningIndicatorOpacity: Double = 0.0
 
+    // Vehicle action selection
+    @State private var showActionSheet: Bool = true
+    @State private var selectedAction: VehicleAction?
+    @State private var hasSelectedAction: Bool = false
+
+    enum VehicleAction {
+        case addToGarage
+        case justConsult
+    }
+
     var body: some View {
         let plateWidth: CGFloat = 280
         let plateHeight: CGFloat = 80
@@ -718,6 +728,27 @@ struct ScanPlateView: View {
             } message: {
                 Text(errorMessage)
             }
+            .confirmationDialog(
+                "Cosa vuoi fare?",
+                isPresented: $showActionSheet,
+                titleVisibility: .visible
+            ) {
+                Button("Aggiungi al Garage") {
+                    selectedAction = .addToGarage
+                    hasSelectedAction = true
+                }
+
+                Button("Solo Consultare Dati") {
+                    selectedAction = .justConsult
+                    hasSelectedAction = true
+                }
+
+                Button("Annulla", role: .cancel) {
+                    navigationDismiss()
+                }
+            } message: {
+                Text("Puoi aggiungere il veicolo al tuo garage per tenere traccia di manutenzioni e pneumatici, oppure consultare solo i dati del veicolo.")
+            }
         }
     }
     
@@ -795,8 +826,6 @@ struct ScanPlateView: View {
         }
     }
 }
-
-
 
 // MARK: - Helper Views per le guide UX
 

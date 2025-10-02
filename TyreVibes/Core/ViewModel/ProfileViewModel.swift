@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Supabase
 
 struct UserProfile: Codable {
     var name: String
@@ -37,6 +38,10 @@ class ProfileViewModel: ObservableObject {
     @Published var showSuccessMessage = false
     @Published var profileImage: UIImage?
 
+    private let profileCacheKey = "cachedUserProfile"
+    private let profileCacheTimestampKey = "cachedUserProfileTimestamp"
+    private let cacheValidityDuration: TimeInterval = 3600 // 1 ora
+
     init() {
         // Default preferences
         self.preferences = UserPreferences(
@@ -49,6 +54,9 @@ class ProfileViewModel: ObservableObject {
             dataCollection: true,
             activityHistory: false
         )
+
+        // Load cached profile immediately
+        loadCachedProfile()
 
         // Mock recent activities
         self.recentActivities = [
@@ -79,29 +87,83 @@ class ProfileViewModel: ObservableObject {
         ]
     }
 
-    func loadUserProfile() {
-        isLoading = true
-
-        // Get user email from Keychain
-        if let credentials = KeychainHelper.load() {
-            // Create mock profile from stored credentials
-            userProfile = UserProfile(
-                name: extractNameFromEmail(credentials.email),
-                email: credentials.email,
-                phone: "+39 123 456 7890",
-                profileImageUrl: nil
-            )
-        } else {
-            // Fallback mock data
-            userProfile = UserProfile(
-                name: "Utente TyreVibes",
-                email: "user@tyrevibes.com",
-                phone: "+39 123 456 7890",
-                profileImageUrl: nil
-            )
+    func loadUserProfile(forceRefresh: Bool = false) {
+        // Check if cache is valid
+        if !forceRefresh, isCacheValid(), userProfile != nil {
+            return // Use cached data
         }
 
-        isLoading = false
+        isLoading = true
+
+        Task {
+            do {
+                // Get current user session
+                let session = try await SupabaseManager.client.auth.session
+                let userId = session.user.id
+
+                // Fetch user profile from Supabase
+                let response: Users = try await SupabaseManager.client
+                    .from("users")
+                    .select("*")
+                    .eq("id", value: userId)
+                    .single()
+                    .execute()
+                    .value
+
+                // Update profile with data from database
+                let profile = UserProfile(
+                    name: response.fullName,
+                    email: session.user.email ?? "",
+                    phone: "\(response.countryDialCode ?? "") \(response.phoneNumber ?? "")",
+                    profileImageUrl: nil
+                )
+
+                await MainActor.run {
+                    userProfile = profile
+                    cacheProfile(profile)
+                    isLoading = false
+                }
+            } catch {
+                // Fallback to email from Keychain if Supabase fails
+                await MainActor.run {
+                    if let credentials = KeychainHelper.load() {
+                        userProfile = UserProfile(
+                            name: extractNameFromEmail(credentials.email),
+                            email: credentials.email,
+                            phone: "",
+                            profileImageUrl: nil
+                        )
+                    }
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    private func loadCachedProfile() {
+        guard let data = UserDefaults.standard.data(forKey: profileCacheKey),
+              let profile = try? JSONDecoder().decode(UserProfile.self, from: data) else {
+            return
+        }
+        userProfile = profile
+    }
+
+    private func cacheProfile(_ profile: UserProfile) {
+        if let encoded = try? JSONEncoder().encode(profile) {
+            UserDefaults.standard.set(encoded, forKey: profileCacheKey)
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: profileCacheTimestampKey)
+        }
+    }
+
+    private func isCacheValid() -> Bool {
+        let timestamp = UserDefaults.standard.double(forKey: profileCacheTimestampKey)
+        let cacheAge = Date().timeIntervalSince1970 - timestamp
+        return cacheAge < cacheValidityDuration
+    }
+
+    func clearCache() {
+        UserDefaults.standard.removeObject(forKey: profileCacheKey)
+        UserDefaults.standard.removeObject(forKey: profileCacheTimestampKey)
     }
 
     func updateProfile(name: String, email: String, phone: String) async {
@@ -115,6 +177,11 @@ class ProfileViewModel: ObservableObject {
             userProfile?.name = name
             userProfile?.email = email
             userProfile?.phone = phone
+
+            // Update cache
+            if let profile = userProfile {
+                cacheProfile(profile)
+            }
 
             showSuccessMessage = true
             isLoading = false

@@ -50,6 +50,7 @@ struct GarageScreen: View {
     @State private var showPremiumScreen = false
     @State private var showDeveloperSettings = false
     @State private var tapCount = 0
+    @State private var showProfileScreen: Bool = false
 
 
     private let sheetSpacing: CGFloat = 20
@@ -169,7 +170,9 @@ struct GarageScreen: View {
                         .frame(width: 48, height: 48)
                         
                         HStack(alignment: .center) {
-                            Button(action: {}) {
+                            Button(action: {
+                                showProfileScreen = true
+                            }) {
                                 Image("UsernameIcon")
                                     .resizable()
                                     .scaledToFit()
@@ -452,6 +455,13 @@ struct GarageScreen: View {
                         if let selectedVehicle = viewModel.selectedVehicle {
                             CarDetailsView(vehicle: selectedVehicle)
                         }
+                    }
+                    .fullScreenCover(isPresented: $showProfileScreen) {
+                        ProfileView(
+                            onFullScreenDismiss: {
+                                showScanPlate = false
+                            }
+                        )
                     }
                     
                     
