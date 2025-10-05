@@ -59,173 +59,167 @@ struct ConfirmDetailsView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top)
-                .padding(.bottom, 10)
+                .padding(.bottom, 20)
 
-                ScrollView {
+                ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 20) {
-                
-                
-                // Detail items
-                VStack(alignment:.center, spacing: 14) {
-                    if manualEntryEnabled {
-                        VStack(spacing: 12) {
-                            TextField("Marchio (es. Fiat)", text: $makeText)
-                                .font(.customFont(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(height: 56)
-                                .background(Color.customFieldColor)
-                                .cornerRadius(12)
-                                .autocapitalization(.words)
+                        // Detail items
+                        VStack(alignment:.center, spacing: 14) {
+                            if manualEntryEnabled {
+                                VStack(spacing: 12) {
+                                    TextField("Marchio (es. Fiat)", text: $makeText)
+                                        .font(.customFont(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding()
+                                        .frame(height: 56)
+                                        .background(Color.customFieldColor)
+                                        .cornerRadius(12)
+                                        .autocapitalization(.words)
 
-                            TextField("Modello (es. 500)", text: $modelText)
-                                .font(.customFont(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(height: 56)
-                                .background(Color.customFieldColor)
-                                .cornerRadius(12)
-                                .autocapitalization(.words)
+                                    TextField("Modello (es. 500)", text: $modelText)
+                                        .font(.customFont(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding()
+                                        .frame(height: 56)
+                                        .background(Color.customFieldColor)
+                                        .cornerRadius(12)
+                                        .autocapitalization(.words)
 
-                            HStack(spacing: 12) {
-                                TextField("Anno", text: $yearText)
-                                    .font(.customFont(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(height: 56)
-                                    .background(Color.customFieldColor)
-                                    .cornerRadius(12)
-                                    .keyboardType(.numberPad)
+                                    HStack(spacing: 12) {
+                                        TextField("Anno", text: $yearText)
+                                            .font(.customFont(size: 16, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding()
+                                            .frame(height: 56)
+                                            .background(Color.customFieldColor)
+                                            .cornerRadius(12)
+                                            .keyboardType(.numberPad)
 
-                                TextField("Cilindrata (cc)", text: $engineText)
-                                    .font(.customFont(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(height: 56)
-                                    .background(Color.customFieldColor)
-                                    .cornerRadius(12)
-                                    .keyboardType(.numberPad)
-                            }
+                                        TextField("Cilindrata (cc)", text: $engineText)
+                                            .font(.customFont(size: 16, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding()
+                                            .frame(height: 56)
+                                            .background(Color.customFieldColor)
+                                            .cornerRadius(12)
+                                            .keyboardType(.numberPad)
+                                    }
 
-                            TextField("Targa (es. AB123CD)", text: $licenseText)
-                                .font(.customFont(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding()
-                                .frame(height: 56)
-                                .background(Color.customFieldColor)
-                                .cornerRadius(12)
-                                .autocapitalization(.allCharacters)
-                                .autocorrectionDisabled()
+                                    TextField("Targa (es. AB123CD)", text: $licenseText)
+                                        .font(.customFont(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding()
+                                        .frame(height: 56)
+                                        .background(Color.customFieldColor)
+                                        .cornerRadius(12)
+                                        .autocapitalization(.allCharacters)
+                                        .autocorrectionDisabled()
 
-                            HStack(spacing: 12) {
-                                TextField("Alimentazione", text: $fuelText)
-                                    .font(.customFont(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(height: 56)
-                                    .background(Color.customFieldColor)
-                                    .cornerRadius(12)
+                                    HStack(spacing: 12) {
+                                        TextField("Alimentazione", text: $fuelText)
+                                            .font(.customFont(size: 16, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding()
+                                            .frame(height: 56)
+                                            .background(Color.customFieldColor)
+                                            .cornerRadius(12)
 
-                                TextField("CV", text: $powerText)
-                                    .font(.customFont(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(height: 56)
-                                    .background(Color.customFieldColor)
-                                    .cornerRadius(12)
-                                    .keyboardType(.numberPad)
+                                        TextField("CV", text: $powerText)
+                                            .font(.customFont(size: 16, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding()
+                                            .frame(height: 56)
+                                            .background(Color.customFieldColor)
+                                            .cornerRadius(12)
+                                            .keyboardType(.numberPad)
+                                    }
+                                }
+                            } else {
+                                DetailRow(label: "Marchio:", value: plateData?.make ?? "-")
+                                DetailRow(label: "Modello:", value: plateData?.modelDetails ?? "-")
+                                DetailRow(label: "Immatricolazione:", value: plateData?.registrationDate ?? "-")
+                                if plateData?.displacementCC != "0" {
+                                    DetailRow(label: "Cilindrata:", value: plateData?.displacementCC ?? "-")
+                                }
+                                DetailRow(label: "Targa:", value: plateData?.plate ?? "-")
+                                DetailRow(label: "Alimentazione:", value: plateData?.fuelType ?? "-")
+                                DetailRow(label: "Cavalli:", value: "\(plateData?.powerCV ?? "-") CV")
                             }
                         }
-                    } else {
-                        DetailRow(label: "Marchio:", value: plateData?.make ?? "-")
-                        DetailRow(label: "Modello:", value: plateData?.modelDetails ?? "-")
-                        DetailRow(label: "Immatricolazione:", value: plateData?.registrationDate ?? "-")
-                        if plateData?.displacementCC != "0" {
-                            DetailRow(label: "Cilindrata:", value: plateData?.displacementCC ?? "-")
+                        .padding(.horizontal, 24)
+
+                        // Color picker
+                        VStack(spacing: 10) {
+                            ColorPickerView(selectedColor: $selectedColor)
+                                .background(Color.customFieldColor)
+                                .cornerRadius(12)
                         }
-                        DetailRow(label: "Targa:", value: plateData?.plate ?? "-")
-                        DetailRow(label: "Alimentazione:", value: plateData?.fuelType ?? "-")
-                        DetailRow(label: "Cavalli:", value: "\(plateData?.powerCV ?? "-") CV")
-                    }
-                }
-                .padding(.horizontal, 24)
-                
-                
-                // Color picker
-                VStack(spacing: 10) {
-                    
-                    ColorPickerView(selectedColor: $selectedColor)
-                        .background(Color.customFieldColor)
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, 24)
+                        .padding(.horizontal, 24)
+
+                        if !consultOnly {
+                            VStack {
+                                Button(action: {
+                                    performVehicleAction()
+                                }) {
+                                    if viewModel.isLoading {
+                                        Text("")
+                                            .foregroundColor(Color.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 62)
+                                            .background(Color.customBitterSweet)
+                                            .cornerRadius(28)
+                                            .overlay(ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                .scaleEffect(1.2)
+                                                .frame(height: 62)
+                                                .frame(maxWidth: .infinity))
+                                    } else {
+                                        Text("Confirm")
+                                            .font(.customFont(size: 18, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 62)
+                                            .background(Color.customBitterSweet)
+                                            .cornerRadius(28)
+                                    }
+                                }
+                                .disabled(viewModel.isLoading || (manualEntryEnabled && !isFormValid))
+                                .opacity((manualEntryEnabled && !isFormValid) ? 0.5 : 1.0)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 30)
+                            }
+                        }
 
                         Spacer(minLength: 20)
                     }
-                    .padding(.bottom, 100)
                 }
-
-                // Fixed button at the bottom
-                if !consultOnly {
-                    VStack {
-                        Button(action: {
-                            performVehicleAction()
-                        }) {
-                            if viewModel.isLoading {
-                                Text("")
-                                    .foregroundColor(Color.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 62)
-                                    .background(Color.customBitterSweet)
-                                    .cornerRadius(28)
-                                    .overlay(ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(1.2)
-                                        .frame(height: 62)
-                                        .frame(maxWidth: .infinity))
-                            } else {
-                                Text("Confirm")
-                                    .font(.customFont(size: 18, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 62)
-                                    .background(Color.customBitterSweet)
-                                    .cornerRadius(28)
-                            }
-                        }
-                        .disabled(viewModel.isLoading || (manualEntryEnabled && !isFormValid))
-                        .opacity((manualEntryEnabled && !isFormValid) ? 0.5 : 1.0)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 30)
+            }
+            .navigationDestination(isPresented: $navigateToCheckDetails) {
+                CheckDetailsView(
+                    onFullScreenDismiss: onFullScreenDismiss,
+                    vehicleImage: plateData?.vehicleImage ?? nil,
+                    plateData: plateData,
+                    consultOnly: consultOnly,
+                    isContinueEnabled: $isContinueEnabled,
+                    viewModel: viewModel
+                )
+            }
+            .onReceive(viewModel.$didSavePlate) { newValue in
+                if newValue {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        isContinueEnabled = true
+                        navigateToCheckDetails = true
                     }
-                    .background(Color.customBackgroundColor)
                 }
             }
-        }
-        .navigationDestination(isPresented: $navigateToCheckDetails) {
-            CheckDetailsView(
-                onFullScreenDismiss: onFullScreenDismiss,
-                vehicleImage: plateData?.vehicleImage ?? nil,
-                plateData: plateData,
-                consultOnly: consultOnly,
-                isContinueEnabled: $isContinueEnabled,
-                viewModel: viewModel
-            )
-        }
-        .onReceive(viewModel.$didSavePlate) { newValue in
-            if newValue {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    isContinueEnabled = true
-                    navigateToCheckDetails = true
-                }
+            .alert(item: $viewModel.alertItem) { alertItem in
+                Alert(
+                    title: Text(alertItem.title),
+                    message: Text(alertItem.message),
+                    dismissButton: .default(Text("OK"))
+                )
             }
-        }
-        .alert(item: $viewModel.alertItem) { alertItem in
-            Alert(
-                title: Text(alertItem.title),
-                message: Text(alertItem.message),
-                dismissButton: .default(Text("OK"))
-            )
+            .background(InteractivePopGestureEnabler())
         }
     }
 
@@ -305,9 +299,9 @@ struct ConfirmDetailsView: View {
 struct DetailRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
-        HStack (){
+        HStack(alignment: .center) {
             Spacer().frame(width: 10)
             Text(label)
                 .font(.customFont(size: 14, weight: .semibold))
@@ -316,11 +310,14 @@ struct DetailRow: View {
             Text(value)
                 .font(.customFont(size: 18, weight: .bold))
                 .foregroundColor(.white)
-                .frame(alignment : .center)
+                .multilineTextAlignment(.leading)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer().frame(width: 20)
-            
+
         }
-        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 50)
+        .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 1)
+        .padding(.vertical, 8)
         .background(Color.customFieldColor)
         .cornerRadius(12)
     }
