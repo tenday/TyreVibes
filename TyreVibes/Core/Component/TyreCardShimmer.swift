@@ -5,7 +5,7 @@ struct TyreCardShimmer: View {
         ZStack {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.customFieldColor)
-                .frame(width: 188, height: 231)
+                .frame(width: 174, height: 215)
 
             VStack(spacing: 0) {
                 // Image area placeholder

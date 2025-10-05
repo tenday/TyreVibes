@@ -1,403 +1,540 @@
 import SwiftUI
 
-// MARK: - Data Models
-struct TireReport: Identifiable {
-    let id = UUID()
-    let vehicleName: String
-    let serviceName: String
-    let date: Date
-    let frontLeftTire: Int
-    let frontRightTire: Int
-    let rearLeftTire: Int
-    let rearRightTire: Int
-    let description: String
-    let reportType: ReportType
-    
-    enum ReportType {
-        case complete
-        case quick
-        case wheelAlignment
-        
-        var icon: String {
-            switch self {
-            case .complete: return "doc.text.fill"
-            case .quick: return "gauge"
-            case .wheelAlignment: return "wrench.and.screwdriver"
-            }
-        }
-        
-        var iconColor: Color {
-            switch self {
-            case .complete: return .gray
-            case .quick: return .gray
-            case .wheelAlignment: return .orange
-            }
-        }
-    }
+struct TireData1 {
+    let frontLeft: Int
+    let frontRight: Int
+    let rearLeft: Int
+    let rearRight: Int
 }
-
-// MARK: - Main View
-struct ReportsDocsView: View {
+// MARK: - Reports & Documentations View
+struct ReportsDocumentationsView: View {
+    @Environment(\.presentationMode) var presentationMode
     @State private var searchText = ""
-    @State private var reports: [TireReport] = [
-        TireReport(
-            vehicleName: "Vehicle Name",
-            serviceName: "Complete Tire Health",
-            date: Date(timeIntervalSince1970: 1741132800), // May 9, 2025
-            frontLeftTire: 82,
-            frontRightTire: 78,
-            rearLeftTire: 85,
-            rearRightTire: 64,
-            description: "All tires in fair condition. Rear right tire shows signs of uneven wear.",
-            reportType: .complete
-        ),
-        TireReport(
-            vehicleName: "Toyota Camry",
-            serviceName: "TireCity Auto Service",
-            date: Date(timeIntervalSince1970: 1740873600), // May 7, 2025
-            frontLeftTire: 0,
-            frontRightTire: 0,
-            rearLeftTire: 0,
-            rearRightTire: 0,
-            description: "",
-            reportType: .complete
-        ),
-        TireReport(
-            vehicleName: "Toyota Camry",
-            serviceName: "Quick Scan",
-            date: Date(timeIntervalSince1970: 1740700800), // May 5, 2025
-            frontLeftTire: 88,
-            frontRightTire: 85,
-            rearLeftTire: 90,
-            rearRightTire: 72,
-            description: "All tires in good condition. Recommend rotations in the next 1,000 miles.",
-            reportType: .quick
-        ),
-        TireReport(
-            vehicleName: "Wheel Alignment Report",
-            serviceName: "TireCity Auto Service",
-            date: Date(timeIntervalSince1970: 1738454400), // May 2, 2025
-            frontLeftTire: 0,
-            frontRightTire: 0,
-            rearLeftTire: 0,
-            rearRightTire: 0,
-            description: "",
-            reportType: .wheelAlignment
-        )
-    ]
+    @State private var showFilterSheet = false
+    
+    
+   
     
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.customBackgroundColor
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header
-                HeaderView(searchText: $searchText)
                 
-                // Reports List
-                ScrollView {
-                    VStack(spacing: 16) {
-                        ForEach(filteredReports) { report in
-                            ReportCardView(report: report)
-                        }
+                // App Bar
+                HStack {
+                    Text("Reports & Docs")
+                        .font(.custom("Sora-SemiBold", size: 36))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .frame(height: 62)
+                
+                // Search + Filter
+                HStack(spacing: 4) {
+                    // Search Bar
+                    HStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        TextField("Search...", text: $searchText)
+                            .font(.custom("Sora-Regular", size: 14))
+                            .foregroundColor(.white)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .frame(height: 48)
+                    .frame(width: 340)
+                    .background(Color(hex: "212121"))
+                    .cornerRadius(35)
+                    
+                    // Filter Button
+                    Button(action: { showFilterSheet = true }) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                            .frame(width: 48, height: 48)
+                            .background(Color(hex: "212121"))
+                            .clipShape(Circle())
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                
+                // Scrollable Content
+                ScrollView {
+                    VStack(spacing: 22) {
+                        // Report Cards (with random values)
+                        ReportCard(
+                            vehicleName: ["Tesla Model 3", "BMW X5", "Audi A3", "Toyota Camry", "Hyundai Tucson"].randomElement()!,
+                            description: [
+                                "All tires in fair condition. Rear right tire shows signs of uneven wear.",
+                                "Front tires show moderate wear. Rear tires in good condition.",
+                                "All tires in excellent condition. No immediate action needed.",
+                                "Rear left tire pressure slightly low. Monitor over next week.",
+                                "Uneven wear detected on front right tire. Rotation recommended."
+                            ].randomElement()!,
+                            reportType: ["Quick Scan", "Complete Tire Health", "Rotation Check"].randomElement()!,
+                            date: {
+                                let formatter = DateFormatter()
+                                formatter.dateFormat = "MMM d, yyyy"
+                                let daysAgo = Int.random(in: 0...10)
+                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+                                return formatter.string(from: randomDate)
+                            }(),
+                            tireData: TireData1(
+                                frontLeft: Int.random(in: 60...100),
+                                frontRight: Int.random(in: 60...100),
+                                rearLeft: Int.random(in: 60...100),
+                                rearRight: Int.random(in: 60...100)
+                            )
+                        )
+                        
+                        // Document Card (with random values)
+                        DocumentCard(
+                            title: [
+                                "Toyota Camry",
+                                "Tire Replacement Invoice",
+                                "Service History",
+                                "Inspection Certificate",
+                                "BMW X5"
+                            ].randomElement()!,
+                            subtitle: [
+                                "TireCity Auto Service",
+                                "AutoPro Garage",
+                                "QuickFix Center",
+                                "Speedy Wheels",
+                                "Urban Motors"
+                            ].randomElement()!,
+                            date: {
+                                let formatter = DateFormatter()
+                                formatter.dateFormat = "MMM d, yyyy"
+                                let daysAgo = Int.random(in: 0...15)
+                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+                                return formatter.string(from: randomDate)
+                            }(),
+                            iconColor: [
+                                Color(hex: "F36656").opacity(0.1),
+                                Color(hex: "FEB96A").opacity(0.1),
+                                Color(hex: "5CEBFF").opacity(0.1),
+                                Color(hex: "2FB8FF").opacity(0.1),
+                                Color(hex: "A9FF8B").opacity(0.1)
+                            ].randomElement()!,
+                            icon: [
+                                "doc.text",
+                                "wrench.and.screwdriver",
+                                "checkmark.seal",
+                                "car.fill",
+                                "doc.plaintext"
+                            ].randomElement()!
+                        )
+                        
+                        // Another Report Card (with random values)
+                        ReportCard(
+                            vehicleName: ["Tesla Model 3", "BMW X5", "Audi A3", "Toyota Camry", "Hyundai Tucson"].randomElement()!,
+                            description: [
+                                "All tires in good condition. Recommend rotations in the next 1,000 miles.",
+                                "Front right tire needs replacement soon.",
+                                "Tire pressure optimal for all tires.",
+                                "Check rear left tire for slow leak.",
+                                "Excellent tread depth on all tires."
+                            ].randomElement()!,
+                            reportType: ["Quick Scan", "Complete Tire Health", "Rotation Check"].randomElement()!,
+                            date: {
+                                let formatter = DateFormatter()
+                                formatter.dateFormat = "MMM d, yyyy"
+                                let daysAgo = Int.random(in: 0...20)
+                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+                                return formatter.string(from: randomDate)
+                            }(),
+                            tireData: TireData1(
+                                frontLeft: Int.random(in: 60...100),
+                                frontRight: Int.random(in: 60...100),
+                                rearLeft: Int.random(in: 60...100),
+                                rearRight: Int.random(in: 60...100)
+                            )
+                        )
+                        
+                        // Service Document Card (with random values)
+                        DocumentCard(
+                            title: [
+                                "Wheel Alignment Report",
+                                "Tire Rotation Receipt",
+                                "Brake Inspection",
+                                "Annual Service Document",
+                                "Alignment Certificate"
+                            ].randomElement()!,
+                            subtitle: [
+                                "TireCity Auto Service",
+                                "AutoPro Garage",
+                                "QuickFix Center",
+                                "Speedy Wheels",
+                                "Urban Motors"
+                            ].randomElement()!,
+                            date: {
+                                let formatter = DateFormatter()
+                                formatter.dateFormat = "MMM d, yyyy"
+                                let daysAgo = Int.random(in: 0...30)
+                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+                                return formatter.string(from: randomDate)
+                            }(),
+                            iconColor: [
+                                Color(hex: "FEB96A").opacity(0.1),
+                                Color(hex: "F36656").opacity(0.1),
+                                Color(hex: "5CEBFF").opacity(0.1),
+                                Color(hex: "2FB8FF").opacity(0.1),
+                                Color(hex: "A9FF8B").opacity(0.1)
+                            ].randomElement()!,
+                            icon: [
+                                "wrench.and.screwdriver",
+                                "doc.text",
+                                "car.fill",
+                                "doc.plaintext",
+                                "checkmark.seal"
+                            ].randomElement()!
+                        )
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 22)
                     .padding(.bottom, 100)
                 }
             }
-            
-            // Bottom Tab Bar
-            VStack {
-                Spacer()
-                TabBarView()
-            }
         }
-    }
-    
-    var filteredReports: [TireReport] {
-        if searchText.isEmpty {
-            return reports
-        } else {
-            return reports.filter { report in
-                report.vehicleName.localizedCaseInsensitiveContains(searchText) ||
-                report.serviceName.localizedCaseInsensitiveContains(searchText) ||
-                report.description.localizedCaseInsensitiveContains(searchText)
-            }
-        }
+        .navigationBarHidden(true)
     }
 }
 
-// MARK: - Header View
-struct HeaderView: View {
-    @Binding var searchText: String
+// MARK: - Report Card Component
+struct ReportCard: View {
+    let vehicleName: String
+    let description: String
+    let reportType: String
+    let date: String
+    let tireData: TireData1
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Status Bar
-            HStack {
-                Text("10:45")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                HStack(spacing: 2) {
-                    Image(systemName: "cellularbars")
-                    Image(systemName: "wifi")
-                    Image(systemName: "battery.100")
-                }
-                .font(.system(size: 14))
-                .foregroundColor(.white)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+        ZStack(alignment: .topLeading) {
+            // Background
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(hex: "212121"))
+                .frame(height: 214)
             
-            // Title
-            Text("Reports & Docs")
-                .font(.system(size: 34, weight: .bold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-            
-            // Search Bar
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.gray)
-                    .font(.system(size: 16))
-                
-                TextField("Search...", text: $searchText)
-                    .foregroundColor(.white)
-                    .font(.system(size: 16))
-                
-                Image(systemName: "line.3.horizontal.decrease")
-                    .foregroundColor(.gray)
-                    .font(.system(size: 18))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(10)
-            .padding(.horizontal, 16)
-        }
-        .padding(.bottom, 8)
-    }
-}
-
-// MARK: - Report Card View
-struct ReportCardView: View {
-    let report: TireReport
-    @State private var isExpanded = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                // Icon
-                Image(systemName: report.reportType.icon)
-                    .font(.system(size: 24))
-                    .foregroundColor(report.reportType.iconColor)
-                    .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(8)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(report.vehicleName)
-                        .font(.system(size: 16, weight: .semibold))
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(vehicleName)
+                        .font(.custom("Sora-SemiBold", size: 14))
                         .foregroundColor(.white)
                     
-                    Text(report.serviceName)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
+                    Text(description)
+                        .font(.custom("Sora-Regular", size: 12))
+                        .foregroundColor(.white.opacity(0.8))
+                        .lineLimit(2)
+                        .frame(height: 35)
                 }
+                .padding(.top, 38)
+                .padding(.horizontal, 14)
                 
                 Spacer()
                 
-                VStack(spacing: 8) {
-                    Image(systemName: "paperplane")
-                        .font(.system(size: 18))
-                        .foregroundColor(.gray)
+                // Tire Data
+                HStack(spacing: 36) {
+                    VStack(spacing: 10) {
+                        TireDataRow(label: "Front Left:", value: "\(tireData.frontLeft)%")
+                        TireDataRow(label: "Rear Left:", value: "\(tireData.rearLeft)%")
+                    }
+                    .frame(width: 123)
                     
-                    Image(systemName: "arrow.down.circle")
-                        .font(.system(size: 18))
-                        .foregroundColor(.gray)
+                    VStack(spacing: 10) {
+                        TireDataRow(label: "Front Right:", value: "\(tireData.frontRight)%")
+                        TireDataRow(label: "Rear Right:", value: "\(tireData.rearRight)%")
+                    }
+                    .frame(width: 133)
                 }
-            }
-            .padding(16)
-            
-            // Expandable Content
-            if isExpanded && !report.description.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(report.description)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-                        .padding(.horizontal, 16)
+                .padding(.leading, 50)
+                .padding(.bottom, 18)
+                
+                // Divider
+                Rectangle()
+                    .fill(Color.white.opacity(0.1))
+                    .frame(height: 1)
+                    .padding(.horizontal, 26)
+                
+                // Footer
+                HStack {
+                    // Report Type Badge
+                    Text(reportType)
+                        .font(.custom("Sora-Regular", size: 10))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "191919"))
+                        .cornerRadius(12)
                     
-                    if report.frontLeftTire > 0 {
-                        TireStatusView(report: report)
-                            .padding(.horizontal, 16)
+                    Spacer()
+                    
+                    // Action Buttons
+                    HStack(spacing: 12) {
+                        Button(action: {}) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white)
+                        }
+                        
+                        Button(action: {}) {
+                            Image(systemName: "arrow.down.to.line")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white)
+                        }
                     }
                 }
-                .padding(.bottom, 16)
-            }
-            
-            // Date
-            HStack {
-                Image(systemName: "calendar")
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 14)
                 
-                Text(formatDate(report.date))
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
-        }
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isExpanded.toggle()
-            }
-        }
-    }
-    
-    func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
-    }
-}
-
-// MARK: - Tire Status View
-struct TireStatusView: View {
-    let report: TireReport
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 40) {
-                TireIndicator(label: "Front Left:", percentage: report.frontLeftTire)
-                TireIndicator(label: "Front Right:", percentage: report.frontRightTire)
-            }
-            
-            HStack(spacing: 40) {
-                TireIndicator(label: "Rear Left:", percentage: report.rearLeftTire)
-                TireIndicator(label: "Rear Right:", percentage: report.rearRightTire)
-            }
-        }
-    }
-}
-
-// MARK: - Tire Indicator
-struct TireIndicator: View {
-    let label: String
-    let percentage: Int
-    
-    var textColor: Color {
-        if percentage >= 80 {
-            return .green
-        } else if percentage >= 60 {
-            return .yellow
-        } else {
-            return .red
-        }
-    }
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .font(.system(size: 13))
-                .foregroundColor(.gray)
-                .frame(width: 80, alignment: .leading)
-            
-            Text("\(percentage)%")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(textColor)
-                .frame(width: 40, alignment: .trailing)
-        }
-    }
-}
-
-// MARK: - Tab Bar View
-struct TabBarView: View {
-    @State private var selectedTab = 1
-    
-    var body: some View {
-        HStack(spacing: 0) {
-            TabBarButton(
-                icon: "car.fill",
-                isSelected: selectedTab == 0,
-                action: { selectedTab = 0 }
-            )
-            
-            Spacer()
-            
-            // Center Scan Button
-            Button(action: {
-                selectedTab = 1
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(
-                            gradient: Gradient(colors: [Color.red, Color.orange]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ))
-                        .frame(width: 60, height: 60)
+                // Date
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white)
                     
-                    Image(systemName: "doc.text.viewfinder")
-                        .font(.system(size: 24, weight: .medium))
+                    Text(date)
+                        .font(.custom("Sora-Regular", size: 12))
                         .foregroundColor(.white)
                 }
+                .padding(.leading, 26)
+                .padding(.bottom, 14)
             }
-            .offset(y: -10)
-            
-            Spacer()
-            
-            TabBarButton(
-                icon: "folder.fill",
-                isSelected: selectedTab == 2,
-                action: { selectedTab = 2 }
-            )
-            
-            Spacer()
-            
-            TabBarButton(
-                icon: "gearshape.fill",
-                isSelected: selectedTab == 3,
-                action: { selectedTab = 3 }
-            )
         }
-        .padding(.horizontal, 30)
-        .padding(.top, 10)
-        .padding(.bottom, 20)
-        .background(
-            Color.black.opacity(0.95)
-                .background(.ultraThinMaterial)
-        )
+        .frame(height: 214)
+        .padding(.horizontal,24)
     }
 }
 
-// MARK: - Tab Bar Button
-struct TabBarButton: View {
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
+// MARK: - Tire Data Row
+struct TireDataRow: View {
+    let label: String
+    let value: String
     
     var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 22))
-                .foregroundColor(isSelected ? .white : .gray)
-                .frame(width: 44, height: 44)
+        HStack {
+            Text(label)
+                .font(.custom("Sora-Regular", size: 14))
+                .foregroundColor(.white.opacity(0.6))
+            
+            Spacer()
+            
+            Text(value)
+                .font(.custom("Sora-Regular", size: 14))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Document Card Component
+struct DocumentCard: View {
+    let title: String
+    let subtitle: String
+    let date: String
+    let iconColor: Color
+    let icon: String
+    
+    var body: some View {
+        ZStack(alignment: .leading) {
+            // Background
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(hex: "212121"))
+                .frame(height: 101)
+            
+            HStack(spacing: 0) {
+                // Icon Container
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(iconColor)
+                        .frame(width: 55, height: 85)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(.white)
+                }
+                .padding(.leading, 8)
+                
+                // Content
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(title)
+                            .font(.custom("Sora-SemiBold", size: 14))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        
+                        Text(subtitle)
+                            .font(.custom("Sora-Regular", size: 12))
+                            .foregroundColor(.white.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                        
+                        Text(date)
+                            .font(.custom("Sora-Regular", size: 12))
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding(.leading, 17)
+                .padding(.vertical, 14)
+                
+                Spacer()
+                
+                // Action Buttons
+                VStack(spacing: 12) {
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                    }
+                    
+                    Button(action: {}) {
+                        Image(systemName: "arrow.down.to.line")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding(.trailing, 12)
+            }
+        }
+        .frame(height: 101)
+    }
+}
+
+// MARK: - Depth Indicator Component
+struct DepthIndicator: View {
+    let measurement: TireDepthMeasurement
+    let isSelected: Bool
+    
+    var depthColor: Color {
+        if measurement.depth > 5.0 {
+            return Color.green
+        } else if measurement.depth > 3.0 {
+            return Color.yellow
+        } else {
+            return Color.red
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            // Lines Pattern (when not selected)
+            if !isSelected {
+                VStack(spacing: 2) {
+                    ForEach(0..<5) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.4))
+                            .frame(height: 2)
+                    }
+                }
+                .frame(width: 42, height: 61)
+                .offset(y: -4)
+            }
+            
+            // Measurement Box
+            ZStack {
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(
+                        isSelected ?
+                        LinearGradient(
+                            colors: [Color(hex: "5CEBFF"), Color(hex: "2FB8FF")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ) :
+                        LinearGradient(
+                            colors: [Color.white],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+                    .frame(width: 42, height: 72)
+                    .opacity(isSelected ? 1.0 : 0.6)
+                
+                // Depth Value Display (when selected)
+                if isSelected {
+                    VStack(spacing: 2) {
+                        Text(String(format: "%.1f", measurement.depth))
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(depthColor)
+                        
+                        Text("mm")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
+                
+                // Glow Effect
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(depthColor, lineWidth: 3)
+                        .frame(width: 44, height: 74)
+                        .blur(radius: 4)
+                        .opacity(0.6)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Tire Depth Measurement Model
+struct TireDepthMeasurement {
+    let position: TirePosition
+    let depth: Double // in millimeters
+    
+    var status: DepthStatus {
+        if depth > 5.0 {
+            return .good
+        } else if depth > 3.0 {
+            return .medium
+        } else {
+            return .critical
+        }
+    }
+}
+
+// MARK: - Depth Status Enum
+enum DepthStatus {
+    case good
+    case medium
+    case critical
+    
+    var color: Color {
+        switch self {
+        case .good: return .green
+        case .medium: return .yellow
+        case .critical: return .red
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .good: return "Good Condition"
+        case .medium: return "Monitor Closely"
+        case .critical: return "Replace Soon"
         }
     }
 }
 
 // MARK: - Preview
-#Preview {
-    ReportsDocsView()
-        .preferredColorScheme(.dark)
+struct TireProfileDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        ReportsDocumentationsView()
+        
+    }
 }
-

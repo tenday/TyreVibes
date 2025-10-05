@@ -20,19 +20,19 @@ struct BottomNavigationView: View {
             // aggiungiamo solo l'eccedenza della barra sopra la home indicator.
 
             ZStack {
-                // AREA CONTENUTOf
+                // AREA CONTENUTO
                 Group {
                     switch selectedIndex {
                     case 0:
                         GarageScreen()
                     case 1:
-                        ReportsView()
+                        ReportsDocumentationsView()
                     case 2:
                         CalendarScreen()
                     case 3:
-                        SettingsScreen()
+                        SettingsView()
                     case 4:
-                        SettingsScreen()
+                        SettingsView()
                     default:
                         GarageScreen()
                     }
@@ -280,7 +280,6 @@ struct CenterActionButton: View {
 struct VehiclesView: View { var body: some View { Text("Vehicles").foregroundColor(.white) } }
 struct ReportsView: View { var body: some View { Text("Reports").foregroundColor(.white) } }
 struct CalendarScreen: View { var body: some View { Text("Calendar").foregroundColor(.white) } }
-struct SettingsScreen: View { var body: some View { Text("Settings").foregroundColor(.white) } }
 
 
 // MARK: - Forma Personalizzata della Barra

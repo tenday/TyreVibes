@@ -721,11 +721,11 @@ task.resume()
 public static func fetchRevisioniSecure(
     plate: String,
     tipoVeicolo: String = "A",
-    maxAttempts: Int = 7,
+    maxAttempts: Int = 15,
     completion: @escaping (Result<[[String:String]], Error>) -> Void
 ) {
     func attempt(_ remaining: Int) {
-        let captchaCount = 15
+        let captchaCount = 10
         let group = DispatchGroup()
         var captchaResults: [(id: String, image: String)] = []
         var firstError: Error?

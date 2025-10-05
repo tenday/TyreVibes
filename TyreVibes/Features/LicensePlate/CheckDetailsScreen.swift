@@ -7,6 +7,7 @@ struct CheckDetailsView: View {
     
     var vehicleImage: UIImage?
     var plateData: PlateData?
+    let consultOnly: Bool
     @State private var displayImage: UIImage?
     @State private var dateString: String = ""
     @State private var showConfirmDetailsScreen: Bool = false
@@ -134,27 +135,42 @@ struct CheckDetailsView: View {
                 
                 Spacer()
                 
-                Button(action: {
-                    // Se ho una closure per chiudere la fullScreenCover (Scan/Enter), usala per tornare al Garage con animazione dall’alto al basso.
-                    if let closeFullScreen = onFullScreenDismiss {
-                        closeFullScreen()
-                    } else {
-                        // Altrimenti fai pop della navigation (caso di push da ConfirmDetailsView)
+                if consultOnly {
+                    Button(action: {
                         navigationDismiss()
+                    }) {
+                        Text("Riesegui scansione")
+                            .font(.customFont(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
                     }
-                }) {
-                    Text(L10n.continue_.localized)
-                        .font(.customFont(size: 18, weight: .bold))
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 62)
+                    .background(Color.customFieldColor)
+                    .cornerRadius(100)
+                    .padding(.horizontal, 24)
+                } else {
+                    Button(action: {
+                        // Se ho una closure per chiudere la fullScreenCover (Scan/Enter), usala per tornare al Garage con animazione dall’alto al basso.
+                        if let closeFullScreen = onFullScreenDismiss {
+                            closeFullScreen()
+                        } else {
+                            // Altrimenti fai pop della navigation (caso di push da ConfirmDetailsView)
+                            navigationDismiss()
+                        }
+                    }) {
+                        Text(L10n.continue_.localized)
+                            .font(.customFont(size: 18, weight: .bold))
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 62)
+                    }
+                    .background(Color.customBitterSweet)
+                    .cornerRadius(100)
+                    .opacity(isContinueEnabled ? 1.0 : 0.6)
+                    .disabled(!isContinueEnabled)
+                    .padding(.horizontal, 24)
                 }
-                .background(Color.customBitterSweet)
-                .cornerRadius(100)
-                .opacity(isContinueEnabled ? 1.0 : 0.6)
-                .disabled(!isContinueEnabled)
-                .padding(.horizontal, 24)
             }
         }
         .navigationDestination(isPresented: $showConfirmDetailsScreen) {
@@ -163,6 +179,7 @@ struct CheckDetailsView: View {
                     plateData: plateData,
                     manualEntryEnabled: false,
                     viewModel: viewModel,
+                    consultOnly: consultOnly,
                     onFullScreenDismiss: onFullScreenDismiss
                 )
                 .navigationBarBackButtonHidden(true)
@@ -196,5 +213,11 @@ struct CheckDetailsView: View {
 }
 
 #Preview {
-    CheckDetailsView(isContinueEnabled: .constant(true), viewModel: ConfirmDetailsViewModel())
+    CheckDetailsView(
+        vehicleImage: nil,
+        plateData: nil,
+        consultOnly: false,
+        isContinueEnabled: .constant(true),
+        viewModel: ConfirmDetailsViewModel()
+    )
 }

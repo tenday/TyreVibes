@@ -210,7 +210,7 @@ struct CarDetailsView: View {
                         // Details Section
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
-                                Text("Details")
+                                Text("Scheda Tecnica")
                                     .font(.customFont(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
                                 Spacer()
@@ -255,6 +255,7 @@ struct CarDetailsView: View {
                                 DetailItem(label: "License No", value: vehicle.plate?.plateNumber.uppercased() ?? "-")
                                 DetailItem(label: "Fuel Type", value: vehicle.vehicle.fuelType?.uppercased() ?? "-")
                                 DetailItem(label: "Horsepower", value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
+                                DetailItem(label: "Emission Class", value: vehicle.vehicle.emissionClass?.uppercased() ?? "-")
                             }
                         }
                         .padding()

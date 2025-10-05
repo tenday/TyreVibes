@@ -51,6 +51,7 @@ struct GarageScreen: View {
     @State private var showDeveloperSettings = false
     @State private var tapCount = 0
     @State private var showProfileScreen: Bool = false
+    @State private var showNotificationScreen: Bool = false
 
 
     private let sheetSpacing: CGFloat = 20
@@ -111,31 +112,7 @@ struct GarageScreen: View {
                     HStack(spacing: 12) {
                         HStack(alignment: .center) {
                             Button(action: {
-                                Task { @MainActor in
-                                    do {
-                                        try await AuthService().logout()
-                                        
-                                        // Clear Keychain and UserDefaults
-                                        KeychainHelper.delete()
-                                        UserDefaults.standard.set(false, forKey: "rememberMe")
-                                        UserDefaults.standard.set(false, forKey: "useFaceID")
-                                        UserDefaults.standard.removeObject(forKey: "cachedVehicles")
-                                        
-                                        // Clear any cached data in the view model
-                                        viewModel.vehicles.removeAll()
-                                        
-                                        // Reset login view model state
-                                        viewModelLogin.showHomeScreen = false
-                                        viewModelLogin.email = ""
-                                        viewModelLogin.password = ""
-                                        viewModelLogin.rememberMe = false
-                                        
-                                        // Finally logout
-                                        isLoggedIn = false
-                                    } catch {
-                                        print("Errore durante il logout: \(error.localizedDescription)")
-                                    }
-                                }
+                                showNotificationScreen = true
                             }) {
                                 Image(systemName: "bell")
                                     .resizable()
@@ -463,6 +440,9 @@ struct GarageScreen: View {
                             }
                         )
                     }
+                    .fullScreenCover(isPresented: $showNotificationScreen) {
+                        NotificationsView()
+                    }
                     
                     
                 }
@@ -552,12 +532,14 @@ struct GarageScreen: View {
         // Crea gli elementi da condividere
         var itemsToShare: [Any] = [vehicleInfo]
 
-        // Aggiungi l'immagine se disponibile
+        // Aggiungi l'immagine se disponibile (con targa offuscata per privacy)
         if let base64String = vehicle.image?.imageBase64,
            let data = Data(base64Encoded: base64String),
            let image = UIImage(data: data) {
             let trimmedImage = image.trimmedTransparentPixels(threshold: 5)
-            itemsToShare.append(trimmedImage)
+            // Offusca la targa prima di condividere l'immagine
+            let blurredImage = LicensePlateBlurHelper.blurLicensePlate(in: trimmedImage)
+            itemsToShare.append(blurredImage)
         }
 
         // Presenta il sheet di condivisione

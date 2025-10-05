@@ -98,13 +98,22 @@ struct EnterLicensePlateView: View {
     @State private var showConfirmDetailsScreen : Bool = false
 
     // Vehicle action selection
-    @State private var showActionSheet: Bool = true
-    @State private var selectedAction: VehicleAction?
-    @State private var hasSelectedAction: Bool = false
+    @State private var selectedAction: VehicleAction = .addToGarage
 
-    enum VehicleAction {
+    enum VehicleAction: String, CaseIterable, Identifiable {
         case addToGarage
         case justConsult
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .addToGarage:
+                return "Aggiungi al Garage"
+            case .justConsult:
+                return "Consulta dati"
+            }
+        }
     }
 
     private let maxPlateLength: Int = 8 // es. formato IT: AA123AA (7) o formati estesi
@@ -121,60 +130,70 @@ struct EnterLicensePlateView: View {
     
     var body: some View {
         ZStack {
-            Color.clear
+            Color.customBackgroundColor.ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             NavigationStack {
-                HStack {
-                    Spacer()
-                    Text(L10n.enterLicensePlate.localized)
-                        .font(.customFont(size: 24, weight: .semibold))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 10, height: 10)
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        Text(L10n.enterLicensePlate.localized)
+                            .font(.customFont(size: 24, weight: .semibold))
                             .foregroundColor(.white)
-                            .padding(12)
-                            .background(
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.customBackgroundColor)
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
-                                        .blur(radius: 1)
-                                        .offset(x: 0.3, y: 1)
-                                        .mask(
-                                            Circle().fill(LinearGradient(
-                                                gradient: Gradient(colors: [.black, .black]),
-                                                startPoint: .top,
-                                                endPoint: .bottom)
+                        Spacer()
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 10, height: 10)
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.customBackgroundColor)
+                                        Circle()
+                                            .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
+                                            .blur(radius: 1)
+                                            .offset(x: 0.3, y: 1)
+                                            .mask(
+                                                Circle().fill(LinearGradient(
+                                                    gradient: Gradient(colors: [.black, .black]),
+                                                    startPoint: .top,
+                                                    endPoint: .bottom)
+                                                )
                                             )
-                                        )
-                                    VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
-                                        .clipShape(Circle())
-                                        .padding(12)
-                                        .blur(radius: 40)
-                                        .opacity(0.8)
-                                }
-                            )
+                                        VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
+                                            .clipShape(Circle())
+                                            .padding(12)
+                                            .blur(radius: 40)
+                                            .opacity(0.8)
+                                    }
+                                )
+                        }
                     }
-                }
-                .padding(.top)
-                .padding(.horizontal)
-                .background(Color.customBackgroundColor)
-                
-                
-                VStack(spacing: 2) {
-                    Spacer()
-                    
+                    .padding(.top)
+                    .padding(.horizontal)
+                    .background(Color.customBackgroundColor)
+
+                    Picker("", selection: $selectedAction) {
+                        ForEach(VehicleAction.allCases) { action in
+                            Text(action.title).tag(action)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .background(Color.customBackgroundColor)
+                    .padding(.horizontal)
+                    .padding(.top, 30)
+                    .padding(.bottom, 20)
+
+                    Spacer().frame(maxWidth: .infinity).background(Color.customBackgroundColor)
+
                     // Title
-                    
-                    
+
+
                     // Manual plate entry styled as a license plate (EU style)
                     LicensePlateComponent(
                         text: licensePlate.isEmpty ? "AA123AA" : licensePlate,
@@ -189,7 +208,7 @@ struct EnterLicensePlateView: View {
                             .contentShape(Rectangle())
                     )
                     
-                    Spacer()
+                    Spacer().frame(maxWidth: .infinity).background(Color.customBackgroundColor)
                     
                     // Continue Button
                     Button(action: {
@@ -228,11 +247,11 @@ struct EnterLicensePlateView: View {
                                 self.errorMessage = error.localizedDescription
                                 self.showErrorAlert = true
                             }
-                            self.isLoadingDetails = false
-                        }
-                        
-                        self.showErrorAlert = false
-                        
+                        self.isLoadingDetails = false
+                    }
+                    
+                    self.showErrorAlert = false
+                    
                     }) {
                         if  isLoadingDetails {
                             Text("")
@@ -272,8 +291,9 @@ struct EnterLicensePlateView: View {
                     }
                     .padding(.bottom, 20)
                 }
-                .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
+                // Background removed here; handled by ZStack above
                 .preferredColorScheme(.dark)
+                .background(Color.customBackgroundColor)
                 .overlay(
                     Group {
                         if showErrorAlert {
@@ -288,12 +308,18 @@ struct EnterLicensePlateView: View {
                         onFullScreenDismiss: onFullScreenDismiss, // 👈 propaghi qui!
                         vehicleImage: vehicleImage,
                         plateData: data,
+                        consultOnly: selectedAction == .justConsult,
                         isContinueEnabled: .constant(false),
                         viewModel: ConfirmDetailsViewModel()
                     )
                 }
                 .navigationDestination(isPresented: $showConfirmDetailsScreen) {
-                    ConfirmDetailsView(plateData: data ?? nil, manualEntryEnabled: true, viewModel: ConfirmDetailsViewModel() )
+                    ConfirmDetailsView(
+                        plateData: data ?? nil,
+                        manualEntryEnabled: true,
+                        viewModel: ConfirmDetailsViewModel(),
+                        consultOnly: selectedAction == .justConsult
+                    )
                         .preferredColorScheme(.dark)
                         .navigationBarBackButtonHidden(true)
                 }
@@ -303,27 +329,6 @@ struct EnterLicensePlateView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
-        .confirmationDialog(
-            "Cosa vuoi fare?",
-            isPresented: $showActionSheet,
-            titleVisibility: .visible
-        ) {
-            Button("Aggiungi al Garage") {
-                selectedAction = .addToGarage
-                hasSelectedAction = true
-            }
-
-            Button("Solo Consultare Dati") {
-                selectedAction = .justConsult
-                hasSelectedAction = true
-            }
-
-            Button("Annulla", role: .cancel) {
-                dismiss()
-            }
-        } message: {
-            Text("Puoi aggiungere il veicolo al tuo garage per tenere traccia di manutenzioni e pneumatici, oppure consultare solo i dati del veicolo.")
         }
     }
 }

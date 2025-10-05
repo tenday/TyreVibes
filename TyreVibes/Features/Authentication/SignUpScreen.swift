@@ -14,6 +14,10 @@ struct SignUpScreen: View {
     @State private var navigateToForgotPassword = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
+    @State private var showTermsAndConditions = false
+    @State private var showPrivacyPolicy = false
+    @State private var hasReadTerms = false
+    @State private var hasReadPrivacy = false
 
     var body: some View {
         NavigationStack {
@@ -75,7 +79,13 @@ struct SignUpScreen: View {
                                         isConfirmPasswordValid: viewModel.isConfirmPasswordValid,
                                         requirements: viewModel.passwordRequirements
                                     )
-                                    TermsAndConditionsToggle(agreedToTerms: $viewModel.agreedToTerms)
+                                    TermsAndConditionsToggle(
+                                        agreedToTerms: $viewModel.agreedToTerms,
+                                        hasReadTerms: $hasReadTerms,
+                                        hasReadPrivacy: $hasReadPrivacy,
+                                        onTermsTap: { showTermsAndConditions = true },
+                                        onPrivacyTap: { showPrivacyPolicy = true }
+                                    )
                                 }
                             }
                             .padding()
@@ -172,8 +182,14 @@ struct SignUpScreen: View {
                 })
                 .navigationBarHidden(true)
                 .navigationDestination(isPresented: $showOtpScreen) {
-                    
+
                     OTPVerificationView(viewModel: viewModel)
+                }
+                .fullScreenCover(isPresented: $showTermsAndConditions) {
+                    TermsAndConditionsView(hasReadTerms: $hasReadTerms)
+                }
+                .fullScreenCover(isPresented: $showPrivacyPolicy) {
+                    PrivacyPolicyView(hasReadPrivacy: $hasReadPrivacy)
                 }
                 .navigationBarBackButtonHidden(true)
             }
@@ -453,46 +469,77 @@ struct PasswordField: View {
 
 struct TermsAndConditionsToggle: View {
     @Binding var agreedToTerms: Bool
+    @Binding var hasReadTerms: Bool
+    @Binding var hasReadPrivacy: Bool
+    var onTermsTap: () -> Void
+    var onPrivacyTap: () -> Void
 
     var body: some View {
-        HStack {
-            Toggle(isOn: $agreedToTerms) {
-                HStack(spacing: 2) {
-                    Text("I agree to the")
-                        .foregroundColor(.white)
-                        .font(.customFont(size: 12, weight: .regular))
-
-                    Button(action: {
-                        if let url = URL(string: "https://tyrevibes.com") {
-                            UIApplication.shared.open(url)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Toggle(isOn: Binding(
+                    get: { agreedToTerms && hasReadTerms && hasReadPrivacy },
+                    set: { newValue in
+                        if hasReadTerms && hasReadPrivacy {
+                            agreedToTerms = newValue
                         }
-                    }) {
-                        Text("Terms & Conditions")
-                            .foregroundColor(Color.customBitterSweet)
-                            .font(.customFont(size: 12, weight: .regular))
                     }
-                    .buttonStyle(PlainButtonStyle())
+                )) {
+                    HStack(spacing: 2) {
+                        Text("I agree to the")
+                            .foregroundColor(.white)
+                            .font(.customFont(size: 12, weight: .regular))
 
-                    Text("and")
-                        .foregroundColor(.white)
-                        .font(.customFont(size: 12, weight: .regular))
-
-                    Button(action: {
-                        if let url = URL(string: "https://tyrevibes.com") {
-                            UIApplication.shared.open(url)
+                        Button(action: onTermsTap) {
+                            Text("Terms & Conditions")
+                                .foregroundColor(Color.customBitterSweet)
+                                .font(.customFont(size: 12, weight: .regular))
                         }
-                    }) {
-                        Text("Privacy Policy")
-                            .foregroundColor(Color.customBitterSweet)
+                        .buttonStyle(PlainButtonStyle())
+
+                        Text("and")
+                            .foregroundColor(.white)
                             .font(.customFont(size: 12, weight: .regular))
+
+                        Button(action: onPrivacyTap) {
+                            Text("Privacy Policy")
+                                .foregroundColor(Color.customBitterSweet)
+                                .font(.customFont(size: 12, weight: .regular))
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
+                .toggleStyle(CheckboxToggleStyle())
+                .disabled(!hasReadTerms || !hasReadPrivacy)
             }
-            .toggleStyle(CheckboxToggleStyle())
+
+            if !hasReadTerms || !hasReadPrivacy {
+                HStack(spacing: 4) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color.customBitterSweet)
+
+                    Text("Please read the Terms & Conditions and Privacy Policy first")
+                        .font(.customFont(size: 11, weight: .regular))
+                        .foregroundColor(Color.customBitterSweet)
+                }
+                .padding(.leading, 32)
+            }
         }
         .padding(.top, 13)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: hasReadTerms) { _, _ in
+            updateAgreement()
+        }
+        .onChange(of: hasReadPrivacy) { _, _ in
+            updateAgreement()
+        }
+    }
+
+    private func updateAgreement() {
+        if hasReadTerms && hasReadPrivacy {
+            agreedToTerms = true
+        }
     }
 }
 

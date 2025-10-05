@@ -481,13 +481,22 @@ struct ScanPlateView: View {
     @State private var scanningIndicatorOpacity: Double = 0.0
 
     // Vehicle action selection
-    @State private var showActionSheet: Bool = true
-    @State private var selectedAction: VehicleAction?
-    @State private var hasSelectedAction: Bool = false
+    @State private var selectedAction: VehicleAction = .addToGarage
 
-    enum VehicleAction {
+    enum VehicleAction: String, CaseIterable, Identifiable {
         case addToGarage
         case justConsult
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .addToGarage:
+                return "Aggiungi al Garage"
+            case .justConsult:
+                return "Consulta dati"
+            }
+        }
     }
 
     var body: some View {
@@ -545,7 +554,16 @@ struct ScanPlateView: View {
                     }
                     .padding(.top)
                     .padding(.horizontal,24)
-                    
+
+                    Picker("", selection: $selectedAction) {
+                        ForEach(VehicleAction.allCases) { action in
+                            Text(action.title).tag(action)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 12)
+
                     Spacer()
 
                     // Istruzioni iniziali animate
@@ -715,6 +733,7 @@ struct ScanPlateView: View {
                     onFullScreenDismiss: { onFullScreenDismiss?() },
                     vehicleImage: self.vehicleImage,
                     plateData: self.data,
+                    consultOnly: selectedAction == .justConsult,
                     isContinueEnabled: .constant(false),
                     viewModel: ConfirmDetailsViewModel()
                 )
@@ -727,27 +746,6 @@ struct ScanPlateView: View {
                 }
             } message: {
                 Text(errorMessage)
-            }
-            .confirmationDialog(
-                "Cosa vuoi fare?",
-                isPresented: $showActionSheet,
-                titleVisibility: .visible
-            ) {
-                Button("Aggiungi al Garage") {
-                    selectedAction = .addToGarage
-                    hasSelectedAction = true
-                }
-
-                Button("Solo Consultare Dati") {
-                    selectedAction = .justConsult
-                    hasSelectedAction = true
-                }
-
-                Button("Annulla", role: .cancel) {
-                    navigationDismiss()
-                }
-            } message: {
-                Text("Puoi aggiungere il veicolo al tuo garage per tenere traccia di manutenzioni e pneumatici, oppure consultare solo i dati del veicolo.")
             }
         }
     }

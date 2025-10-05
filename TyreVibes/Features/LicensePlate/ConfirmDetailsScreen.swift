@@ -4,12 +4,14 @@ struct ConfirmDetailsView: View {
     var onFullScreenDismiss: (() -> Void)? = nil
     let plateData: PlateData?
     let manualEntryEnabled : Bool
+    let consultOnly: Bool
     @State private var isContinueEnabled: Bool = false
     @State private var selectedColor: Color = .black
     @ObservedObject var viewModel: ConfirmDetailsViewModel
-    init(plateData: PlateData?, manualEntryEnabled: Bool, viewModel: ConfirmDetailsViewModel, onFullScreenDismiss: (() -> Void)? = nil) {
+    init(plateData: PlateData?, manualEntryEnabled: Bool, viewModel: ConfirmDetailsViewModel, consultOnly: Bool = false, onFullScreenDismiss: (() -> Void)? = nil) {
         self.plateData = plateData
         self.manualEntryEnabled = manualEntryEnabled
+        self.consultOnly = consultOnly
         self._viewModel = ObservedObject(wrappedValue: viewModel)
         self.onFullScreenDismiss = onFullScreenDismiss
     }
@@ -23,20 +25,20 @@ struct ConfirmDetailsView: View {
     @State private var licenseText: String = ""
     @State private var fuelText: String = ""
     @State private var powerText: String = ""
-    @State private var showActionSheet: Bool = false
-    @State private var selectedAction: VehicleAction?
 
-    enum VehicleAction {
-        case addToGarage
-        case justConsult
+    // Form validation computed property
+    private var isFormValid: Bool {
+        !makeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !modelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !licenseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
+
     var body: some View {
         ZStack {
             Color.customBackgroundColor
                 .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
+
+            VStack(spacing: 0) {
                 // Custom navigation bar
                 HStack {
                     Button(action: { dismiss() }) {
@@ -45,72 +47,95 @@ struct ConfirmDetailsView: View {
                             .frame(width: 15, height: 24)
                             .foregroundColor(.white)
                     }
-                    
+
                     Spacer()
-                    
+
                     Text("Confirm Details")
                         .font(.customFont(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                    
+
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 24)
+                .padding(.top)
+                .padding(.bottom, 10)
+
+                ScrollView {
+                    VStack(spacing: 20) {
                 
                 
                 // Detail items
                 VStack(alignment:.center, spacing: 14) {
                     if manualEntryEnabled {
-                        HStack {
-                            TextField("Marchio", text: $makeText)
-                                .font(.customFont(size: 18, weight: .bold))
-                                .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
+                        VStack(spacing: 12) {
+                            TextField("Marchio (es. Fiat)", text: $makeText)
+                                .font(.customFont(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding()
+                                .frame(height: 56)
                                 .background(Color.customFieldColor)
                                 .cornerRadius(12)
+                                .autocapitalization(.words)
+
+                            TextField("Modello (es. 500)", text: $modelText)
+                                .font(.customFont(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
+                                .padding()
+                                .frame(height: 56)
+                                .background(Color.customFieldColor)
+                                .cornerRadius(12)
+                                .autocapitalization(.words)
+
+                            HStack(spacing: 12) {
+                                TextField("Anno", text: $yearText)
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(height: 56)
+                                    .background(Color.customFieldColor)
+                                    .cornerRadius(12)
+                                    .keyboardType(.numberPad)
+
+                                TextField("Cilindrata (cc)", text: $engineText)
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(height: 56)
+                                    .background(Color.customFieldColor)
+                                    .cornerRadius(12)
+                                    .keyboardType(.numberPad)
+                            }
+
+                            TextField("Targa (es. AB123CD)", text: $licenseText)
+                                .font(.customFont(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding()
+                                .frame(height: 56)
+                                .background(Color.customFieldColor)
+                                .cornerRadius(12)
+                                .autocapitalization(.allCharacters)
+                                .autocorrectionDisabled()
+
+                            HStack(spacing: 12) {
+                                TextField("Alimentazione", text: $fuelText)
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(height: 56)
+                                    .background(Color.customFieldColor)
+                                    .cornerRadius(12)
+
+                                TextField("CV", text: $powerText)
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .frame(height: 56)
+                                    .background(Color.customFieldColor)
+                                    .cornerRadius(12)
+                                    .keyboardType(.numberPad)
+                            }
                         }
-                        
-                        TextField("Modello", text: $modelText)
-                            .font(.customFont(size: 18, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
-                            .background(Color.customFieldColor)
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                        
-                        TextField("Anno", text: $yearText)
-                            .font(.customFont(size: 18, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
-                            .background(Color.customFieldColor)
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                        
-                        TextField("Cilindrata", text: $engineText)
-                            .font(.customFont(size: 18, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
-                            .background(Color.customFieldColor)
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                        
-                        TextField("Targa", text: $licenseText)
-                            .font(.customFont(size: 18, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
-                            .background(Color.customFieldColor)
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                        
-                        TextField("Alimentazione", text: $fuelText)
-                            .font(.customFont(size: 18, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
-                            .background(Color.customFieldColor)
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                        
-                        TextField("Horsepower", text: $powerText)
-                            .font(.customFont(size: 18, weight: .bold))
-                            .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 62, alignment: .leading)
-                            .background(Color.customFieldColor)
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
                     } else {
                         DetailRow(label: "Marchio:", value: plateData?.make ?? "-")
                         DetailRow(label: "Modello:", value: plateData?.modelDetails ?? "-")
@@ -134,58 +159,63 @@ struct ConfirmDetailsView: View {
                         .cornerRadius(12)
                 }
                 .padding(.horizontal, 24)
-                
-                // Confirm button - now shows action sheet
-                Button(action: {
-                    showActionSheet = true
-                }) {
-                    if viewModel.isLoading {
-                        Text("")
-                            .foregroundColor(Color.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 62)
-                            .background(Color.customBitterSweet)
-                            .cornerRadius(28)
-                            .overlay(ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(1.2)
-                                .frame(height: 62)
-                                .frame(maxWidth: .infinity))
+
+                        Spacer(minLength: 20)
                     }
-                    else {
-                        Text("Confirm")
-                            .font(.customFont(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 62)
-                            .background(Color.customBitterSweet)
-                            .cornerRadius(28)
-                    }
-                  
-                }
-                .disabled(viewModel.isLoading)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 3)
-                .navigationDestination(isPresented: $navigateToCheckDetails) {
-                    CheckDetailsView(
-                        onFullScreenDismiss: onFullScreenDismiss,
-                        plateData: plateData,
-                        isContinueEnabled: $isContinueEnabled,
-                        viewModel: viewModel
-                    )
+                    .padding(.bottom, 100)
                 }
 
+                // Fixed button at the bottom
+                if !consultOnly {
+                    VStack {
+                        Button(action: {
+                            performVehicleAction()
+                        }) {
+                            if viewModel.isLoading {
+                                Text("")
+                                    .foregroundColor(Color.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 62)
+                                    .background(Color.customBitterSweet)
+                                    .cornerRadius(28)
+                                    .overlay(ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(1.2)
+                                        .frame(height: 62)
+                                        .frame(maxWidth: .infinity))
+                            } else {
+                                Text("Confirm")
+                                    .font(.customFont(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 62)
+                                    .background(Color.customBitterSweet)
+                                    .cornerRadius(28)
+                            }
+                        }
+                        .disabled(viewModel.isLoading || (manualEntryEnabled && !isFormValid))
+                        .opacity((manualEntryEnabled && !isFormValid) ? 0.5 : 1.0)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 30)
+                    }
+                    .background(Color.customBackgroundColor)
+                }
             }
+        }
+        .navigationDestination(isPresented: $navigateToCheckDetails) {
+            CheckDetailsView(
+                onFullScreenDismiss: onFullScreenDismiss,
+                vehicleImage: plateData?.vehicleImage ?? nil,
+                plateData: plateData,
+                consultOnly: consultOnly,
+                isContinueEnabled: $isContinueEnabled,
+                viewModel: viewModel
+            )
         }
         .onReceive(viewModel.$didSavePlate) { newValue in
             if newValue {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                     isContinueEnabled = true
-                }
-                if selectedAction == .addToGarage {
-                    navigateToCheckDetails = true
-                } else if selectedAction == .justConsult {
-                    // Just show success message, don't navigate
                     navigateToCheckDetails = true
                 }
             }
@@ -197,26 +227,65 @@ struct ConfirmDetailsView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        .confirmationDialog("Cosa vuoi fare con questo veicolo?", isPresented: $showActionSheet, titleVisibility: .visible) {
-            Button("Aggiungi al Garage") {
-                selectedAction = .addToGarage
-                performVehicleAction()
-            }
-
-            Button("Solo Consultare Dati") {
-                selectedAction = .justConsult
-                performVehicleAction()
-            }
-
-            Button("Annulla", role: .cancel) {
-                selectedAction = nil
-            }
-        } message: {
-            Text("Puoi aggiungere il veicolo al tuo garage per tenere traccia di manutenzioni e pneumatici, oppure consultare solo i dati del veicolo.")
-        }
     }
 
     private func performVehicleAction() {
+        guard !consultOnly else { return }
+
+        // Se è in modalità inserimento manuale, crea un nuovo PlateData con i dati inseriti
+        if manualEntryEnabled {
+            // Validazione campi obbligatori
+            guard !makeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !modelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !licenseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                viewModel.alertItem = AlertItem(
+                    title: "Dati mancanti",
+                    message: "Compila almeno i campi: Marchio, Modello e Targa"
+                )
+                return
+            }
+
+            // Crea un PlateData con i dati inseriti manualmente
+            let manualPlateData = PlateData(
+                plate: licenseText.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+                make: makeText.trimmingCharacters(in: .whitespacesAndNewlines),
+                model: modelText.trimmingCharacters(in: .whitespacesAndNewlines),
+                version: "",
+                year: yearText.trimmingCharacters(in: .whitespacesAndNewlines),
+                month: "",
+                color: ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor),
+                fuelType: fuelText.trimmingCharacters(in: .whitespacesAndNewlines),
+                powerKW: "",
+                powerCV: powerText.trimmingCharacters(in: .whitespacesAndNewlines),
+                modelDetails: modelText.trimmingCharacters(in: .whitespacesAndNewlines),
+                displacementCC: engineText.trimmingCharacters(in: .whitespacesAndNewlines),
+                registrationDate: yearText.trimmingCharacters(in: .whitespacesAndNewlines),
+                vin: "",
+                insuranceCompany: nil,
+                insuranceExpiry: nil,
+                insurancePresent: false,
+                insurancePolicyNumber: nil,
+                emissionClass: nil,
+                tyres: [],
+                saleEnd: nil,
+                gearbox: nil,
+                maxSpeed: nil,
+                bodyType: nil,
+                doors: nil,
+                seats: nil,
+                consumption: nil,
+                traction: nil,
+                powerCVKW: powerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : "\(powerText) CV"
+            )
+
+            let colorName = ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor)
+            Task {
+                await viewModel.savePlate(plateData: manualPlateData, color: colorName, angle: 23)
+            }
+            return
+        }
+
+        // Logica esistente per dati automatici
         guard let plate = plateData else { return }
 
         if LicensePlateReader.exists, !plate.plate.isEmpty {
