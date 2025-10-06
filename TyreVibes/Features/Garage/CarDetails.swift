@@ -46,6 +46,480 @@ fileprivate func formatVehicleInfoDate(_ dateString: String?) -> String {
     return rawDate
 }
 
+fileprivate func parseVehicleInfoDate(_ dateString: String?) -> Date? {
+    guard let rawDate = dateString?.trimmingCharacters(in: .whitespacesAndNewlines), !rawDate.isEmpty else {
+        return nil
+    }
+
+    let isoFormatter = DateFormatter()
+    isoFormatter.locale = Locale(identifier: "en_US_POSIX")
+    isoFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+    let isoFormats = [
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd"
+    ]
+
+    for format in isoFormats {
+        isoFormatter.dateFormat = format
+        if let date = isoFormatter.date(from: rawDate) {
+            return date
+        }
+    }
+
+    let itFormatter = DateFormatter()
+    itFormatter.locale = Locale(identifier: "it_IT_POSIX")
+    itFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+    let localizedFormats = [
+        "dd/MM/yyyy",
+        "MM/yyyy"
+    ]
+
+    for format in localizedFormats {
+        itFormatter.dateFormat = format
+        if let date = itFormatter.date(from: rawDate) {
+            return date
+        }
+    }
+
+    if let year = Int(rawDate), year > 1900 {
+        var components = DateComponents()
+        components.year = year
+        components.month = 1
+        components.day = 1
+        return Calendar(identifier: .gregorian).date(from: components)
+    }
+
+    return nil
+}
+
+struct RevisionForecastDisplay: Identifiable, Hashable {
+    let id = UUID()
+    let index: Int
+    let isoDateString: String
+    let context: String
+    let detail: String?
+    let relativeText: String?
+}
+
+fileprivate func makeRevisionForecasts(for vehicle: VehicleResponse, limit: Int = 2) -> [RevisionForecastDisplay] {
+    guard limit > 0 else { return [] }
+    let calendar = Calendar(identifier: .gregorian)
+    let now = Date()
+
+    let isoFormatter = DateFormatter()
+    isoFormatter.dateFormat = "yyyy-MM-dd"
+    isoFormatter.locale = Locale(identifier: "en_US_POSIX")
+    isoFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+    let relativeFormatter = RelativeDateTimeFormatter()
+    relativeFormatter.locale = Locale(identifier: "it_IT")
+    relativeFormatter.unitsStyle = .full
+
+    let revisionDates = (vehicle.revisions ?? [])
+        .compactMap { parseVehicleInfoDate($0.dataRevisione) }
+        .sorted()
+
+    var firstDueDate: Date?
+    var firstContext = ""
+    var firstDetail: String? = nil
+    var baseDate: Date? = nil
+
+    if let lastRevisionDate = revisionDates.last {
+        firstDueDate = calendar.date(byAdding: DateComponents(year: 2), to: lastRevisionDate)
+        baseDate = lastRevisionDate
+        let formattedBase = formatVehicleInfoDate(isoFormatter.string(from: lastRevisionDate))
+        firstContext = "Stima basata sull'ultima revisione registrata."
+        firstDetail = "Ultima revisione: \(formattedBase)."
+    } else if let registrationDate = parseVehicleInfoDate(vehicle.plate?.registrationDate) {
+        firstDueDate = calendar.date(byAdding: DateComponents(year: 4), to: registrationDate)
+        baseDate = registrationDate
+        let formattedBase = formatVehicleInfoDate(isoFormatter.string(from: registrationDate))
+        firstContext = "Prima revisione obbligatoria dopo 4 anni dall'immatricolazione."
+        firstDetail = "Immatricolazione: \(formattedBase)."
+    } else if let year = vehicle.plate?.year {
+        var components = DateComponents()
+        components.year = year
+        components.month = vehicle.plate?.month ?? 1
+        components.day = 1
+
+        if let approxRegistration = calendar.date(from: components) {
+            let offsetYears = revisionDates.isEmpty ? 4 : 2
+            firstDueDate = calendar.date(byAdding: DateComponents(year: offsetYears), to: approxRegistration)
+            baseDate = approxRegistration
+
+            let monthFormatter = DateFormatter()
+            monthFormatter.locale = Locale(identifier: "it_IT")
+            monthFormatter.dateFormat = "MMMM yyyy"
+
+            let approximateString = monthFormatter.string(from: approxRegistration).capitalized
+            firstContext = offsetYears == 4
+                ? "Prima revisione stimata dopo 4 anni dall'immatricolazione."
+                : "Revisione stimata dopo 2 anni dalla data di riferimento."
+            firstDetail = "Immatricolazione stimata: \(approximateString)."
+        }
+    }
+
+    guard let initialDueDate = firstDueDate else {
+        return []
+    }
+
+    var forecasts: [RevisionForecastDisplay] = []
+    var currentDueDate: Date? = initialDueDate
+    var previousDate: Date? = baseDate
+
+    for index in 0..<limit {
+        guard let dueDate = currentDueDate else { break }
+
+        let isoDate = isoFormatter.string(from: dueDate)
+        let relativeText: String?
+        if dueDate > now {
+            relativeText = relativeFormatter.localizedString(for: dueDate, relativeTo: now)
+        } else {
+            relativeText = nil
+        }
+
+        let context: String
+        let detail: String?
+
+        if index == 0 {
+            context = firstContext.isEmpty ? "Revisione prevista calcolata automaticamente." : firstContext
+            detail = firstDetail
+        } else {
+            let referenceDate = previousDate ?? dueDate
+            let formattedReference = formatVehicleInfoDate(isoFormatter.string(from: referenceDate))
+            context = "Revisione periodica programmata (intervallo biennale)."
+            detail = "Successiva alla revisione prevista per \(formattedReference)."
+        }
+
+        forecasts.append(
+            RevisionForecastDisplay(
+                index: index,
+                isoDateString: isoDate,
+                context: context,
+                detail: detail,
+                relativeText: relativeText
+            )
+        )
+
+        previousDate = dueDate
+        currentDueDate = calendar.date(byAdding: DateComponents(year: 2), to: dueDate)
+    }
+
+    return forecasts
+}
+
+struct InsuranceForecastDisplay: Identifiable, Hashable {
+    let id = UUID()
+    let index: Int
+    let isoDateString: String
+    let context: String
+    let detail: String?
+    let relativeText: String?
+}
+
+fileprivate func makeInsuranceForecasts(for vehicle: VehicleResponse, limit: Int = 2) -> [InsuranceForecastDisplay] {
+    guard limit > 0 else { return [] }
+
+    let calendar = Calendar(identifier: .gregorian)
+    let now = Date()
+
+    let isoFormatter = DateFormatter()
+    isoFormatter.dateFormat = "yyyy-MM-dd"
+    isoFormatter.locale = Locale(identifier: "en_US_POSIX")
+    isoFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+    let relativeFormatter = RelativeDateTimeFormatter()
+    relativeFormatter.locale = Locale(identifier: "it_IT")
+    relativeFormatter.unitsStyle = .full
+
+    let insuranceDates: [(VehicleInsurance, Date)] = (vehicle.insurances ?? [])
+        .compactMap { insurance in
+            guard let date = parseVehicleInfoDate(insurance.rcaExpiry) else { return nil }
+            return (insurance, date)
+        }
+
+    var firstDueDate: Date?
+    var firstInsurance: VehicleInsurance?
+    var firstContext = ""
+    var firstDetail: String? = nil
+    var baseDate: Date?
+
+    if let latest = insuranceDates.max(by: { $0.1 < $1.1 }) {
+        firstInsurance = latest.0
+        baseDate = latest.1
+
+        var adjustedDue = latest.1
+        var rolloverCount = 0
+        while adjustedDue <= now {
+            guard let bumped = calendar.date(byAdding: DateComponents(year: 1), to: adjustedDue) else { break }
+            adjustedDue = bumped
+            rolloverCount += 1
+        }
+        firstDueDate = adjustedDue
+
+        let formattedBase = formatVehicleInfoDate(isoFormatter.string(from: latest.1))
+        if rolloverCount == 0 {
+            firstContext = "Scadenza della polizza registrata."
+            firstDetail = "Compagnia: \(latest.0.rcaCompany ?? "Sconosciuta")."
+        } else {
+            firstContext = "Rinnovo stimato a un anno dall'ultima scadenza registrata."
+            firstDetail = "Ultima scadenza: \(formattedBase)."
+        }
+    } else if let registrationDate = parseVehicleInfoDate(vehicle.plate?.registrationDate) {
+        firstDueDate = calendar.date(byAdding: DateComponents(year: 1), to: registrationDate)
+        baseDate = registrationDate
+        let formattedBase = formatVehicleInfoDate(isoFormatter.string(from: registrationDate))
+        firstContext = "Prima scadenza stimata a un anno dall'immatricolazione."
+        firstDetail = "Immatricolazione: \(formattedBase)."
+    } else if let year = vehicle.plate?.year {
+        var components = DateComponents()
+        components.year = year
+        components.month = vehicle.plate?.month ?? 1
+        components.day = 1
+
+        if let approximate = calendar.date(from: components) {
+            firstDueDate = calendar.date(byAdding: DateComponents(year: 1), to: approximate)
+            baseDate = approximate
+
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "it_IT")
+            formatter.dateFormat = "MMMM yyyy"
+            let approxString = formatter.string(from: approximate).capitalized
+            firstContext = "Scadenza assicurativa stimata dalla data di immatricolazione."
+            firstDetail = "Immatricolazione stimata: \(approxString)."
+        }
+    }
+
+    guard let initialDueDate = firstDueDate else {
+        return []
+    }
+
+    var forecasts: [InsuranceForecastDisplay] = []
+    var currentDueDate: Date? = initialDueDate
+    var previousDate: Date? = baseDate
+    var lastInsurance = firstInsurance
+
+    for index in 0..<limit {
+        guard let dueDate = currentDueDate else { break }
+
+        let isoDate = isoFormatter.string(from: dueDate)
+        let relativeText: String?
+        if dueDate > now {
+            relativeText = relativeFormatter.localizedString(for: dueDate, relativeTo: now)
+        } else {
+            relativeText = nil
+        }
+
+        let context: String
+        let detail: String?
+
+        if index == 0 {
+            context = firstContext.isEmpty ? "Scadenza assicurativa stimata." : firstContext
+            if let company = lastInsurance?.rcaCompany, !company.isEmpty {
+                detail = firstDetail ?? "Compagnia: \(company)."
+            } else {
+                detail = firstDetail
+            }
+        } else {
+            let referenceDate = previousDate ?? dueDate
+            let formattedReference = formatVehicleInfoDate(isoFormatter.string(from: referenceDate))
+            context = "Rinnovo annuale programmato."
+            detail = "Successivo alla scadenza prevista per \(formattedReference)."
+        }
+
+        forecasts.append(
+            InsuranceForecastDisplay(
+                index: index,
+                isoDateString: isoDate,
+                context: context,
+                detail: detail,
+                relativeText: relativeText
+            )
+        )
+
+        previousDate = dueDate
+        lastInsurance = nil
+        currentDueDate = calendar.date(byAdding: DateComponents(year: 1), to: dueDate)
+    }
+
+    return forecasts
+}
+
+fileprivate struct TyreInsightDisplay: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+    let detail: String?
+    let isoDateString: String?
+    let relativeText: String?
+    let accentColor: Color
+    let icon: String
+}
+
+fileprivate enum TyreSeasonType {
+    case winter
+    case summer
+    case allSeason
+    case unknown
+
+    init(from raw: String?) {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !raw.isEmpty else {
+            self = .unknown
+            return
+        }
+
+        if raw.contains("winter") || raw.contains("invern") {
+            self = .winter
+        } else if raw.contains("summer") || raw.contains("estiv") {
+            self = .summer
+        } else if raw.contains("all") || raw.contains("4") || raw.contains("four") {
+            self = .allSeason
+        } else {
+            self = .unknown
+        }
+    }
+}
+
+fileprivate func parseDOTDate(_ dotString: String?) -> Date? {
+    guard let raw = dotString?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+        return nil
+    }
+
+    let digits = raw.filter { $0.isNumber }
+    guard digits.count >= 4 else { return nil }
+
+    let lastFour = String(digits.suffix(4))
+    guard let week = Int(lastFour.prefix(2)), let yearSuffix = Int(lastFour.suffix(2)), (1...53).contains(week) else {
+        return nil
+    }
+
+    let calendar = Calendar(identifier: .iso8601)
+    let currentYear = calendar.component(.year, from: Date())
+    var year = 2000 + yearSuffix
+    if year > currentYear + 1 {
+        year -= 100
+    }
+
+    var components = DateComponents()
+    components.yearForWeekOfYear = year
+    components.weekOfYear = week
+    components.weekday = 4 // Thursday to stay within the ISO week
+
+    return calendar.date(from: components)
+}
+
+fileprivate func makeTyreInsights(from tyres: [TyreRegistered]) -> [TyreInsightDisplay] {
+    guard !tyres.isEmpty else { return [] }
+
+    var insights: [TyreInsightDisplay] = []
+    let now = Date()
+    let calendar = Calendar(identifier: .gregorian)
+
+    let isoFormatter = DateFormatter()
+    isoFormatter.dateFormat = "yyyy-MM-dd"
+    isoFormatter.locale = Locale(identifier: "en_US_POSIX")
+    isoFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+    let relativeFormatter = RelativeDateTimeFormatter()
+    relativeFormatter.locale = Locale(identifier: "it_IT")
+    relativeFormatter.unitsStyle = .full
+
+    // 1. Highlight oldest DOT
+    let tyresWithDOT = tyres.compactMap { tyre -> (TyreRegistered, Date)? in
+        guard let dotDate = parseDOTDate(tyre.dot) else { return nil }
+        return (tyre, dotDate)
+    }
+
+    if let oldest = tyresWithDOT.min(by: { $0.1 < $1.1 }) {
+        let ageYears = max(calendar.dateComponents([.year], from: oldest.1, to: now).year ?? 0, 0)
+
+        let (color, icon, message): (Color, String, String) = {
+            if ageYears >= 6 {
+                return (.red, "exclamationmark.triangle.fill", "Il DOT ha oltre \(ageYears) anni: pianifica la sostituzione quanto prima.")
+            } else if ageYears >= 4 {
+                return (.orange, "exclamationmark.circle.fill", "DOT di \(ageYears) anni: programma un controllo dello stato d'usura.")
+            } else {
+                return (.green, "checkmark.seal.fill", "DOT di \(ageYears) anni: gli pneumatici risultano ancora giovani.")
+            }
+        }()
+
+        let manufactureISO = isoFormatter.string(from: oldest.1)
+        let detail = "\(oldest.0.brand) \(oldest.0.model) • DOT \(oldest.0.dot)"
+
+        insights.append(
+            TyreInsightDisplay(
+                title: "Età pneumatici",
+                message: message,
+                detail: detail,
+                isoDateString: manufactureISO,
+                relativeText: nil,
+                accentColor: color,
+                icon: icon
+            )
+        )
+    }
+
+    // 2. Seasonal reminders
+    let seasonSet = Set(tyres.map { TyreSeasonType(from: $0.season) })
+
+    func nextSeasonEvent(for season: TyreSeasonType) -> (Date, String, String, Color, String)? {
+        let year = calendar.component(.year, from: now)
+        guard let spring = calendar.date(from: DateComponents(year: year, month: 4, day: 15)),
+              let autumn = calendar.date(from: DateComponents(year: year, month: 11, day: 15)) else {
+            return nil
+        }
+
+        switch season {
+        case .winter:
+            if now < autumn {
+                return (autumn, "Cambio gomme invernali", "Dal 15 novembre scatta l'obbligo: prepara il set invernale.", .blue, "snowflake")
+            } else if let nextSpring = calendar.date(from: DateComponents(year: year + 1, month: 4, day: 15)) {
+                return (nextSpring, "Ritorno alle estive", "Entro il 15 aprile puoi rimontare le gomme estive.", .mint, "sun.max.fill")
+            }
+        case .summer:
+            if now < spring {
+                return (spring, "Prepara le gomme estive", "Dal 15 aprile puoi tornare alle estive se le condizioni lo permettono.", .mint, "sun.max.fill")
+            } else if now < autumn {
+                return (autumn, "Prepara le gomme invernali", "Verso il 15 novembre monta il set invernale per rispettare l'obbligo.", .blue, "snowflake")
+            } else if let nextSpring = calendar.date(from: DateComponents(year: year + 1, month: 4, day: 15)) {
+                return (nextSpring, "Prepara le gomme estive", "Dal 15 aprile del prossimo anno torna alle estive.", .mint, "sun.max.fill")
+            }
+        case .allSeason, .unknown:
+            return nil
+        }
+
+        return nil
+    }
+
+    var seasonalKeys: Set<String> = []
+    for season in seasonSet {
+        guard let event = nextSeasonEvent(for: season) else { continue }
+        let isoDate = isoFormatter.string(from: event.0)
+        let relative = event.0 > now ? relativeFormatter.localizedString(for: event.0, relativeTo: now) : nil
+        let key = "\(event.1)-\(isoDate)"
+
+        if !seasonalKeys.contains(key) {
+            seasonalKeys.insert(key)
+            insights.append(
+                TyreInsightDisplay(
+                    title: event.1,
+                    message: event.2,
+                    detail: nil,
+                    isoDateString: isoDate,
+                    relativeText: relative,
+                    accentColor: event.3,
+                    icon: event.4
+                )
+            )
+        }
+    }
+
+    return insights
+}
+
 struct GlassCardStyle: ViewModifier {
     let isSelected: Bool
     let gradientColors: [Color]
@@ -378,6 +852,7 @@ struct CarDetailsView: View {
             .sheet(isPresented: $showInfoDialog) {
                 AdvancedInfoSheet(
                     vehicle: vehicle,
+                    registeredTyres: tyreViewModel.tyres,
                     selectedRevisionIndex: $selectedRevisionIndex,
                     selectedTyreIndex: $selectedTyreIndex,
                     selectedInsuranceIndex: $selectedInsuranceIndex
@@ -476,6 +951,7 @@ struct CarDetailsView: View {
 
 struct AdvancedInfoSheet: View {
     let vehicle: VehicleResponse
+    let registeredTyres: [TyreRegistered]
     @Binding var selectedRevisionIndex: Int?
     @Binding var selectedTyreIndex: Int?
     @Binding var selectedInsuranceIndex: Int?
@@ -582,6 +1058,7 @@ struct AdvancedInfoSheet: View {
                 if currentTab == 0 {
                     AdvancedRevisionsTable(
                         revisions: vehicle.revisions ?? [],
+                        forecastRevisions: makeRevisionForecasts(for: vehicle),
                         selectedIndex: $selectedRevisionIndex
                     )
                     .transition(.asymmetric(
@@ -591,6 +1068,7 @@ struct AdvancedInfoSheet: View {
                 } else if currentTab == 1 {
                     AdvancedTyresTable(
                         tyres: vehicle.tyres ?? [],
+                        registeredTyres: registeredTyres,
                         selectedIndex: $selectedTyreIndex
                     )
                     .transition(.asymmetric(
@@ -600,6 +1078,7 @@ struct AdvancedInfoSheet: View {
                 } else {
                     AdvancedInsuranceTable(
                         insurances: vehicle.insurances ?? [],
+                        forecastInsurances: makeInsuranceForecasts(for: vehicle),
                         selectedIndex: $selectedInsuranceIndex
                     )
                     .transition(.asymmetric(
@@ -647,8 +1126,9 @@ struct AdvancedInfoSheet: View {
 
 struct AdvancedRevisionsTable: View {
     let revisions: [VehicleRevision]
+    let forecastRevisions: [RevisionForecastDisplay]
     @Binding var selectedIndex: Int?
-    
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
@@ -656,7 +1136,7 @@ struct AdvancedRevisionsTable: View {
                     EmptyStateView(
                         icon: "doc.text.magnifyingglass",
                         title: "No Revisions",
-                        subtitle: "No revision history available"
+                        subtitle: forecastRevisions.isEmpty ? "No revision history available" : "No revision history yet. Forecasted entries are listed below."
                     )
                 } else {
                     ForEach(Array(revisions.enumerated()), id: \.offset) { index, revision in
@@ -672,9 +1152,38 @@ struct AdvancedRevisionsTable: View {
                         Divider().background(Color.customGray.opacity(0.5))
                     }
                 }
+
+                if !forecastRevisions.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Forecast Revisions")
+                            .font(.customFont(size: 14, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 4)
+
+                        ForEach(Array(forecastRevisions.enumerated()), id: \.element.id) { index, forecast in
+                            ForecastRevisionRow(
+                                forecast: forecast,
+                                accentColor: accentColor(for: index)
+                            )
+
+                            if index < forecastRevisions.count - 1 {
+                                Divider().background(Color.customGray.opacity(0.3))
+                            }
+                        }
+                    }
+                    .padding(.top, revisions.isEmpty ? 0 : 8)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
+        }
+    }
+
+    private func accentColor(for index: Int) -> Color {
+        switch index {
+        case 0: return .mint
+        case 1: return .cyan
+        default: return .blue
         }
     }
 }
@@ -796,8 +1305,85 @@ struct RevisionRow: View {
     }
 }
 
+struct ForecastRevisionRow: View {
+    let forecast: RevisionForecastDisplay
+    let accentColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.2))
+                        .frame(width: 48, height: 48)
+
+                    Circle()
+                        .stroke(accentColor.opacity(0.6), lineWidth: 1.5)
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Forecast #\(forecast.index + 1)")
+                            .font(.customFont(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Spacer()
+
+                        if let relative = forecast.relativeText {
+                            Text(relative.capitalized)
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(accentColor.opacity(0.15))
+                                )
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Text(formatVehicleInfoDate(forecast.isoDateString))
+                            .font(.customFont(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+            }
+
+            Text(forecast.context)
+                .font(.customFont(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+
+            if let detail = forecast.detail {
+                Text(detail)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.25))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(accentColor.opacity(0.45), lineWidth: 1)
+        )
+    }
+}
+
 struct AdvancedTyresTable: View {
     let tyres: [VehicleTyre]
+    let registeredTyres: [TyreRegistered]
     @Binding var selectedIndex: Int?
 
     // Enhanced filter states
@@ -811,6 +1397,10 @@ struct AdvancedTyresTable: View {
     @State private var showFilters: Bool = false
     @State private var searchText: String = ""
     @State private var showSortDialog: Bool = false
+
+    private var tyreInsights: [TyreInsightDisplay] {
+        makeTyreInsights(from: registeredTyres)
+    }
 
     enum TyreSortOption: String, CaseIterable {
         case diameter = "Diametro"
@@ -1153,6 +1743,23 @@ struct AdvancedTyresTable: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
+
+            if !tyreInsights.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Tyre Smart Insights")
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 12) {
+                        ForEach(tyreInsights) { insight in
+                            TyreInsightRow(insight: insight)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.top, 12)
+            }
         }
     }
     
@@ -1406,10 +2013,87 @@ struct TyreRow: View {
     }
 }
 
+struct TyreInsightRow: View {
+    fileprivate let insight: TyreInsightDisplay
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(insight.accentColor.opacity(0.18))
+                        .frame(width: 48, height: 48)
+
+                    Circle()
+                        .stroke(insight.accentColor.opacity(0.5), lineWidth: 1.5)
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: insight.icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(insight.accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(insight.title)
+                            .font(.customFont(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Spacer()
+
+                        if let relative = insight.relativeText {
+                            Text(relative.capitalized)
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(insight.accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(insight.accentColor.opacity(0.15))
+                                )
+                        }
+                    }
+
+                    if let isoDate = insight.isoDateString {
+                        HStack(spacing: 6) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.6))
+
+                            Text(formatVehicleInfoDate(isoDate))
+                                .font(.customFont(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                    }
+                }
+            }
+
+            Text(insight.message)
+                .font(.customFont(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+
+            if let detail = insight.detail {
+                Text(detail)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.25))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(insight.accentColor.opacity(0.4), lineWidth: 1)
+        )
+    }
+}
+
 struct SpecBadge: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         VStack(spacing: 2) {
             Text(label)
@@ -1505,6 +2189,7 @@ struct DetailItem: View {
 
 struct AdvancedInsuranceTable: View {
     let insurances: [VehicleInsurance]
+    let forecastInsurances: [InsuranceForecastDisplay]
     @Binding var selectedIndex: Int?
     
     var body: some View {
@@ -1514,7 +2199,7 @@ struct AdvancedInsuranceTable: View {
                     EmptyStateView(
                         icon: "shield.checkered",
                         title: "Nessuna Assicurazione",
-                        subtitle: "Non ci sono assicurazioni registrate"
+                        subtitle: forecastInsurances.isEmpty ? "Non ci sono assicurazioni registrate" : "Non ci sono assicurazioni registrate. Prossime scadenze stimate qui sotto."
                     )
                 } else {
                     ForEach(Array(insurances.enumerated()), id: \.offset) { index, insurance in
@@ -1530,9 +2215,38 @@ struct AdvancedInsuranceTable: View {
                         Divider().background(Color.customGray.opacity(0.5))
                     }
                 }
+
+                if !forecastInsurances.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Scadenze Stimate")
+                            .font(.customFont(size: 14, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 4)
+
+                        ForEach(Array(forecastInsurances.enumerated()), id: \.element.id) { index, forecast in
+                            InsuranceForecastRow(
+                                forecast: forecast,
+                                accentColor: accentColor(for: index)
+                            )
+
+                            if index < forecastInsurances.count - 1 {
+                                Divider().background(Color.customGray.opacity(0.3))
+                            }
+                        }
+                    }
+                    .padding(.top, insurances.isEmpty ? 0 : 8)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
+        }
+    }
+
+    private func accentColor(for index: Int) -> Color {
+        switch index {
+        case 0: return .orange
+        case 1: return .yellow
+        default: return .teal
         }
     }
 }
@@ -1698,6 +2412,82 @@ struct InsuranceRow: View {
         )
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
+    }
+}
+
+struct InsuranceForecastRow: View {
+    let forecast: InsuranceForecastDisplay
+    let accentColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.2))
+                        .frame(width: 48, height: 48)
+
+                    Circle()
+                        .stroke(accentColor.opacity(0.6), lineWidth: 1.5)
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "shield.checkered")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Forecast #\(forecast.index + 1)")
+                            .font(.customFont(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Spacer()
+
+                        if let relative = forecast.relativeText {
+                            Text(relative.capitalized)
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(accentColor.opacity(0.15))
+                                )
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Text(formatVehicleInfoDate(forecast.isoDateString))
+                            .font(.customFont(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+            }
+
+            Text(forecast.context)
+                .font(.customFont(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+
+            if let detail = forecast.detail {
+                Text(detail)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.25))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(accentColor.opacity(0.45), lineWidth: 1)
+        )
     }
 }
 
