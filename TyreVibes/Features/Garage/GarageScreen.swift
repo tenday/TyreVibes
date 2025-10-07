@@ -317,7 +317,7 @@ struct GarageScreen: View {
                                 Rectangle()
                                     .fill(Color.white.opacity(0.4))
                                     .frame(height: 1)
-                                Text("O")
+                                Text("Or")
                                     .foregroundColor(.white)
                                     .font(.customFont(size: 12, weight: .regular))
                                 Rectangle()
@@ -412,6 +412,7 @@ struct GarageScreen: View {
                                     }
                                 )
                             }
+                            .onDelete(perform: deleteVehicles)
                             .padding(.horizontal, 24)
                             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 0))
                             .listRowBackground(Color.clear)
@@ -441,7 +442,7 @@ struct GarageScreen: View {
                         )
                     }
                     .fullScreenCover(isPresented: $showNotificationScreen) {
-                        NotificationsView()
+                        NotificationScreen()
                     }
                     
                     
@@ -510,6 +511,13 @@ struct GarageScreen: View {
     
     func delete(_ v: VehicleResponse) {
         viewModel.deleteCar(v.vehicle)
+    }
+
+    func deleteVehicles(at offsets: IndexSet) {
+        let vehiclesToDelete = offsets.map { filteredCars[$0] }
+        for vehicle in vehiclesToDelete {
+            viewModel.deleteCar(vehicle.vehicle)
+        }
     }
 
     func shareVehicle(_ vehicle: VehicleResponse) {
@@ -697,19 +705,126 @@ struct GarageScreen: View {
         @State private var isDragging = false
         @State private var offsetStart: CGFloat = 0
         @State private var shouldHandleGesture = false
-        
-        private let revealWidth: CGFloat = 180.0
-        private let deleteTrigger: CGFloat = 180.0
-        
+        @State private var deletionFeedbackTriggered = false
+
+        private let revealWidth: CGFloat = 120.0
+        private let deleteTriggerThreshold: CGFloat = 0.9
+
+        private var swipeProgress: CGFloat {
+            min(max(-offsetX / revealWidth, 0), 1)
+        }
+
         var body: some View {
-            CarCardView(v: vehicle, onShowDetails: onShowDetails, onShare: onShare)
-                .offset(x: offsetX)
-                .contentShape(Rectangle())
-                .id(vehicle.vehicle.id) // Force view identity based on vehicle ID
-                .onAppear {
-                    // Reset offset when view appears to ensure original position
-                    offsetX = 0
+            GeometryReader { geo in
+                let cardHeight = geo.size.height
+                let cardWidth = geo.size.width
+                let progress = swipeProgress
+
+                ZStack(alignment: .trailing) {
+                    // Background delete area - premium design
+                    ZStack(alignment: .trailing) {
+                        // Gradient background with dynamic intensity based on swipe
+                        let deleteColor = Color(red: 1.0, green: 0.27, blue: 0.23)
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                deleteColor.opacity(0.15 + 0.45 * progress),
+                                deleteColor.opacity(0.7 + 0.3 * progress)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: cardWidth, height: cardHeight)
+                        .cornerRadius(12)
+                        .overlay(
+                            AngularGradient(
+                                gradient: Gradient(colors: [
+                                    deleteColor.opacity(0.1 + 0.2 * progress),
+                                    deleteColor.opacity(0.4 + 0.4 * progress),
+                                    deleteColor.opacity(0.1)
+                                ]),
+                                center: .trailing
+                            )
+                            .opacity(Double(progress) * 0.4)
+                            .blur(radius: 16)
+                        )
+                        .overlay(
+                            Circle()
+                                .fill(Color.white.opacity(0.12 + 0.25 * progress))
+                                .frame(width: 92 + (progress * 34), height: cardHeight + 12)
+                                .offset(x: -40 + (-10 * progress))
+                                .blur(radius: 24)
+                                .opacity(Double(progress))
+                        )
+
+                        // Delete action button
+                        Button(action: {
+                            performDelete()
+                        }) {
+                            ZStack {
+                                // Glass morphism effect
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white.opacity(0.12 + 0.15 * progress))
+                                    .frame(width: 88, height: cardHeight - 20)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .strokeBorder(Color.white.opacity(0.25 + 0.25 * progress), lineWidth: 1)
+                                    )
+                                    .shadow(color: deleteColor.opacity(0.3 * progress), radius: 10 * progress, x: -6 * progress, y: 12 * progress)
+
+                                VStack(spacing: 8) {
+                                    // Animated trash icon
+                                    ZStack {
+                                        Circle()
+                                            .fill(deleteColor.opacity(0.18 + 0.25 * progress))
+                                            .frame(width: 46 + (progress * 4), height: 46 + (progress * 4))
+
+                                        Image(systemName: "trash.fill")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .scaleEffect(0.95 + 0.25 * progress)
+                                            .rotationEffect(.degrees(Double(progress) * -12))
+                                    }
+
+                                    Text("Delete")
+                                        .font(.customFont(size: 13, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .shadow(color: Color.black.opacity(0.25), radius: 2, x: 0, y: 2)
+                                }
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.trailing, 10)
+                        .scaleEffect(0.85 + 0.2 * progress)
+                        .opacity(progress > 0.05 ? 0.4 + 0.6 * progress : 0)
+                        .animation(.spring(response: 0.28, dampingFraction: 0.85), value: progress)
+                    }
+                    .opacity(progress > 0.02 ? 1 : 0)
+
+                    // Car card with shadow when swiped
+                    CarCardView(v: vehicle, onShowDetails: onShowDetails, onShare: onShare)
+                        .offset(x: offsetX)
+                        .rotation3DEffect(
+                            .degrees(Double(progress) * -6),
+                            axis: (x: 0, y: 1, z: 0),
+                            anchor: .trailing,
+                            anchorZ: 0,
+                            perspective: 0.5
+                        )
+                        .scaleEffect(x: 1.0 - (progress * 0.04), y: 1.0)
+                        .shadow(
+                            color: Color.black.opacity(progress > 0.05 ? 0.25 * Double(progress) : 0),
+                            radius: 12 * progress,
+                            x: -6 * progress,
+                            y: 8 * progress
+                        )
+                        .contentShape(Rectangle())
+                        .id(vehicle.vehicle.id)
+                        .onAppear {
+                            offsetX = 0
+                        }
                 }
+            }
+            .aspectRatio(2.05, contentMode: .fit)
                 .gesture(
                     DragGesture(minimumDistance: 20, coordinateSpace: .local)
                         .onChanged { value in
@@ -729,6 +844,7 @@ struct GarageScreen: View {
                             if shouldHandleGesture && isDragging {
                                 let proposed = offsetStart + value.translation.width
                                 offsetX = min(0, max(-revealWidth, proposed))
+                                handleHapticsIfNeeded()
                             }
                         }
                         .onEnded { value in
@@ -739,14 +855,10 @@ struct GarageScreen: View {
                                 return
                             }
                             
-                            let dx = value.translation.width
-                            let opened = -min(0, max(-revealWidth, offsetStart + dx))
-                            
-                            if opened >= deleteTrigger {
-                                withAnimation(.spring()) {
-                                    onDelete()
-                                }
-                            } else if opened > revealWidth * 0.6 {
+                            let progress = swipeProgress
+                            if progress >= deleteTriggerThreshold {
+                                performDelete()
+                            } else if progress > 0.5 {
                                 withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
                                     offsetX = -revealWidth
                                 }
@@ -755,19 +867,44 @@ struct GarageScreen: View {
                                     offsetX = 0
                                 }
                             }
-                            
+
+                            deletionFeedbackTriggered = false
                             isDragging = false
                             shouldHandleGesture = false
                         }
                 )
                 .onTapGesture {
-                    // Chiudi se aperta
+                    // Se la card è aperta (swipe), chiudila
                     if offsetX != 0 {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
                             offsetX = 0
                         }
+                    } else {
+                        // Altrimenti naviga ai dettagli
+                        onShowDetails()
                     }
                 }
+        }
+
+        private func handleHapticsIfNeeded() {
+            let progress = swipeProgress
+            if progress >= deleteTriggerThreshold, !deletionFeedbackTriggered {
+                let generator = UIImpactFeedbackGenerator(style: .rigid)
+                generator.impactOccurred()
+                deletionFeedbackTriggered = true
+            } else if progress < 0.6 {
+                deletionFeedbackTriggered = false
+            }
+        }
+
+        private func performDelete() {
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                onDelete()
+            }
+            offsetX = 0
+            deletionFeedbackTriggered = false
         }
     }
     
@@ -820,4 +957,3 @@ struct GarageScreen: View {
     }
     
 }
-

@@ -29,13 +29,11 @@ class TyreCacheManager {
 
         // Recupera i dati dalla cache
         guard let data = defaults.data(forKey: cachePrefix + "\(vehicleId)") else {
-            print("❌ Nessuna cache trovata per veicolo \(vehicleId)")
             return nil
         }
 
         let decoder = JSONDecoder()
         if let tyres = try? decoder.decode([TyreRegistered].self, from: data) {
-            print("✅ Cache caricata per veicolo \(vehicleId): \(tyres.count) pneumatici")
             return tyres
         }
 
@@ -45,14 +43,12 @@ class TyreCacheManager {
     func invalidateCache(forVehicleId vehicleId: Int) {
         defaults.removeObject(forKey: cachePrefix + "\(vehicleId)")
         defaults.removeObject(forKey: timestampPrefix + "\(vehicleId)")
-        print("🗑️ Cache invalidata per veicolo \(vehicleId)")
     }
 
     func clearAllCache() {
         let keys = Array(defaults.dictionaryRepresentation().keys)
         keys.filter { $0.hasPrefix(cachePrefix) || $0.hasPrefix(timestampPrefix) }
             .forEach { defaults.removeObject(forKey: $0) }
-        print("🗑️ Tutta la cache eliminata")
     }
 }
 
@@ -223,6 +219,55 @@ class TyreViewModel: ObservableObject {
                     TyreCacheManager.shared.saveTyres(tyres, forVehicleId: vehicleId)
                 } catch {
                     self?.errorMessage = "Errore nella decodifica: \(error.localizedDescription)"
+                }
+            }
+        }.resume()
+    }
+
+    func deleteTyre(tyreId: Int, vehicleId: Int, completion: @escaping (Bool) -> Void) {
+        guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
+            errorMessage = "Base URL non configurato"
+            completion(false)
+            return
+        }
+
+        guard let url = URL(string: baseURLString + "/v1/tyres_vehicles/\(tyreId)") else {
+            errorMessage = "URL non valido"
+            completion(false)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        print("🗑️ Eliminazione pneumatico ID: \(tyreId)")
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Errore network: \(error.localizedDescription)")
+                    self?.errorMessage = error.localizedDescription
+                    completion(false)
+                    return
+                }
+
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Status code: \(httpResponse.statusCode)")
+                    if (200...299).contains(httpResponse.statusCode) {
+                        print("✅ Pneumatico eliminato con successo")
+                        // Rimuovi dalla lista locale
+                        self?.registeredTyres.removeAll { $0.id == tyreId }
+                        // Invalida la cache
+                        TyreCacheManager.shared.invalidateCache(forVehicleId: vehicleId)
+                        completion(true)
+                    } else {
+                        if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                            print("📄 Response body: \(responseBody)")
+                        }
+                        self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
+                        completion(false)
+                    }
                 }
             }
         }.resume()

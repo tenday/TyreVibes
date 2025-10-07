@@ -32,7 +32,7 @@ struct BottomNavigationView: View {
                     case 3:
                         SettingsView()
                     case 4:
-                        SettingsView()
+                        TireAnalysisSelectionView()
                     default:
                         GarageScreen()
                     }
@@ -279,7 +279,7 @@ struct CenterActionButton: View {
 // MARK: - Placeholder Screens
 struct VehiclesView: View { var body: some View { Text("Vehicles").foregroundColor(.white) } }
 struct ReportsView: View { var body: some View { Text("Reports").foregroundColor(.white) } }
-struct CalendarScreen: View { var body: some View { Text("Calendar").foregroundColor(.white) } }
+struct CalendarScreen: View { var body: some View { Text("Marketplace").foregroundColor(.white) } }
 
 
 // MARK: - Forma Personalizzata della Barra

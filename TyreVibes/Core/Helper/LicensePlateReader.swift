@@ -575,9 +575,23 @@ public class LicensePlateReader {
                                                             // Decodifica entità HTML
                                                             jsonStr = jsonStr?.replacingOccurrences(of: "&quot;", with: "\"")
                                                         }
+                                                        
+                                                        if jsonStr == nil {
+                                                            let pattern2 = #"<car-filter-container[^>]*:data=\"([^\"]+)\""#
+                                                            if let rgx = try? NSRegularExpression(pattern: pattern2, options: [.dotMatchesLineSeparators, .caseInsensitive]),
+                                                               let m = rgx.firstMatch(in: html, options: [], range: NSRange(html.startIndex..<html.endIndex, in: html)),
+                                                               m.numberOfRanges >= 2,
+                                                               let r = Range(m.range(at: 1), in: html) {
+                                                                jsonStr = String(html[r]).replacingOccurrences(of: "&quot;", with: "\"")
+                                                            }
+                                                        }
 
                                                         guard let jsonStr = jsonStr else {
-                                                            completion(.failure(NSError(domain: "LicensePlateReader", code: 13004, userInfo: [NSLocalizedDescriptionKey: "buy-quotation-form :data non trovato in /dettagli"])))
+                                                            completion(.failure(NSError(
+                                                                domain: "LicensePlateReader",
+                                                                code: 13004,
+                                                                userInfo: [NSLocalizedDescriptionKey: ":data non trovato né in buy-quotation-form né in car-filter-container"]
+                                                            )))
                                                             return
                                                         }
 
@@ -587,7 +601,10 @@ public class LicensePlateReader {
                                                             var mapped: [String: Any] = [:]
                                                             // Top-level fields
                                                             // infocar mapping
-                                                            if let infocar = dict["infocar"] as? [String: Any] {
+                                                            if let infocar = dict["infocar"] as? [String: Any] ??
+                                                                             (dict["infocar"] as? [[String: Any]])?.first ??
+                                                                             (dict["setups"] as? [String: Any]) ??
+                                                                             (dict["setups"] as? [[String: Any]])?.first {
 
                                                                 if let inizioVendita = infocar["inizioVendita"] { mapped["inizioVendita"] = inizioVendita }
                                                                 if let fineVendita = infocar["fineVendita"] { mapped["fineVendita"] = fineVendita }
@@ -621,7 +638,7 @@ public class LicensePlateReader {
                                                                 }
                                                                 if let alimentazione = infocar["alimentazione"] { mapped["fuelType"] = alimentazione }
                                                                 if let nome = infocar["nome"] as? String {
-                                                                    let parts = nome.components(separatedBy: " - ")
+                                                                    let parts = nome.components(separatedBy: " ")
                                                                     mapped["make"] = parts[0]
                                                                     mapped["model"] = parts[1].replacingOccurrences(of: "--&gt;", with: "").replacingOccurrences(of: "&amp;", with: "&")
                                                                     mapped["modelDetails"] = parts[2].replacingOccurrences(of: "&amp;", with: "&")

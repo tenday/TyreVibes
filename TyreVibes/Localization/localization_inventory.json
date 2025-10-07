@@ -1,0 +1,2086 @@
+{
+  "OK": {
+    "occurrences": [
+      {
+        "file": "Core/ViewModel/CustomAlertView.swift",
+        "line": 21,
+        "context": "Button"
+      },
+      {
+        "file": "Core/ViewModel/CustomAlertView.swift",
+        "line": 107,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 69,
+        "context": "Text"
+      },
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 742,
+        "context": "Button"
+      },
+      {
+        "file": "Features/LicensePlate/ConfirmDetailsScreen.swift",
+        "line": 219,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 76,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 81,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 165,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 236,
+        "context": "Button"
+      }
+    ]
+  },
+  "Show Alert": {
+    "occurrences": [
+      {
+        "file": "Core/ViewModel/CustomAlertView.swift",
+        "line": 98,
+        "context": "Button"
+      }
+    ]
+  },
+  "Cancel": {
+    "occurrences": [
+      {
+        "file": "Core/ViewModel/CustomAlertView.swift",
+        "line": 106,
+        "context": "Button"
+      }
+    ]
+  },
+  "Vehicles": {
+    "occurrences": [
+      {
+        "file": "Core/Component/BottomNavigationView.swift",
+        "line": 280,
+        "context": "Text"
+      }
+    ]
+  },
+  "Reports": {
+    "occurrences": [
+      {
+        "file": "Core/Component/BottomNavigationView.swift",
+        "line": 281,
+        "context": "Text"
+      }
+    ]
+  },
+  "Calendar": {
+    "occurrences": [
+      {
+        "file": "Core/Component/BottomNavigationView.swift",
+        "line": 282,
+        "context": "Text"
+      }
+    ]
+  },
+  "Central action": {
+    "occurrences": [
+      {
+        "file": "Core/Component/BottomNavigationView.swift",
+        "line": 275,
+        "context": "Label"
+      }
+    ]
+  },
+  "Premium Feature": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PaywallView.swift",
+        "line": 47,
+        "context": "Text"
+      }
+    ]
+  },
+  "Upgrade to Premium": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PaywallView.swift",
+        "line": 83,
+        "context": "Text"
+      }
+    ]
+  },
+  "Maybe Later": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PaywallView.swift",
+        "line": 102,
+        "context": "Text"
+      }
+    ]
+  },
+  "Limit Reached": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PaywallView.swift",
+        "line": 168,
+        "context": "Text"
+      }
+    ]
+  },
+  "Upgrade": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PaywallView.swift",
+        "line": 186,
+        "context": "Text"
+      }
+    ]
+  },
+  "Premium": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PremiumBadge.swift",
+        "line": 20,
+        "context": "Text"
+      },
+      {
+        "file": "Core/Component/PremiumBadge.swift",
+        "line": 120,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(current)/\\(max)": {
+    "occurrences": [
+      {
+        "file": "Core/Component/PremiumBadge.swift",
+        "line": 147,
+        "context": "Text"
+      }
+    ]
+  },
+  "Cronologia Revisioni": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 14,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(km) km": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 173,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1238,
+        "context": "Text"
+      }
+    ]
+  },
+  "Dettagli Revisione": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 268,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(tyre.width ?? 0)/\\(tyre.ratio ?? 0)": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 418,
+        "context": "Text"
+      }
+    ]
+  },
+  "R\\(tyre.diameter ?? 0)": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 422,
+        "context": "Text"
+      }
+    ]
+  },
+  "Mostra indicatore usura": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 656,
+        "context": "Text"
+      }
+    ]
+  },
+  "Assicurazione": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 795,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(daysRemaining)": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 915,
+        "context": "Text"
+      }
+    ]
+  },
+  "giorni rimanenti": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 919,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scade: \\(formatVehicleInfoDate(insurance.rcaExpiry))": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 923,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tracker Premi": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 1009,
+        "context": "Text"
+      }
+    ]
+  },
+  "€720 / anno": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 1015,
+        "context": "Text"
+      }
+    ]
+  },
+  "€\\(Int(premium.amount))": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 1098,
+        "context": "Text"
+      }
+    ]
+  },
+  "Coperture": {
+    "occurrences": [
+      {
+        "file": "Core/Component/VehicleExtrasView.swift",
+        "line": 1145,
+        "context": "Text"
+      }
+    ]
+  },
+  "License plate \\(text)": {
+    "occurrences": [
+      {
+        "file": "Core/Component/LicensePlateComponent.swift",
+        "line": 82,
+        "context": "Text"
+      },
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 122,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(scannedSectors.count)/8 sectors scanned": {
+    "occurrences": [
+      {
+        "file": "Core/Component/MotionManager.swift",
+        "line": 158,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(Int(motionManager.rotationProgress * 100))%": {
+    "occurrences": [
+      {
+        "file": "Core/Component/MotionManager.swift",
+        "line": 164,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scan Complete!": {
+    "occurrences": [
+      {
+        "file": "Core/Component/MotionManager.swift",
+        "line": 196,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scan \\(steps[currentStep]) Side": {
+    "occurrences": [
+      {
+        "file": "Core/Component/MotionManager.swift",
+        "line": 356,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tap when ready": {
+    "occurrences": [
+      {
+        "file": "Core/Component/MotionManager.swift",
+        "line": 360,
+        "context": "Text"
+      }
+    ]
+  },
+  "Open Settings": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 75,
+        "context": "Text"
+      }
+    ]
+  },
+  "Settings": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 108,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(min(notificationCount, 9))": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 136,
+        "context": "Text"
+      }
+    ]
+  },
+  "Performance & Optimization": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 188,
+        "context": "Text"
+      }
+    ]
+  },
+  "Image Quality": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 206,
+        "context": "Text"
+      }
+    ]
+  },
+  "Security and Privacy": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 250,
+        "context": "Text"
+      }
+    ]
+  },
+  "Data Protection": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 287,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 37,
+        "context": "NavigationTitle"
+      }
+    ]
+  },
+  "View collected data and request deletion": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 291,
+        "context": "Text"
+      }
+    ]
+  },
+  "Export My Data (GDPR)": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 308,
+        "context": "Text"
+      }
+    ]
+  },
+  "Language": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/SettingsView.swift",
+        "line": 323,
+        "context": "Text"
+      }
+    ]
+  },
+  "Export my data": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 27,
+        "context": "Button"
+      }
+    ]
+  },
+  "Request data deletion": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 31,
+        "context": "Button"
+      }
+    ]
+  },
+  "Done": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 40,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 977,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 562,
+        "context": "Button"
+      }
+    ]
+  },
+  "Personal Data": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 10,
+        "context": "Section"
+      }
+    ]
+  },
+  "Activity & Diagnostics": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 16,
+        "context": "Section"
+      }
+    ]
+  },
+  "Storage": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 21,
+        "context": "Section"
+      }
+    ]
+  },
+  "Actions": {
+    "occurrences": [
+      {
+        "file": "Features/Settings/DataProtectionSheet.swift",
+        "line": 26,
+        "context": "Section"
+      }
+    ]
+  },
+  "Scansione Targa": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 579,
+        "context": "Text"
+      }
+    ]
+  },
+  "Posiziona la targa del veicolo\\nall'interno del riquadro": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 583,
+        "context": "Text"
+      }
+    ]
+  },
+  "Inizia Scansione": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 602,
+        "context": "Text"
+      }
+    ]
+  },
+  "Inquadra la targa nel riquadro": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 679,
+        "context": "Text"
+      }
+    ]
+  },
+  "Assicurati che la targa sia ben illuminata e leggibile": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 683,
+        "context": "Text"
+      }
+    ]
+  },
+  "Errore": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ScanPlateScreen.swift",
+        "line": 741,
+        "context": "Alert"
+      }
+    ]
+  },
+  "Non trovi la tua auto?": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/EnterLicensePlateScreen.swift",
+        "line": 287,
+        "context": "Text"
+      }
+    ]
+  },
+  "Modello:": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/CheckDetailsScreen.swift",
+        "line": 57,
+        "context": "Text"
+      }
+    ]
+  },
+  "Riesegui scansione": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/CheckDetailsScreen.swift",
+        "line": 142,
+        "context": "Text"
+      }
+    ]
+  },
+  "Confirm Details": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ConfirmDetailsScreen.swift",
+        "line": 53,
+        "context": "Text"
+      }
+    ]
+  },
+  "Confirm": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ConfirmDetailsScreen.swift",
+        "line": 177,
+        "context": "Text"
+      }
+    ]
+  },
+  "Choose Color:": {
+    "occurrences": [
+      {
+        "file": "Features/LicensePlate/ConfirmDetailsScreen.swift",
+        "line": 335,
+        "context": "Text"
+      }
+    ]
+  },
+  "By subscribing, you agree to our": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 257,
+        "context": "Text"
+      }
+    ]
+  },
+  "Terms": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 264,
+        "context": "Text"
+      }
+    ]
+  },
+  "and": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 272,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 500,
+        "context": "Text"
+      }
+    ]
+  },
+  "Privacy Policy": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 279,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 505,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 313,
+        "context": "Text"
+      }
+    ]
+  },
+  "Subscription auto-renews until cancelled": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 286,
+        "context": "Text"
+      }
+    ]
+  },
+  "MOST POPULAR": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 407,
+        "context": "Text"
+      }
+    ]
+  },
+  "Success!": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 75,
+        "context": "Alert"
+      }
+    ]
+  },
+  "Error": {
+    "occurrences": [
+      {
+        "file": "Features/Subscription/PremiumSubscriptionScreen.swift",
+        "line": 80,
+        "context": "Alert"
+      }
+    ]
+  },
+  "Profilo": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 51,
+        "context": "Text"
+      }
+    ]
+  },
+  "Sei sicuro di voler uscire?": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 74,
+        "context": "Text"
+      }
+    ]
+  },
+  "Esci": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 192,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 72,
+        "context": "Button"
+      }
+    ]
+  },
+  "Nome": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 234,
+        "context": "Text"
+      }
+    ]
+  },
+  "Email": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 238,
+        "context": "Text"
+      }
+    ]
+  },
+  "Telefono": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 242,
+        "context": "Text"
+      }
+    ]
+  },
+  "Salva Modifiche": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 247,
+        "context": "Text"
+      }
+    ]
+  },
+  "Modifica Profilo": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 253,
+        "context": "Text"
+      }
+    ]
+  },
+  "Annulla": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 71,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1535,
+        "context": "Button"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1887,
+        "context": "Button"
+      }
+    ]
+  },
+  "Logout": {
+    "occurrences": [
+      {
+        "file": "Features/Profile/ProfileScreen.swift",
+        "line": 70,
+        "context": "Alert"
+      }
+    ]
+  },
+  "Get close to tire sidewall": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1349,
+        "context": "Text"
+      }
+    ]
+  },
+  "Move camera slowly to scan text": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1357,
+        "context": "Text"
+      }
+    ]
+  },
+  "Follow guide lines for coverage": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1365,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(Int(completionPercentage * 100))%": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1471,
+        "context": "Text"
+      }
+    ]
+  },
+  "All data collected! Redirecting...": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1558,
+        "context": "Text"
+      }
+    ]
+  },
+  "Keep scanning to collect all tire information": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1564,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scanning...": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1602,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(label):": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TireRegistrationScreen.swift",
+        "line": 1625,
+        "context": "Text"
+      }
+    ]
+  },
+  "Remaining Life": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 95,
+        "context": "Text"
+      }
+    ]
+  },
+  "80%": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 102,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tire Lifecycle": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 118,
+        "context": "Text"
+      }
+    ]
+  },
+  "Compatible Tire Dimensions": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 134,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tire Condition": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 167,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tread Depth": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 286,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(intValue)K": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 365,
+        "context": "Text"
+      }
+    ]
+  },
+  "Recommended": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 416,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(percentage)%": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 464,
+        "context": "Text"
+      }
+    ]
+  },
+  "Distance (km)": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 385,
+        "context": "Label"
+      }
+    ]
+  },
+  "Tread Depth (mm)": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/TyreDetailScreen.swift",
+        "line": 386,
+        "context": "Label"
+      }
+    ]
+  },
+  "Enter model": {
+    "occurrences": [
+      {
+        "file": "Features/Tyres/ConfirmDetailsTyreScreen.swift",
+        "line": 99,
+        "context": "placeholder"
+      }
+    ]
+  },
+  "O": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/GarageScreen.swift",
+        "line": 320,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(Int((Double(currentIndex) / Double(max(angles.count - 1, 1))) * 360))°": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/Vehicle360View.swift",
+        "line": 72,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(Int(loadingProgress * 100))%": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/Vehicle360View.swift",
+        "line": 141,
+        "context": "Text"
+      }
+    ]
+  },
+  "Caricamento vista 360°": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/Vehicle360View.swift",
+        "line": 146,
+        "context": "Text"
+      }
+    ]
+  },
+  "Preparazione immagini...": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/Vehicle360View.swift",
+        "line": 150,
+        "context": "Text"
+      }
+    ]
+  },
+  "Upcoming Maintenance": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/UpcomingMaintenanceView.swift",
+        "line": 27,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(maintenances.count)": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/UpcomingMaintenanceView.swift",
+        "line": 34,
+        "context": "Text"
+      }
+    ]
+  },
+  "All caught up!": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/UpcomingMaintenanceView.swift",
+        "line": 71,
+        "context": "Text"
+      }
+    ]
+  },
+  "No upcoming maintenance scheduled": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/UpcomingMaintenanceView.swift",
+        "line": 75,
+        "context": "Text"
+      }
+    ]
+  },
+  "Estimated Cost:": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/UpcomingMaintenanceView.swift",
+        "line": 266,
+        "context": "Text"
+      }
+    ]
+  },
+  "Schedule Service": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/UpcomingMaintenanceView.swift",
+        "line": 287,
+        "context": "Text"
+      }
+    ]
+  },
+  "\\(vehicle.vehicle.make ?? ": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 648,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scheda Tecnica": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 687,
+        "context": "Text"
+      }
+    ]
+  },
+  "Add Your Tyres": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 739,
+        "context": "Text"
+      }
+    ]
+  },
+  "R\\(radius)": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 820,
+        "context": "Text"
+      }
+    ]
+  },
+  "Trascina per ruotare": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 908,
+        "context": "Text"
+      }
+    ]
+  },
+  "Qui trovi due funzioni utili: il pulsante AR mostra la vista 360° della tua auto, mentre il pulsante info ti dà dettagli avanzati sul veicolo.": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 942,
+        "context": "Text"
+      }
+    ]
+  },
+  "Vehicle Info": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 969,
+        "context": "Text"
+      }
+    ]
+  },
+  "Forecast Revisions": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1158,
+        "context": "Text"
+      }
+    ]
+  },
+  "Revision #\\(index + 1)": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1214,
+        "context": "Text"
+      }
+    ]
+  },
+  "Forecast #\\(forecast.index + 1)": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1331,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 2441,
+        "context": "Text"
+      }
+    ]
+  },
+  "Filtri": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1461,
+        "context": "Text"
+      }
+    ]
+  },
+  "(\\(activeFilterTags.count))": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1464,
+        "context": "Text"
+      }
+    ]
+  },
+  "✓": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1504,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1519,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1530,
+        "context": "Text"
+      }
+    ]
+  },
+  "Crescente": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1517,
+        "context": "Text"
+      }
+    ]
+  },
+  "Decrescente": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1528,
+        "context": "Text"
+      }
+    ]
+  },
+  "Reset": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1560,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tyre Smart Insights": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1749,
+        "context": "Text"
+      }
+    ]
+  },
+  "Tutti": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1853,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1877,
+        "context": "Button"
+      }
+    ]
+  },
+  "Tyre #\\(index + 1)": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 1938,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scadenze Stimate": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 2221,
+        "context": "Text"
+      }
+    ]
+  },
+  "Polizza #\\(index + 1)": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 2337,
+        "context": "Text"
+      }
+    ]
+  },
+  "Scade: \\(formatVehicleInfoDate(expiryDate))": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 2365,
+        "context": "Text"
+      }
+    ]
+  },
+  "Ho capito": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 940,
+        "context": "Button"
+      }
+    ]
+  },
+  "Benvenuto": {
+    "occurrences": [
+      {
+        "file": "Features/Garage/CarDetails.swift",
+        "line": 939,
+        "context": "Alert"
+      }
+    ]
+  },
+  "Create Account": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 52,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 118,
+        "context": "Text"
+      }
+    ]
+  },
+  "Sign Up to get started": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 56,
+        "context": "Text"
+      }
+    ]
+  },
+  "I agree to the": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 489,
+        "context": "Text"
+      }
+    ]
+  },
+  "Terms & Conditions": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 494,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 100,
+        "context": "Text"
+      }
+    ]
+  },
+  "Please read the Terms & Conditions and Privacy Policy first": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 522,
+        "context": "Text"
+      }
+    ]
+  },
+  "Select Country": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 558,
+        "context": "Text"
+      }
+    ]
+  },
+  "Please Verify Your Email": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 633,
+        "context": "Text"
+      }
+    ]
+  },
+  "We just sent an email to \\(email).\\nClick the link in the email to verify your account.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 638,
+        "context": "Text"
+      }
+    ]
+  },
+  "Enter Full Name": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 64,
+        "context": "placeholder"
+      }
+    ]
+  },
+  "@Username": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/SignUpScreen.swift",
+        "line": 65,
+        "context": "placeholder"
+      }
+    ]
+  },
+  "Scroll to the bottom to accept": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 59,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 272,
+        "context": "Text"
+      }
+    ]
+  },
+  "I Accept": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 72,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 285,
+        "context": "Text"
+      }
+    ]
+  },
+  "Last Updated: January 2025": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 127,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 338,
+        "context": "Text"
+      }
+    ]
+  },
+  "By accessing and using TyreVibes, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 132,
+        "context": "Text"
+      }
+    ]
+  },
+  "TyreVibes provides tire monitoring and maintenance tracking services for vehicle owners. The service includes tire condition analysis, maintenance reminders, and safety recommendations.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 135,
+        "context": "Text"
+      }
+    ]
+  },
+  "To use certain features of TyreVibes, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 138,
+        "context": "Text"
+      }
+    ]
+  },
+  "Your use of TyreVibes is also governed by our Privacy Policy. Please review our Privacy Policy, which also governs the Service and informs users of our data collection practices.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 141,
+        "context": "Text"
+      }
+    ]
+  },
+  "You are responsible for:\\n• Maintaining the confidentiality of your account credentials\\n• All activities that occur under your account\\n• Ensuring all information provided is accurate\\n• Using the service in compliance with applicable laws": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 144,
+        "context": "Text"
+      }
+    ]
+  },
+  "While TyreVibes provides tire monitoring and analysis, it does not replace professional tire inspection and maintenance. Users should regularly have their tires inspected by qualified professionals. TyreVibes is not liable for any damages or injuries resulting from tire-related issues.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 149,
+        "context": "Text"
+      }
+    ]
+  },
+  "Certain features of TyreVibes may require a subscription. Subscription fees are billed in advance on a recurring basis. You can cancel your subscription at any time through your account settings.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 152,
+        "context": "Text"
+      }
+    ]
+  },
+  "The Service and its original content, features, and functionality are and will remain the exclusive property of TyreVibes and its licensors. The Service is protected by copyright, trademark, and other laws.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 155,
+        "context": "Text"
+      }
+    ]
+  },
+  "These Terms are between you and TyreVibes only, and not with Apple Inc. (\\\"Apple\\\"). TyreVibes, not Apple, is solely responsible for the App and its content.\\n\\nApple and Apple's subsidiaries are third party beneficiaries of these Terms, and upon your acceptance of these Terms, Apple will have the right to enforce these Terms against you as a third party beneficiary.\\n\\nYou represent and warrant that (i) you are not located in a country that is subject to a U.S. Government embargo, or that has been designated by the U.S. Government as a \\\"terrorist supporting\\\" country; and (ii) you are not listed on any U.S. Government list of prohibited or restricted parties.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 158,
+        "context": "Text"
+      }
+    ]
+  },
+  "Apple has no obligation whatsoever to furnish any maintenance and support services with respect to the App.\\n\\nIn the event of any failure of the App to conform to any applicable warranty, you may notify Apple, and Apple will refund the purchase price (if any) for the App to you. To the maximum extent permitted by applicable law, Apple will have no other warranty obligation whatsoever with respect to the App.\\n\\nApple is not responsible for addressing any claims you have or any claims of any third party relating to the App or your possession and use of the App, including: (i) product liability claims; (ii) any claim that the App fails to conform to any applicable legal or regulatory requirement; and (iii) claims arising under consumer protection or similar legislation.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 161,
+        "context": "Text"
+      }
+    ]
+  },
+  "In the event of any third party claim that the App or your possession and use of the App infringes that third party's intellectual property rights, TyreVibes, not Apple, will be solely responsible for the investigation, defense, settlement and discharge of any such intellectual property infringement claim.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 164,
+        "context": "Text"
+      }
+    ]
+  },
+  "In no event shall TyreVibes, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.\\n\\nApple and Apple's subsidiaries shall not be liable for any damages whatsoever arising out of or in connection with your use of the App.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 167,
+        "context": "Text"
+      }
+    ]
+  },
+  "You must comply with applicable third party terms of agreement when using the App (e.g., you must not be in violation of your wireless data service agreement when using the App).\\n\\nYou agree to comply with all applicable local, state, national, and international laws and regulations.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 170,
+        "context": "Text"
+      }
+    ]
+  },
+  "We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 173,
+        "context": "Text"
+      }
+    ]
+  },
+  "For questions about these Terms, contact TyreVibes at:\\nsupport@tyrevibes.com\\n\\nFor App-related support, contact TyreVibes, not Apple.\\n\\nApple and its subsidiaries are third party beneficiaries of these Terms and may enforce them directly against you.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 176,
+        "context": "Text"
+      }
+    ]
+  },
+  "We collect information that you provide directly to us, including:\\n• Account information (name, email, phone number)\\n• Vehicle information\\n• Tire data and measurements\\n• Usage data and preferences": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 343,
+        "context": "Text"
+      }
+    ]
+  },
+  "We use the information we collect to:\\n• Provide and maintain our services\\n• Send you notifications about tire maintenance\\n• Improve our services\\n• Communicate with you about updates and offers": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 346,
+        "context": "Text"
+      }
+    ]
+  },
+  "We implement appropriate technical and organizational measures to protect your personal data. Your data is stored securely using industry-standard encryption methods.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 349,
+        "context": "Text"
+      }
+    ]
+  },
+  "We do not sell your personal information. We may share your information only:\\n• With your consent\\n• To comply with legal obligations\\n• With service providers who assist us": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 352,
+        "context": "Text"
+      }
+    ]
+  },
+  "You have the right to:\\n• Access your personal data\\n• Request correction of your data\\n• Request deletion of your data\\n• Object to processing of your data\\n• Data portability": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 357,
+        "context": "Text"
+      }
+    ]
+  },
+  "We use cookies and similar tracking technologies to track activity on our service and hold certain information to improve and analyze our service.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 360,
+        "context": "Text"
+      }
+    ]
+  },
+  "Our service may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 363,
+        "context": "Text"
+      }
+    ]
+  },
+  "Our service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 366,
+        "context": "Text"
+      }
+    ]
+  },
+  "We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 369,
+        "context": "Text"
+      }
+    ]
+  },
+  "If you have any questions about this Privacy Policy, please contact us at:\\nprivacy@tyrevibes.com": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/TermsAndConditionsView.swift",
+        "line": 372,
+        "context": "Text"
+      }
+    ]
+  },
+  "Account Created Successfully!": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/CreationSuccessScreen.swift",
+        "line": 27,
+        "context": "Text"
+      }
+    ]
+  },
+  "Congratulations your account has been successfully created.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/CreationSuccessScreen.swift",
+        "line": 34,
+        "context": "Text"
+      }
+    ]
+  },
+  "Get Started": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/CreationSuccessScreen.swift",
+        "line": 48,
+        "context": "Text"
+      },
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 85,
+        "context": "Text"
+      }
+    ]
+  },
+  "Yes": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/CreationSuccessScreen.swift",
+        "line": 65,
+        "context": "Button"
+      }
+    ]
+  },
+  "No": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/CreationSuccessScreen.swift",
+        "line": 70,
+        "context": "Button"
+      }
+    ]
+  },
+  "Enable Face ID?": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/CreationSuccessScreen.swift",
+        "line": 64,
+        "context": "Alert"
+      }
+    ]
+  },
+  "Enter 6-Digit": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 84,
+        "context": "Text"
+      }
+    ]
+  },
+  "Authentication \\nCode": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 88,
+        "context": "Text"
+      }
+    ]
+  },
+  "The OTP code has been sent to \\(Utilities.maskPhoneNumber(viewModel.phoneNumber)). Please enter the code.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 92,
+        "context": "Text"
+      }
+    ]
+  },
+  "Verify Now": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 177,
+        "context": "Text"
+      }
+    ]
+  },
+  "Resend available in \\(countdown)s": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 197,
+        "context": "Text"
+      }
+    ]
+  },
+  "Resend Code": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/OTPScreen.swift",
+        "line": 219,
+        "context": "Text"
+      }
+    ]
+  },
+  "Reset Password": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/ResetPasswordScreen.swift",
+        "line": 52,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/ResetPasswordScreen.swift",
+        "line": 165,
+        "context": "Text"
+      }
+    ]
+  },
+  "Your new password must be different from previous used passwords.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/ResetPasswordScreen.swift",
+        "line": 57,
+        "context": "Text"
+      }
+    ]
+  },
+  "Forgot Password": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/ForgotPasswordScreen.swift",
+        "line": 43,
+        "context": "Text"
+      },
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 148,
+        "context": "Text"
+      }
+    ]
+  },
+  "Enter the email associated with your account and we'll send an OTP to reset your password.": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/ForgotPasswordScreen.swift",
+        "line": 48,
+        "context": "Text"
+      }
+    ]
+  },
+  "Send": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/ForgotPasswordScreen.swift",
+        "line": 83,
+        "context": "Text"
+      }
+    ]
+  },
+  "Log In": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 56,
+        "context": "Text"
+      }
+    ]
+  },
+  "Welcome back to TyreVibes!": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 66,
+        "context": "Text"
+      }
+    ]
+  },
+  "Remember me": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 139,
+        "context": "Text"
+      }
+    ]
+  },
+  "Log in": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 181,
+        "context": "Text"
+      },
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 105,
+        "context": "Text"
+      }
+    ]
+  },
+  "Or Continue With": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 204,
+        "context": "Text"
+      },
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 137,
+        "context": "Text"
+      }
+    ]
+  },
+  "Google": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 228,
+        "context": "Text"
+      },
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 160,
+        "context": "Text"
+      }
+    ]
+  },
+  "Apple": {
+    "occurrences": [
+      {
+        "file": "Features/Authentication/LoginScreen.swift",
+        "line": 247,
+        "context": "Text"
+      },
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 185,
+        "context": "Text"
+      }
+    ]
+  },
+  "Details for \\(notification.title)": {
+    "occurrences": [
+      {
+        "file": "Features/Notifications/NotificationsView.swift",
+        "line": 31,
+        "context": "Text"
+      }
+    ]
+  },
+  "Notifications": {
+    "occurrences": [
+      {
+        "file": "Features/Notifications/NotificationsView.swift",
+        "line": 75,
+        "context": "Text"
+      }
+    ]
+  },
+  "Mark all as read": {
+    "occurrences": [
+      {
+        "file": "Features/Notifications/NotificationsView.swift",
+        "line": 88,
+        "context": "Text"
+      }
+    ]
+  },
+  "No Notifications": {
+    "occurrences": [
+      {
+        "file": "Features/Notifications/NotificationsView.swift",
+        "line": 108,
+        "context": "Text"
+      }
+    ]
+  },
+  "You're all caught up!": {
+    "occurrences": [
+      {
+        "file": "Features/Notifications/NotificationsView.swift",
+        "line": 112,
+        "context": "Text"
+      }
+    ]
+  },
+  "Skip": {
+    "occurrences": [
+      {
+        "file": "Features/OnBoarding/OnBoardingScreen.swift",
+        "line": 108,
+        "context": "Text"
+      }
+    ]
+  },
+  "Continue": {
+    "occurrences": [
+      {
+        "file": "Features/OnBoarding/OnBoardingScreen.swift",
+        "line": 128,
+        "context": "Text"
+      }
+    ]
+  },
+  "TyreVibes": {
+    "occurrences": [
+      {
+        "file": "Features/OnBoarding/OnBoardingScreen.swift",
+        "line": 156,
+        "context": "Text"
+      },
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 48,
+        "context": "Text"
+      }
+    ]
+  },
+  "Let's": {
+    "occurrences": [
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 81,
+        "context": "Text"
+      }
+    ]
+  },
+  "Everything start from here": {
+    "occurrences": [
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 89,
+        "context": "Text"
+      }
+    ]
+  },
+  "Sign Up": {
+    "occurrences": [
+      {
+        "file": "Features/OnBoarding/WelcomeScreen.swift",
+        "line": 118,
+        "context": "Text"
+      }
+    ]
+  },
+  "Reports & Docs": {
+    "occurrences": [
+      {
+        "file": "Features/Reports/ReportScreen.swift",
+        "line": 27,
+        "context": "Text"
+      }
+    ]
+  },
+  "mm": {
+    "occurrences": [
+      {
+        "file": "Features/Reports/ReportScreen.swift",
+        "line": 476,
+        "context": "Text"
+      }
+    ]
+  }
+}

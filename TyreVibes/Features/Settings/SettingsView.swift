@@ -51,7 +51,7 @@ struct SettingsView: View {
                 .scrollIndicators(.hidden)
             }
             .navigationDestination(isPresented: $showNotifications) {
-                NotificationsView()
+                NotificationScreen()
             }
             .sheet(isPresented: $viewModel.isPresentingDataProtection) {
                 DataProtectionSheet(viewModel: viewModel)
@@ -64,20 +64,20 @@ struct SettingsView: View {
                 switch alert.style {
                 case .info:
                     return Alert(
-                        title: Text(alert.title),
-                        message: Text(alert.message),
-                        dismissButton: .default(Text("OK"))
+                        title: Text(alert.title.localized),
+                        message: Text(alert.message.localized),
+                        dismissButton: .default(Text("OK".localized))
                     )
                 case .openSettings:
                     return Alert(
-                        title: Text(alert.title),
-                        message: Text(alert.message),
-                        primaryButton: .default(Text("Open Settings")) {
+                        title: Text(alert.title.localized),
+                        message: Text(alert.message.localized),
+                        primaryButton: .default(Text("Open Settings".localized)) {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
                         },
-                        secondaryButton: .cancel()
+                        secondaryButton: .cancel(Text("Cancel".localized))
                     )
                 }
             }
@@ -472,32 +472,6 @@ enum PrivacyLevel: String, CaseIterable {
     case basic = "Basic"
     case balanced = "Balanced"
     case strict = "Strict"
-}
-
-enum Language: String, CaseIterable {
-    case english = "en"
-    case italian = "it"
-
-    var name: String {
-        switch self {
-        case .english: return "English (US)"
-        case .italian: return "Italian"
-        }
-    }
-
-    var flag: String {
-        switch self {
-        case .english: return "🇺🇸"
-        case .italian: return "🇮🇹"
-        }
-    }
-
-    var appleLanguageCode: String {
-        switch self {
-        case .english: return "en"
-        case .italian: return "it"
-        }
-    }
 }
 
 // MARK: - Preview

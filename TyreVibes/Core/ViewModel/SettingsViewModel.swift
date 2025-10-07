@@ -45,6 +45,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     private let featureFlags = FeatureFlags.shared
     private let defaults = UserDefaults.standard
     private let locationManager = CLLocationManager()
+    private let languageManager = LanguageManager.shared
     private var isSyncingFromStore = false
 
     private struct ExportPayload: Codable {
@@ -65,7 +66,6 @@ final class SettingsViewModel: NSObject, ObservableObject {
         static let imageQuality = "settings_image_quality"
         static let cacheManagement = "settings_cache_management"
         static let privacyLevel = "settings_privacy_level"
-        static let language = "settings_selected_language"
     }
 
     override init() {
@@ -76,7 +76,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
         cacheManagement = UserDefaults.standard.object(forKey: Keys.cacheManagement) as? Bool ?? true
         biometricAuth = UserDefaults.standard.bool(forKey: "useFaceID")
         privacyLevel = PrivacyLevel(rawValue: UserDefaults.standard.string(forKey: Keys.privacyLevel) ?? PrivacyLevel.strict.rawValue) ?? .strict
-        selectedLanguage = Language(rawValue: UserDefaults.standard.string(forKey: Keys.language) ?? Language.english.rawValue) ?? .english
+        selectedLanguage = languageManager.currentLanguage
         locationPermission = false
         cameraPermission = false
 
@@ -198,10 +198,12 @@ final class SettingsViewModel: NSObject, ObservableObject {
     }
 
     private func applyLanguageChange() {
-        defaults.set(selectedLanguage.rawValue, forKey: Keys.language)
-        defaults.set([selectedLanguage.appleLanguageCode], forKey: "AppleLanguages")
-        defaults.synchronize()
-        alert = SettingsAlert(title: "Language Updated", message: "Restart TyreVibes to apply \(selectedLanguage.name).", style: .info)
+        languageManager.setLanguage(selectedLanguage)
+        alert = SettingsAlert(
+            title: "Language Updated",
+            message: "The interface language has been updated.",
+            style: .info
+        )
     }
 
     private func applyLocationPreference() {
@@ -294,7 +296,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
         imageQuality = defaults.object(forKey: Keys.imageQuality) as? Double ?? imageQuality
         cacheManagement = defaults.object(forKey: Keys.cacheManagement) as? Bool ?? cacheManagement
         privacyLevel = PrivacyLevel(rawValue: defaults.string(forKey: Keys.privacyLevel) ?? privacyLevel.rawValue) ?? privacyLevel
-        selectedLanguage = Language(rawValue: defaults.string(forKey: Keys.language) ?? selectedLanguage.rawValue) ?? selectedLanguage
+        selectedLanguage = languageManager.currentLanguage
         isSyncingFromStore = false
     }
 
@@ -383,6 +385,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     }
 }
 
+@MainActor
 extension SettingsViewModel: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         isSyncingFromStore = true

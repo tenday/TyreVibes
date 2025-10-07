@@ -178,6 +178,77 @@ struct CameraPreview: UIViewControllerRepresentable {
             self.plateDetectorModel = loadVNModel(named: "LicensePlateDetector")
         }
 
+        // Corregge errori comuni dell'OCR basandosi sul formato targa italiana (AA123BB)
+        private func correctOCRErrors(_ text: String) -> String {
+            guard text.count >= 6 else { return text }
+
+            let original = text
+            var corrected = text
+            let chars = Array(corrected)
+
+            // Mappa di caratteri facilmente confusi dall'OCR
+            let letterToDigit: [Character: Character] = [
+                "O": "0", "I": "1", "S": "5", "Z": "2", "B": "8"
+            ]
+            let digitToLetter: [Character: Character] = [
+                "0": "O", "1": "I", "5": "S", "2": "Z", "8": "B"
+            ]
+
+            // Correzioni specifiche C/G basate su posizione (targa italiana: LL NNN LL)
+            // Posizioni 0,1,5,6 devono essere lettere
+            // Posizioni 2,3,4 devono essere numeri
+
+            var result = ""
+
+            for (index, char) in chars.enumerated() {
+                if corrected.count == 7 { // Formato AA123BB
+                    if index < 2 || index >= 5 { // Deve essere lettera
+                        if char.isNumber, let letter = digitToLetter[char] {
+                            result.append(letter)
+                        } else if char == "G" || char == "C" {
+                            // Logica specifica: nelle targhe italiane, G è molto più comune di C nelle posizioni lettere
+                            // Tuttavia, lasciamo invariato per non introdurre bias
+                            result.append(char)
+                        } else if char.isLetter {
+                            result.append(char)
+                        } else {
+                            result.append(char) // Mantieni carattere originale
+                        }
+                    } else { // index 2,3,4 - Deve essere numero
+                        if char.isLetter, let digit = letterToDigit[char] {
+                            result.append(digit)
+                        } else if char == "G" {
+                            // G nella posizione numerica è probabilmente un 6
+                            result.append("6")
+                        } else if char == "C" {
+                            // C nella posizione numerica potrebbe essere 0 o 6
+                            result.append("0")
+                        } else {
+                            result.append(char)
+                        }
+                    }
+                } else {
+                    // Per formati diversi, applica solo correzioni generiche
+                    if char == "G" && index > 0 && index < chars.count - 1 {
+                        let prev = chars[index - 1]
+                        let next = chars[index + 1]
+                        // Se circondato da numeri, G è probabilmente 6
+                        if prev.isNumber && next.isNumber {
+                            result.append("6")
+                            continue
+                        }
+                    }
+                    result.append(char)
+                }
+            }
+
+            if result != original {
+                print("OCR Correction: '\(original)' → '\(result)'")
+            }
+
+            return result
+        }
+
         override func viewDidLoad() {
             super.viewDidLoad()
             loadModels()
@@ -377,11 +448,12 @@ struct CameraPreview: UIViewControllerRepresentable {
 
                         // Normalizzazione
                         let cleanedCandidates: [String] = rawCandidates.map { cand in
-                            cand.uppercased()
+                            let cleaned = cand.uppercased()
                                 .replacingOccurrences(of: " ", with: "")
                                 .replacingOccurrences(of: "-", with: "")
                                 .components(separatedBy: CharacterSet.alphanumerics.inverted)
                                 .joined()
+                            return self.correctOCRErrors(cleaned)
                         }
                         //print("Candidati OCR cleaned: \(cleanedCandidates)")
 
@@ -416,6 +488,10 @@ struct CameraPreview: UIViewControllerRepresentable {
                     textReq.usesLanguageCorrection = false
                     textReq.recognitionLevel = .accurate
                     textReq.recognitionLanguages = ["en-US"]
+                    // Personalizza i caratteri riconosciuti per ridurre confusione (solo alphanumerici)
+                    if #available(iOS 16.0, *) {
+                        textReq.automaticallyDetectsLanguage = false
+                    }
                     //textReq.regionOfInterest = plateBox
 
                     let handler2 = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])

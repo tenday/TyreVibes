@@ -84,7 +84,9 @@ class GarageViewModel: ObservableObject {
 
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    vehicles.removeAll { $0.vehicle.id == vehicle.id }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        vehicles.removeAll { $0.vehicle.id == vehicle.id }
+                    }
                     if let updatedData = try? JSONEncoder().encode(vehicles) {
                         UserDefaults.standard.set(updatedData, forKey: "cachedVehicles")
                     }

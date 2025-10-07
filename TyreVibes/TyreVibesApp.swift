@@ -11,7 +11,7 @@ import GoogleSignIn
 @main
 struct TyreVibesApp: App {
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
-
+    @StateObject private var languageManager = LanguageManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -26,6 +26,8 @@ struct TyreVibesApp: App {
                         GIDSignIn.sharedInstance.handle(url)
                     }
             }
+            .environment(\.locale, languageManager.locale)
+            .environmentObject(languageManager)
         }
     }
 }

@@ -684,7 +684,7 @@ struct CarDetailsView: View {
                         // Details Section
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
-                                Text("Scheda Tecnica")
+                                Text(LocalizedStringKey("Technical Specs"))
                                     .font(.customFont(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
                                 Spacer()
@@ -721,22 +721,22 @@ struct CarDetailsView: View {
                                 GridItem(.flexible(), alignment: .leading),
                                 GridItem(.flexible(), alignment: .leading)
                             ], spacing: 10) {
-                                DetailItem(label: "Make", value: vehicle.vehicle.make?.uppercased() ?? "-")
-                                DetailItem(label: "Year", value: vehicle.plate?.year.map { "\($0)" } ?? "-")
-                                DetailItem(label: "Color", value: vehicle.vehicle.color?.uppercased() ?? "-")
-                                DetailItem(label: "Model", value: vehicle.vehicle.model?.uppercased() ?? "-")
-                                DetailItem(label: "Engine", value: vehicle.vehicle.engine?.uppercased() ?? "-")
-                                DetailItem(label: "License No", value: vehicle.plate?.plateNumber.uppercased() ?? "-")
-                                DetailItem(label: "Fuel Type", value: vehicle.vehicle.fuelType?.uppercased() ?? "-")
-                                DetailItem(label: "Horsepower", value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
-                                DetailItem(label: "Emission Class", value: vehicle.vehicle.emissionClass?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Make"), value: vehicle.vehicle.make?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Year"), value: vehicle.plate?.year.map { "\($0)" } ?? "-")
+                                DetailItem(label: String(localized: "Color"), value: vehicle.vehicle.color?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Model"), value: vehicle.vehicle.model?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Engine"), value: vehicle.vehicle.engine?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "License plate"), value: vehicle.plate?.plateNumber.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Alimentazione"), value: vehicle.vehicle.fuelType?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Horsepower"), value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
+                                DetailItem(label: String(localized: "Emission Class"), value: vehicle.vehicle.emissionClass?.uppercased() ?? "-")
                             }
                         }
                         .padding()
                         .background(Color.customFieldColor)
                         .cornerRadius(14)
 
-                        Text("Add Your Tyres")
+                        Text(LocalizedStringKey("Add Your Tyres"))
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
@@ -855,7 +855,8 @@ struct CarDetailsView: View {
                     registeredTyres: tyreViewModel.tyres,
                     selectedRevisionIndex: $selectedRevisionIndex,
                     selectedTyreIndex: $selectedTyreIndex,
-                    selectedInsuranceIndex: $selectedInsuranceIndex
+                    selectedInsuranceIndex: $selectedInsuranceIndex,
+                    tyreViewModel: tyreViewModel
                 )
                 .presentationDragIndicator(.visible)
                 .presentationDetents([.medium, .large])
@@ -955,26 +956,33 @@ struct AdvancedInfoSheet: View {
     @Binding var selectedRevisionIndex: Int?
     @Binding var selectedTyreIndex: Int?
     @Binding var selectedInsuranceIndex: Int?
+    @ObservedObject var tyreViewModel: TyreViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var currentTab = 0
     @State private var tabSelectorOffset: CGFloat = 0
     @State private var isTabTransitioning = false
     
-    private let tabs = ["Revisions", "Tyres", "Assicurazioni"]
+    private var tabs: [String] {
+        [
+            String(localized: "Cronologia Revisioni"),
+            String(localized: "Add Your Tyres"),
+            String(localized: "Assicurazione")
+        ]
+    }
     
     var body: some View {
         VStack(spacing: 0) {
             // Header with title and done button
             HStack {
-                Text("Vehicle Info")
+                Text(LocalizedStringKey("Vehicle Info"))
                     .font(.customFont(size: 20, weight: .bold))
                     .foregroundColor(.white)
-                
+
                 Spacer()
-                
+
                 if #available(iOS 26.0, *) {
                     Button(action: { dismiss() }) {
-                        Text("Done")
+                        Text(LocalizedStringKey("Done"))
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                     }
@@ -1069,7 +1077,9 @@ struct AdvancedInfoSheet: View {
                     AdvancedTyresTable(
                         tyres: vehicle.tyres ?? [],
                         registeredTyres: registeredTyres,
-                        selectedIndex: $selectedTyreIndex
+                        vehicleId: vehicle.vehicle.id,
+                        selectedIndex: $selectedTyreIndex,
+                        tyreViewModel: tyreViewModel
                     )
                     .transition(.asymmetric(
                         insertion: .scale(scale: 0.8).combined(with: .opacity),
@@ -1135,8 +1145,8 @@ struct AdvancedRevisionsTable: View {
                 if revisions.isEmpty {
                     EmptyStateView(
                         icon: "doc.text.magnifyingglass",
-                        title: "No Revisions",
-                        subtitle: forecastRevisions.isEmpty ? "No revision history available" : "No revision history yet. Forecasted entries are listed below."
+                        title: String(localized: "Cronologia Revisioni"),
+                        subtitle: forecastRevisions.isEmpty ? String(localized: "No data available") : String(localized: "No data available")
                     )
                 } else {
                     ForEach(Array(revisions.enumerated()), id: \.offset) { index, revision in
@@ -1155,7 +1165,7 @@ struct AdvancedRevisionsTable: View {
 
                 if !forecastRevisions.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Forecast Revisions")
+                        Text(LocalizedStringKey("Forecast Revisions"))
                             .font(.customFont(size: 14, weight: .semibold))
                             .foregroundColor(.white.opacity(0.7))
                             .padding(.horizontal, 4)
@@ -1211,19 +1221,19 @@ struct RevisionRow: View {
                     
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text("Revision #\(index + 1)")
+                            Text(LocalizedStringKey("Revision #\(index + 1)"))
                                 .font(.customFont(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
-                            
+
                             Spacer()
-                            
+
                             Text(formatVehicleInfoDate(revision.dataRevisione))
                                 .font(.customFont(size: 14, weight: .medium))
                                 .foregroundColor(.white.opacity(0.7))
                         }
-                        
+
                         HStack {
-                            Text(revision.esitoRevisione ?? "Unknown")
+                            Text(revision.esitoRevisione ?? String(localized: "No data available"))
                                 .font(.customFont(size: 14, weight: .medium))
                                 .foregroundColor(statusColor)
                             
@@ -1254,10 +1264,10 @@ struct RevisionRow: View {
                 if isSelected {
                     VStack(alignment: .leading, spacing: 12) {
                         Divider().background(Color.customGray)
-                        
-                        DetailRowItem(icon: "calendar", label: "Date", value: formatVehicleInfoDate(revision.dataRevisione))
-                        DetailRowItem(icon: "checkmark.seal", label: "Result", value: revision.esitoRevisione ?? "Unknown")
-                        DetailRowItem(icon: "speedometer", label: "Mileage", value: (revision.kmRevisione ?? "N/A") + " km")
+
+                        DetailRowItem(icon: "calendar", label: String(localized: "Dettagli Revisione"), value: formatVehicleInfoDate(revision.dataRevisione))
+                        DetailRowItem(icon: "checkmark.seal", label: String(localized: "Details"), value: revision.esitoRevisione ?? String(localized: "No data available"))
+                        DetailRowItem(icon: "speedometer", label: String(localized: "Distance"), value: (revision.kmRevisione ?? "N/A") + " km")
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
@@ -1328,7 +1338,7 @@ struct ForecastRevisionRow: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("Forecast #\(forecast.index + 1)")
+                        Text(LocalizedStringKey("Forecast #\(forecast.index + 1)"))
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
 
@@ -1384,7 +1394,9 @@ struct ForecastRevisionRow: View {
 struct AdvancedTyresTable: View {
     let tyres: [VehicleTyre]
     let registeredTyres: [TyreRegistered]
+    let vehicleId: Int
     @Binding var selectedIndex: Int?
+    @ObservedObject var tyreViewModel: TyreViewModel
 
     // Enhanced filter states
     @State private var selectedRadius: Int? = nil
@@ -1397,6 +1409,8 @@ struct AdvancedTyresTable: View {
     @State private var showFilters: Bool = false
     @State private var searchText: String = ""
     @State private var showSortDialog: Bool = false
+    @State private var tyreToDelete: VehicleTyre? = nil
+    @State private var showDeleteAlert: Bool = false
 
     private var tyreInsights: [TyreInsightDisplay] {
         makeTyreInsights(from: registeredTyres)
@@ -1727,13 +1741,18 @@ struct AdvancedTyresTable: View {
                             TyreRow(
                                 tyre: tyre,
                                 index: index,
-                                isSelected: selectedIndex == index
-                            ) {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    selectedIndex = selectedIndex == index ? nil : index
+                                isSelected: selectedIndex == index,
+                                onTap: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        selectedIndex = selectedIndex == index ? nil : index
+                                    }
+                                },
+                                onLongPress: {
+                                    tyreToDelete = tyre
+                                    showDeleteAlert = true
                                 }
-                            }
-                            
+                            )
+
                             if index < filteredAndSortedTyres.count - 1 {
                                 Divider().background(Color.customGray.opacity(0.5))
                             }
@@ -1760,6 +1779,21 @@ struct AdvancedTyresTable: View {
                 }
                 .padding(.top, 12)
             }
+        }
+        .alert(String(localized: "Delete"), isPresented: $showDeleteAlert) {
+            Button(String(localized: "Cancel"), role: .cancel) {}
+            Button(String(localized: "Delete"), role: .destructive) {
+                if let tyreToDelete = tyreToDelete {
+                    tyreViewModel.deleteTyre(tyreId: tyreToDelete.id, vehicleId: vehicleId) { success in
+                        if success {
+                            // Refresh list
+                            tyreViewModel.fetchTyres(vehicleId: vehicleId, forceRefresh: true)
+                        }
+                    }
+                }
+            }
+        } message: {
+            Text(String(localized: "Are you sure you want to delete this tire?"))
         }
     }
     
@@ -1917,7 +1951,8 @@ struct TyreRow: View {
     let index: Int
     let isSelected: Bool
     let onTap: () -> Void
-    
+    let onLongPress: () -> Void
+
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 0) {
@@ -2003,6 +2038,11 @@ struct TyreRow: View {
         )
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
+        .onLongPressGesture(minimumDuration: 0.5) {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            onLongPress()
+        }
     }
     
     private var tyreSize: String {
@@ -2218,7 +2258,7 @@ struct AdvancedInsuranceTable: View {
 
                 if !forecastInsurances.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Scadenze Stimate")
+                        Text(LocalizedStringKey("Scadenze Stimate"))
                             .font(.customFont(size: 14, weight: .semibold))
                             .foregroundColor(.white.opacity(0.7))
                             .padding(.horizontal, 4)
@@ -2438,7 +2478,7 @@ struct InsuranceForecastRow: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("Forecast #\(forecast.index + 1)")
+                        Text(LocalizedStringKey("Forecast #\(forecast.index + 1)"))
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
 

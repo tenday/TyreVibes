@@ -1,14 +1,7 @@
-//
-//  NotificationsView.swift
-//  TyreVibes
-//
-//  Created on 2025-10-04.
-//  Notifications screen
-//
 
 import SwiftUI
 
-struct NotificationsView: View {
+struct NotificationScreen: View {
     @StateObject private var store = NotificationStore()
     @Environment(\.dismiss) private var dismiss
 
@@ -193,5 +186,5 @@ struct NotificationRow: View {
 
 // MARK: - Preview
 #Preview {
-    NotificationsView()
+    NotificationScreen()
 }
