@@ -622,6 +622,7 @@ struct CarDetailsView: View {
     @State private var isLoading360: Bool = false
     @AppStorage("hasSeenDetailsHint") private var hasSeenDetailsHint: Bool = false
     @State private var showFirstTimeHint = false
+    @State private var showAddTyreSetSheet: Bool = false
 
 
 
@@ -828,6 +829,51 @@ struct CarDetailsView: View {
                                         }
                                     }
                                 }
+
+                                // Card per aggiungere doppia misura pneumatico
+                                Button(action: {
+                                    showAddTyreSetSheet = true
+                                }) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(
+                                                LinearGradient(
+                                                    gradient: Gradient(colors: [Color.orange.opacity(0.3), Color.orange.opacity(0.1)]),
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                            )
+                                            .frame(width: 188, height: 231)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(Color.orange.opacity(0.5), lineWidth: 2)
+                                            )
+
+                                        VStack(spacing: 12) {
+                                            Image(systemName: "plus.circle.fill")
+                                                .font(.system(size: 48, weight: .medium))
+                                                .foregroundColor(.orange)
+
+                                            VStack(spacing: 6) {
+                                                Text("Aggiungi")
+                                                    .font(.customFont(size: 15, weight: .bold))
+                                                    .foregroundColor(.white)
+                                                Text("doppia misura")
+                                                    .font(.customFont(size: 14, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                                Text("pneumatico")
+                                                    .font(.customFont(size: 14, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                            }
+
+                                            Text("Per veicoli\nperformance")
+                                                .font(.customFont(size: 12, weight: .regular))
+                                                .foregroundColor(.white.opacity(0.7))
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        .padding(16)
+                                    }
+                                }
                             }
                             .padding(.vertical, 9)
                             .padding(.horizontal, 8)
@@ -879,6 +925,9 @@ struct CarDetailsView: View {
             }
             .fullScreenCover(isPresented: $showPremiumScreen) {
                 PremiumSubscriptionScreen()
+            }
+            .sheet(isPresented: $showAddTyreSetSheet) {
+                AddTyreSetView(vehicleId: vehicle.vehicle.id, tyreViewModel: tyreViewModel)
             }
             .sheet(isPresented: $show360View) {
                 if let make = vehicle.vehicle.make,
@@ -1667,35 +1716,35 @@ struct AdvancedTyresTable: View {
                                     return false
                                 }
                             }
-                            
+
                             // Diameter filter
                             if let selected = selectedRadius, tyre.diameter != selected {
                                 return false
                             }
-                            
+
                             // Width filter
                             if let selected = selectedWidth, tyre.width != selected {
                                 return false
                             }
-                            
+
                             // Ratio filter
                             if let selected = selectedRatio, tyre.ratio != selected {
                                 return false
                             }
-                            
+
                             // Speed index filter
                             if let selected = selectedSpeedIndex, tyre.speedIndex != selected {
                                 return false
                             }
-                            
+
                             // Load index filter
                             if let selected = selectedLoadIndex, tyre.loadIndex != selected {
                                 return false
                             }
-                            
+
                             return true
                         }
-                        
+
                         // Sort by selected option
                         let sorted = filtered.sorted { lhs, rhs in
                             switch sortBy {
@@ -1723,7 +1772,7 @@ struct AdvancedTyresTable: View {
                         }
                         return sorted
                     }()
-                    
+
                     if tyres.isEmpty {
                         EmptyStateView(
                             icon: "car.circle",

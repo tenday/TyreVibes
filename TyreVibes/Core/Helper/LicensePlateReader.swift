@@ -638,10 +638,26 @@ public class LicensePlateReader {
                                                                 }
                                                                 if let alimentazione = infocar["alimentazione"] { mapped["fuelType"] = alimentazione }
                                                                 if let nome = infocar["nome"] as? String {
-                                                                    let parts = nome.components(separatedBy: " ")
-                                                                    mapped["make"] = parts[0]
-                                                                    mapped["model"] = parts[1].replacingOccurrences(of: "--&gt;", with: "").replacingOccurrences(of: "&amp;", with: "&")
-                                                                    mapped["modelDetails"] = parts[2].replacingOccurrences(of: "&amp;", with: "&")
+                                                                    let separators = CharacterSet(charactersIn: "- ")
+                                                                    let parts = nome.components(separatedBy: separators).filter { !$0.isEmpty }
+                                                                    if !parts.isEmpty {
+                                                                        mapped["make"] = parts[0]
+                                                                    }
+                                                                    
+                                                                    if parts.indices.contains(1) {
+                                                                        let model = parts[1]
+                                                                            .replacingOccurrences(of: "--&gt;", with: "")
+                                                                            .replacingOccurrences(of: "&amp;", with: "&")
+                                                                        mapped["model"] = model
+                                                                    }
+                                                                    else {
+                                                                        mapped["model"] = infocar["modello"]
+                                                                    }
+                                                                    if parts.indices.contains(2) {
+                                                                        let details = nome
+                                                                            .replacingOccurrences(of: "&amp;", with: "&")
+                                                                        mapped["modelDetails"] = details
+                                                                    }
                                                                 }
                                                                 // Mappatura estesa: tutti i valori presenti nella risposta
                                                                 for (key, value) in infocar {
@@ -3053,3 +3069,4 @@ extension VehicleImageService {
         }
     }
 }
+

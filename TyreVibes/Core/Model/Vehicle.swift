@@ -96,6 +96,8 @@ struct VehicleTyre: Codable, Identifiable, Hashable {
     let speedIndex: String?
     let loadIndex: String?
     let sizeLabel: String?
+    let setId: Int? // Per identificare il set di appartenenza (es. 1 = anteriore, 2 = posteriore)
+    let setName: String? // Nome del set (es. "Anteriore", "Posteriore", "Set Standard")
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -105,6 +107,8 @@ struct VehicleTyre: Codable, Identifiable, Hashable {
         case speedIndex = "speed_index"
         case loadIndex = "load_index"
         case sizeLabel = "size_label"
+        case setId = "set_id"
+        case setName = "set_name"
     }
 }
 
@@ -139,5 +143,20 @@ struct VehicleInsurance: Codable, Identifiable, Hashable {
         case rcaPolicyNumber = "rca_policy_number"
         case rcaExpiry = "rca_expiry"
         case rcaInsurancePresent = "rca_insurance_present"
+    }
+}
+
+// MARK: - Tyre Size Set
+struct TyreSizeSet: Identifiable, Hashable {
+    let id: Int
+    let name: String
+    let tyres: [VehicleTyre]
+    let isDefault: Bool
+
+    init(id: Int, name: String, tyres: [VehicleTyre], isDefault: Bool = false) {
+        self.id = id
+        self.name = name
+        self.tyres = tyres
+        self.isDefault = isDefault
     }
 }
