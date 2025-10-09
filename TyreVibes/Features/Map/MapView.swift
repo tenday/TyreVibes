@@ -15,9 +15,11 @@ struct MapView: View {
     var body: some View {
         ZStack(alignment: .top) {
             Map(position: $cameraPosition) {
-                // Display search results
+                // Display search results with custom animated markers
                 ForEach(mapManager.searchResults, id: \.self) { item in
-                    Marker(item.name ?? "Workshop", coordinate: item.placemark.coordinate)
+                    Annotation(item.name ?? "Workshop", coordinate: item.placemark.coordinate) {
+                        CustomMarkerView()
+                    }
                 }
             }
             .edgesIgnoringSafeArea(.top)
