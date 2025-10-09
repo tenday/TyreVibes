@@ -28,7 +28,7 @@ struct BottomNavigationView: View {
                     case 1:
                         ReportsDocumentationsView()
                     case 2:
-                        CalendarScreen()
+                        MapView()
                     case 3:
                         SettingsView()
                     case 4:
@@ -279,7 +279,6 @@ struct CenterActionButton: View {
 // MARK: - Placeholder Screens
 struct VehiclesView: View { var body: some View { Text("Vehicles").foregroundColor(.white) } }
 struct ReportsView: View { var body: some View { Text("Reports").foregroundColor(.white) } }
-struct CalendarScreen: View { var body: some View { Text("Marketplace").foregroundColor(.white) } }
 
 
 // MARK: - Forma Personalizzata della Barra
