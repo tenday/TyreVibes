@@ -11,7 +11,7 @@ struct AddressSearchView: View {
                     .padding()
 
                 if viewModel.isLoading {
-                    ProgressView()
+                    
                 } else if let error = viewModel.error {
                     Text("Error: \(error.localizedDescription)")
                         .foregroundColor(.red)

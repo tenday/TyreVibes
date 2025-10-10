@@ -623,6 +623,8 @@ struct CarDetailsView: View {
     @AppStorage("hasSeenDetailsHint") private var hasSeenDetailsHint: Bool = false
     @State private var showFirstTimeHint = false
     @State private var showAddTyreSetSheet: Bool = false
+    @State private var hasNewRevisioni: Bool = false
+    @State private var isLoadingRevisioni: Bool = false
 
 
 
@@ -737,7 +739,8 @@ struct CarDetailsView: View {
                         .background(Color.customFieldColor)
                         .cornerRadius(14)
 
-                        Text(LocalizedStringKey("Add Your Tyres"))
+
+                        Text(LocalizedStringKey("Your Tyres"))
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
@@ -883,6 +886,60 @@ struct CarDetailsView: View {
                 }
                 .padding(.horizontal,24)
 
+                // Banner per lo stato delle revisioni
+                VStack {
+                    if isLoadingRevisioni {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                                .tint(.white)
+                            Text("Caricamento revisioni in background...")
+                                .font(.customFont(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule()
+                                .fill(Color.blue.opacity(0.9))
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    } else if hasNewRevisioni {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.white)
+                            Text("Revisioni aggiornate!")
+                                .font(.customFont(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Button(action: {
+                                // Ricarica la pagina o mostra le nuove revisioni
+                                dismiss()
+                            }) {
+                                Text("Aggiorna")
+                                    .font(.customFont(size: 13, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.white.opacity(0.2))
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule()
+                                .fill(Color.green.opacity(0.9))
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    Spacer()
+                }
+                .padding(.top, 8)
+                .animation(.spring(), value: isLoadingRevisioni)
+                .animation(.spring(), value: hasNewRevisioni)
+
             }
             .navigationBarBackButtonHidden(true)
             .onAppear {
@@ -892,6 +949,35 @@ struct CarDetailsView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                         showFirstTimeHint = true
                         hasSeenDetailsHint = true
+                    }
+                }
+
+                // Controlla se ci sono retry in corso per le revisioni
+                if let plateNumber = vehicle.plate?.plateNumber {
+                    isLoadingRevisioni = RevisionRetryManager.shared.isRetryingRevisioni(for: plateNumber)
+                }
+
+                // Observer per le revisioni aggiornate
+                NotificationCenter.default.addObserver(
+                    forName: .revisioniUpdated,
+                    object: nil,
+                    queue: .main
+                ) { notification in
+                    guard let plateNumber = vehicle.plate?.plateNumber,
+                          let updatedPlate = notification.userInfo?["plate"] as? String,
+                          plateNumber == updatedPlate else {
+                        return
+                    }
+
+                    // Mostra notifica che le revisioni sono state aggiornate
+                    hasNewRevisioni = true
+                    isLoadingRevisioni = false
+
+                    // Nasconde automaticamente dopo 5 secondi
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        withAnimation {
+                            hasNewRevisioni = false
+                        }
                     }
                 }
             }
@@ -1013,9 +1099,10 @@ struct AdvancedInfoSheet: View {
     
     private var tabs: [String] {
         [
-            String(localized: "Cronologia Revisioni"),
-            String(localized: "Add Your Tyres"),
-            String(localized: "Assicurazione")
+            String(localized: "Revisions"),
+            String(localized: "Supported Tyres"),
+            String(localized: "Insurances"),
+            String(localized: "Bollo")
         ]
     }
     
@@ -1134,7 +1221,7 @@ struct AdvancedInfoSheet: View {
                         insertion: .scale(scale: 0.8).combined(with: .opacity),
                         removal: .scale(scale: 0.8).combined(with: .opacity)
                     ))
-                } else {
+                } else if currentTab == 2 {
                     AdvancedInsuranceTable(
                         insurances: vehicle.insurances ?? [],
                         forecastInsurances: makeInsuranceForecasts(for: vehicle),
@@ -1143,6 +1230,13 @@ struct AdvancedInfoSheet: View {
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+                } else if currentTab == 3 {
+                        // Sezione Bollo
+                        BolloInfoView(vehicle: vehicle)
+                        .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
                     ))
                 }
             }

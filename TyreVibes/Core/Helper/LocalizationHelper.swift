@@ -45,7 +45,7 @@ enum L10n {
     // MARK: - Tire
     static let tireRegistration = "Tire Registration"
     static let tireSidewallScanning = "Tire Sidewall Scanning"
-    static let addYourTires = "Add Your Tires"
+    static let addYourTires = "Supported Tyres"
     static let tireData = "Tire Data"
     static let scanning = "Scanning..."
     static let allDataCollected = "All data collected! Redirecting..."
@@ -149,7 +149,7 @@ extension L10n {
         // Tire
         "Tire Registration": "Registrazione Pneumatici",
         "Tire Sidewall Scanning": "Scansione Spalla Pneumatico",
-        "Add Your Tires": "Aggiungi i Tuoi Pneumatici",
+        "Add Your Tires": "Pneumatici Supportati",
         "Tire Data": "Dati Pneumatico",
         "Scanning...": "Scansione in corso...",
         "All data collected! Redirecting...": "Tutti i dati raccolti! Reindirizzamento...",

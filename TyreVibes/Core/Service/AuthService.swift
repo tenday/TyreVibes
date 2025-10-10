@@ -170,7 +170,7 @@ class AuthService {
     }
 
     @MainActor
-    func signInWithGoogle() async throws {
+    func signInWithGoogle(forceAccountSelection: Bool = false) async throws {
         guard let topVC = UIApplication.shared.topViewController() else {
             throw AuthServiceError.signUpFailed("Could not find top view controller.")
         }
@@ -184,6 +184,11 @@ class AuthService {
 
         // Configurazione globale (si fa una volta sola)
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+
+        // Se richiesto, effettua il logout per forzare la selezione dell'account
+        if forceAccountSelection {
+            GIDSignIn.sharedInstance.signOut()
+        }
 
         // Nuovo metodo di login
         let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: topVC)

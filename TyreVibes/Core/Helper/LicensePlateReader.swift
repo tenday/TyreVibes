@@ -2271,6 +2271,26 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         }
         plateData.revisioni = parsed
 
+        // 🔄 Se le revisioni sono vuote, schedula retry in background
+        if parsed.isEmpty {
+            print("🔄 [PlateSummary] Nessuna revisione trovata per \(plate), scheduling background retry...")
+            Task { @MainActor in
+                RevisionRetryManager.shared.scheduleBackgroundRetry(
+                    for: plate,
+                    tipoVeicolo: "A",
+                    maxAttempts: 10,
+                    initialDelay: 3.0
+                ) { result in
+                    print("✅ [PlateSummary] Revisioni ottenute in background per \(result.plate): \(result.revisioni.count) revisioni")
+                    // Notifica tramite NotificationCenter per aggiornare l'UI
+                    NotificationCenter.default.post(
+                        name: .revisioniUpdated,
+                        object: nil,
+                        userInfo: ["plate": result.plate, "revisioni": result.revisioni]
+                    )
+                }
+            }
+        }
 
         // 🎯 PRIORITÀ 1: Dati essenziali per primo (make, model, year)
         let quattroruoteData: [String: Any] = await fetchWithFallback(label: "Quattroruote", fallback: [:]) {

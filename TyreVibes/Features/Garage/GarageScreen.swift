@@ -411,8 +411,19 @@ struct GarageScreen: View {
                                         delete(car)
                                     }
                                 )
+                                .swipeActions(allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        delete(car)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    Button {
+                                        shareVehicle(car)
+                                    } label: {
+                                        Label("Share", systemImage: "square.and.arrow.up")
+                                    }
+                                }
                             }
-                            .onDelete(perform: deleteVehicles)
                             .padding(.horizontal, 24)
                             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 18, trailing: 0))
                             .listRowBackground(Color.clear)
@@ -675,9 +686,9 @@ struct GarageScreen: View {
 
                                     VStack(alignment: .leading, spacing: 8) {
                                         SpecRow(label: "Make:", value: v.vehicle.make ?? "")
-                                        SpecRow(label: "Model:", value: extractCleanModel(from: v.vehicle.model))
+                                        SpecRow(label: "Model:", value: v.vehicle.model ?? "")
                                         SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
-                                        SpecRow(label: "Engine:", value: extractCleanEngine(from: v.vehicle.engine))
+                                        SpecRow(label: "Engine:", value: v.vehicle.engine ?? "")
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -700,7 +711,7 @@ struct GarageScreen: View {
         let onShowDetails: () -> Void
         let onShare: () -> Void
         let onDelete: () -> Void
-        
+
         @State private var offsetX: CGFloat = 0
         @State private var isDragging = false
         @State private var offsetStart: CGFloat = 0
@@ -708,7 +719,7 @@ struct GarageScreen: View {
         @State private var deletionFeedbackTriggered = false
 
         private let revealWidth: CGFloat = 120.0
-        private let deleteTriggerThreshold: CGFloat = 0.9
+        private let deleteTriggerThreshold: CGFloat = 0.6
 
         private var swipeProgress: CGFloat {
             min(max(-offsetX / revealWidth, 0), 1)
@@ -825,54 +836,6 @@ struct GarageScreen: View {
                 }
             }
             .aspectRatio(2.05, contentMode: .fit)
-                .gesture(
-                    DragGesture(minimumDistance: 20, coordinateSpace: .local)
-                        .onChanged { value in
-                            // Determina se il gesture è principalmente orizzontale
-                            let isHorizontal = abs(value.translation.width) > abs(value.translation.height) * 2
-                            
-                            if !isDragging {
-                                // Prima volta che il gesture viene rilevato
-                                shouldHandleGesture = isHorizontal
-                                if shouldHandleGesture {
-                                    isDragging = true
-                                    offsetStart = offsetX
-                                }
-                            }
-                            
-                            // Gestisci solo se è stato determinato come orizzontale
-                            if shouldHandleGesture && isDragging {
-                                let proposed = offsetStart + value.translation.width
-                                offsetX = min(0, max(-revealWidth, proposed))
-                                handleHapticsIfNeeded()
-                            }
-                        }
-                        .onEnded { value in
-                            guard shouldHandleGesture && isDragging else {
-                                // Reset per permettere scroll verticale
-                                isDragging = false
-                                shouldHandleGesture = false
-                                return
-                            }
-                            
-                            let progress = swipeProgress
-                            if progress >= deleteTriggerThreshold {
-                                performDelete()
-                            } else if progress > 0.5 {
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-                                    offsetX = -revealWidth
-                                }
-                            } else {
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-                                    offsetX = 0
-                                }
-                            }
-
-                            deletionFeedbackTriggered = false
-                            isDragging = false
-                            shouldHandleGesture = false
-                        }
-                )
                 .onTapGesture {
                     // Se la card è aperta (swipe), chiudila
                     if offsetX != 0 {
