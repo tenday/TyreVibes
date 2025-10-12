@@ -44,6 +44,12 @@ struct PlateAPIRequest: Codable {
     let traction: String?
 
     let revisioni: [Revisione]?
+
+    // Bollo
+    let bolloAmount: Double?
+    let bolloSuper: Double?
+    let bolloTotal: Double?
+    let bolloEmissionClass: String?
 }
 
 struct PlateAPIResponse: Codable {
@@ -239,7 +245,11 @@ class PlateAPIService {
             seats: plateData.seats,
             consumption: plateData.consumption,
             traction: plateData.traction,
-            revisioni: plateData.revisioni ?? []
+            revisioni: plateData.revisioni ?? [],
+            bolloAmount: plateData.bollo?.baseBollo,
+            bolloSuper: plateData.bollo?.superBollo,
+            bolloTotal: plateData.bollo?.total,
+            bolloEmissionClass: plateData.bollo?.emissionClassDescription
         )
         
         var request = URLRequest(url: url)

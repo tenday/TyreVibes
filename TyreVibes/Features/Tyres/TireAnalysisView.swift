@@ -10,6 +10,8 @@ import SwiftUI
 
 // MARK: - Main Tire Analysis View
 struct TireAnalysisView: View {
+    let vehicle: VehicleResponse
+    let tyre: TyreRegistered
     @State private var selectedTire: TirePosition? = .frontLeft
     @Environment(\.presentationMode) var presentationMode
     
@@ -35,6 +37,21 @@ struct TireAnalysisView: View {
                     Spacer()
                 }
                 .padding(.top, 16)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
+                        .font(.customFont(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+
+                    Text("\(tyre.brand) \(tyre.model) • \(tyre.size)")
+                        .font(.customFont(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
                 
                 Spacer()
                 
@@ -190,9 +207,74 @@ enum TirePosition: String, CaseIterable {
 // MARK: - Preview
 struct TireAnalysisView_Previews: PreviewProvider {
     static var previews: some View {
-        TireAnalysisView()
+        TireAnalysisView(
+            vehicle: .previewSample,
+            tyre: .previewSample
+        )
     }
 }
+
+#if DEBUG
+extension VehicleResponse {
+    static var previewSample: VehicleResponse {
+        VehicleResponse(
+            vehicle: Vehicle(
+                id: 1,
+                modelDetail: "Model S Long Range",
+                engine: "Dual Motor",
+                make: "Tesla",
+                model: "Model S",
+                version: "Plaid",
+                fuelType: "Electric",
+                displacementCC: nil,
+                powerCV: 1020,
+                powerKW: "750",
+                emissionClass: "Euro 6",
+                gearbox: "Automatic",
+                maxSpeed: "322 km/h",
+                bodyType: "Sedan",
+                doors: "5",
+                seats: "5",
+                consumption: "18 kWh/100 km",
+                traction: "AWD",
+                saleStart: "2019",
+                saleEnd: nil,
+                color: "Red",
+                vin: "5YJSA1E26LF000001",
+                createdAt: nil
+            ),
+            plate: Plate(
+                id: 1,
+                plateNumber: "AB123CD",
+                registrationDate: "2021-06-15",
+                year: 2021,
+                month: 6,
+                createdAt: nil
+            ),
+            image: nil,
+            tyres: [],
+            revisions: [],
+            insurances: []
+        )
+    }
+}
+
+extension TyreRegistered {
+    static var previewSample: TyreRegistered {
+        TyreRegistered(
+            id: 1,
+            vehicleId: 1,
+            brand: "Pirelli",
+            model: "P Zero",
+            size: "245/35 R19",
+            dot: "3522",
+            loadIndex: "96",
+            speedRating: "Y",
+            season: "Summer"
+        )
+    }
+}
+#endif
 
 // MARK: - IMPORTANT NOTE
 /*

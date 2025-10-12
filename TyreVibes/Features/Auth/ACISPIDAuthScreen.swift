@@ -171,22 +171,23 @@ struct ACISPIDAuthScreen: View {
                         .padding(.top, 8)
                 }
             }
-            .fullScreenCover(isPresented: $showWebView) {
-                if let url = loginURL {
-                    ACISPIDWebView(
-                        loginURL: url,
-                        onVehicleData: { response in
-                            handleAuthSuccess(response: response)
-                        },
-                        onAuthFailure: { error in
-                            handleAuthFailure(error: error)
-                        },
-                        onDismiss: {
-                            showWebView = false
-                            authService.isAuthenticating = false
-                        }
-                    )
-                }
+            .fullScreenCover(item: Binding(
+                get: { showWebView && loginURL != nil ? loginURL : nil },
+                set: { if $0 == nil { showWebView = false } }
+            )) { url in
+                ACISPIDWebView(
+                    loginURL: url,
+                    onVehicleData: { response in
+                        handleAuthSuccess(response: response)
+                    },
+                    onAuthFailure: { error in
+                        handleAuthFailure(error: error)
+                    },
+                    onDismiss: {
+                        showWebView = false
+                        authService.isAuthenticating = false
+                    }
+                )
             }
         }
         .preferredColorScheme(.dark)
@@ -228,22 +229,29 @@ private struct ErrorBannerView: View {
         authService.startAuthentication { result in
             switch result {
             case .success(let url):
-                print("✅ [ACISPIDAuthScreen] URL di login ricevuto")
-                loginURL = url
-                // Mostra la WebView dopo un breve delay per permettere l'animazione
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showWebView = true
+                print("✅ [ACISPIDAuthScreen] URL di login ricevuto: \(url.absoluteString)")
+                // IMPORTANTE: Imposta l'URL e mostra la WebView in un'unica transazione atomica
+                // per evitare race conditions
+                DispatchQueue.main.async { [weak authService] in
+                    guard authService != nil else { return }
+                    self.loginURL = url
+                    // Aspetta che l'URL sia stato effettivamente settato prima di mostrare la WebView
+                    DispatchQueue.main.async {
+                        self.showWebView = true
+                    }
                 }
 
             case .failure(let error):
                 print("❌ [ACISPIDAuthScreen] Errore: \(error.localizedDescription)")
-                errorBannerMessage = error.localizedDescription
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    showErrorBanner = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        showErrorBanner = false
+                DispatchQueue.main.async {
+                    self.errorBannerMessage = error.localizedDescription
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        self.showErrorBanner = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            self.showErrorBanner = false
+                        }
                     }
                 }
             }
@@ -288,6 +296,12 @@ private struct ErrorBannerView: View {
         loginURL = nil
         authService.reset()
     }
+}
+
+// MARK: - Extensions
+
+extension URL: @retroactive Identifiable {
+    public var id: String { absoluteString }
 }
 
 // MARK: - Preview

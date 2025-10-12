@@ -1198,6 +1198,7 @@ class TireOCRManager: NSObject, ObservableObject {
 struct TyreRegistrationView: View {
     var onConfirmCompletion: (() -> Void)? = nil
     var vehicleid: Int = 0
+    var scanContext: String? = nil
     
     @Environment(\.dismiss) private var dismiss
     @StateObject private var ocrManager = TireOCRManager()
@@ -1289,6 +1290,15 @@ struct TyreRegistrationView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
+
+                if let scanContext {
+                    Text(scanContext)
+                        .font(.customFont(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
+                }
                 
                 // Camera con OCR
                 ZStack {
@@ -2104,4 +2114,3 @@ extension OCRCameraView: AVCaptureVideoDataOutputSampleBufferDelegate {
         return image.cropping(to: cropRect)
     }
 }
-

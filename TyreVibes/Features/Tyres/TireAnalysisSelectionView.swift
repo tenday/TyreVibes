@@ -9,13 +9,14 @@ import SwiftUI
 
 struct TireAnalysisSelectionView: View {
     @StateObject private var garageViewModel = GarageViewModel()
+    @StateObject private var tyreViewModel = TyreViewModel()
     @State private var selectedVehicle: VehicleResponse?
-    @State private var selectedTyre: VehicleTyre?
+    @State private var selectedTyre: TyreRegistered?
     @State private var navigateToAnalysis = false
     @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.customBackgroundColor
                     .ignoresSafeArea()
@@ -39,6 +40,7 @@ struct TireAnalysisSelectionView: View {
                                 .font(.customFont(size: 18, weight: .semibold))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 24)
+                                .padding(.top, 4)
 
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 16) {
@@ -47,10 +49,7 @@ struct TireAnalysisSelectionView: View {
                                             vehicle: vehicle,
                                             isSelected: selectedVehicle?.vehicle.id == vehicle.vehicle.id
                                         ) {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                selectedVehicle = vehicle
-                                                selectedTyre = nil // Reset tyre selection when vehicle changes
-                                            }
+                                            selectVehicle(vehicle)
                                         }
                                     }
                                 }
@@ -66,11 +65,35 @@ struct TireAnalysisSelectionView: View {
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 24)
 
-                                if let tyres = vehicle.tyres, !tyres.isEmpty {
+                                if tyreViewModel.isLoading {
+                                    HStack {
+                                        ProgressView()
+                                            .tint(.white)
+                                        Text(LocalizedStringKey("Loading registered tires..."))
+                                            .font(.customFont(size: 14, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
+                                    .padding(.horizontal, 24)
+                                } else if let error = tyreViewModel.errorMessage {
+                                    Text(error)
+                                        .font(.customFont(size: 13, weight: .medium))
+                                        .foregroundColor(.red.opacity(0.8))
+                                        .padding(.horizontal, 24)
+                                } else if tyreViewModel.registeredTyres.isEmpty {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(LocalizedStringKey("No registered tires found for this vehicle."))
+                                            .font(.customFont(size: 14, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                        Text(LocalizedStringKey("You can add a set from the vehicle details screen."))
+                                            .font(.customFont(size: 13, weight: .regular))
+                                            .foregroundColor(.white.opacity(0.5))
+                                    }
+                                    .padding(.horizontal, 24)
+                                } else {
                                     ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 16) {
-                                            ForEach(tyres, id: \.id) { tyre in
-                                                TyreCard(
+                                        HStack(spacing: 18) {
+                                            ForEach(tyreViewModel.registeredTyres) { tyre in
+                                                RegisteredTyreCard(
                                                     tyre: tyre,
                                                     isSelected: selectedTyre?.id == tyre.id
                                                 ) {
@@ -82,11 +105,6 @@ struct TireAnalysisSelectionView: View {
                                         }
                                         .padding(.horizontal, 24)
                                     }
-                                } else {
-                                    Text(LocalizedStringKey("No data available"))
-                                        .font(.customFont(size: 14, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.6))
-                                        .padding(.horizontal, 24)
                                 }
                             }
                         }
@@ -133,11 +151,41 @@ struct TireAnalysisSelectionView: View {
             }
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $navigateToAnalysis) {
-                TireAnalysisView()
+                if let vehicle = selectedVehicle, let tyre = selectedTyre {
+                    TireAnalysisView(vehicle: vehicle, tyre: tyre)
+                } else {
+                    EmptyView()
+                }
             }
         }
         .task {
             await garageViewModel.fetchCars()
+            if selectedVehicle == nil, let firstVehicle = garageViewModel.vehicles.first {
+                selectVehicle(firstVehicle, animated: false)
+            }
+        }
+        .onChange(of: garageViewModel.vehicles) { _, newVehicles in
+            if selectedVehicle == nil, let firstVehicle = newVehicles.first {
+                selectVehicle(firstVehicle, animated: false)
+            }
+        }
+    }
+
+    private func selectVehicle(_ vehicle: VehicleResponse, animated: Bool = true) {
+        let selection = {
+            selectedVehicle = vehicle
+            selectedTyre = nil
+            tyreViewModel.registeredTyres = []
+            tyreViewModel.errorMessage = nil
+            tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id, forceRefresh: true)
+        }
+
+        if animated {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selection()
+            }
+        } else {
+            selection()
         }
     }
 }
@@ -202,44 +250,35 @@ struct VehicleCard: View {
 }
 
 // MARK: - Tyre Card Component
-struct TyreCard: View {
-    let tyre: VehicleTyre
+struct RegisteredTyreCard: View {
+    let tyre: TyreRegistered
     let isSelected: Bool
     let action: () -> Void
 
     private var displaySize: String {
-        if let sizeLabel = tyre.sizeLabel {
-            return sizeLabel
-        }
-
-        // Fallback: costruisci la stringa dalla larghezza, ratio e diametro
-        var components: [String] = []
-        if let width = tyre.width {
-            components.append("\(width)")
-        }
-        if let ratio = tyre.ratio {
-            components.append("\(ratio)")
-        }
-        if let diameter = tyre.diameter {
-            components.append("R\(diameter)")
-        }
-
-        return components.isEmpty ? "N/A" : components.joined(separator: "/")
+        tyre.size.isEmpty ? "N/A" : tyre.size
     }
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
-                // Tyre Image
+            VStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(Color.customFieldColor)
-                        .frame(width: 120, height: 120)
+                        .frame(width: 140, height: 140)
 
-                    // Placeholder tire image
-                    Image(systemName: "circle.hexagongrid.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.white.opacity(0.7))
+                    VStack(spacing: 10) {
+                        Image(systemName: "circle.grid.3x3.fill")
+                            .font(.system(size: 40, weight: .regular))
+                            .foregroundColor(.white.opacity(0.75))
+
+                        Text(displaySize)
+                            .font(.customFont(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .frame(maxWidth: 120)
+                    }
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
@@ -259,16 +298,42 @@ struct TyreCard: View {
                         )
                 )
 
-                // Tyre Name/Size
-                Text(displaySize)
-                    .font(.customFont(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .frame(width: 120)
+                VStack(spacing: 4) {
+                    Text(tyre.brand)
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+
+                    Text(tyre.model)
+                        .font(.customFont(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.75))
+                        .lineLimit(1)
+
+                    if !tyre.season.isEmpty {
+                        Text(tyre.season.uppercased())
+                            .font(.customFont(size: 11, weight: .bold))
+                            .foregroundColor(.black.opacity(0.8))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(seasonColor(for: tyre.season))
+                            )
+                    }
+                }
+                .frame(width: 140)
             }
         }
         .scaleEffect(isSelected ? 1.05 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    }
+
+    private func seasonColor(for season: String) -> Color {
+        let lower = season.lowercased()
+        if lower.contains("winter") || lower.contains("invern") { return Color.blue.opacity(0.6) }
+        if lower.contains("summer") || lower.contains("estiv") { return Color.orange.opacity(0.7) }
+        if lower.contains("all") || lower.contains("4") { return Color.green.opacity(0.6) }
+        return Color.white.opacity(0.7)
     }
 }
 

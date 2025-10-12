@@ -48,7 +48,6 @@ struct BolloInfoView: View {
             }
         }
         .padding()
-        .background(Color.customFieldColor)
         .cornerRadius(14)
         .onAppear {
             checkAuthenticationStatus()

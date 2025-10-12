@@ -66,7 +66,8 @@ class ConfirmDetailsViewModel: ObservableObject {
     
     
 
-    func savePlate(plateData: PlateData, color: String, angle: Int) async {
+    func savePlate(plateData originalPlateData: PlateData, color: String, angle: Int) async {
+        let plateData = enrichPlateDataWithBollo(originalPlateData)
         isLoading = true
         Task {
             VehicleImageService.fetchVehicleImage(
@@ -196,4 +197,15 @@ class ConfirmDetailsViewModel: ObservableObject {
     }
     
     
+    private func enrichPlateDataWithBollo(_ plateData: PlateData) -> PlateData {
+        if plateData.bollo != nil { return plateData }
+        
+        guard let computed = BolloCalculator.calculateBollo(from: plateData) else {
+            return plateData
+        }
+        
+        var enriched = plateData
+        enriched.bollo = computed
+        return enriched
+    }
 }

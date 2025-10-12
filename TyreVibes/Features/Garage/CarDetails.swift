@@ -348,6 +348,82 @@ fileprivate func makeInsuranceForecasts(for vehicle: VehicleResponse, limit: Int
     return forecasts
 }
 
+fileprivate func sanitizedVehicleText(_ value: String?) -> String? {
+    guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+        return nil
+    }
+    return trimmed
+}
+
+fileprivate func sanitizedUppercased(_ value: String?) -> String? {
+    sanitizedVehicleText(value)?.uppercased()
+}
+
+fileprivate func formatDisplacement(_ displacement: Int?) -> String? {
+    guard let displacement, displacement > 0 else { return nil }
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = "."
+    guard let formatted = formatter.string(from: NSNumber(value: displacement)) else {
+        return "\(displacement) cc"
+    }
+    return "\(formatted) cc"
+}
+
+fileprivate func formatPower(cv: Int?, kw: String?) -> String? {
+    let kwValue = sanitizedVehicleText(kw)
+
+    if let cv, cv > 0, let kwValue {
+        return "\(cv) CV / \(kwValue) kW"
+    }
+    if let cv, cv > 0 {
+        return "\(cv) CV"
+    }
+    if let kwValue {
+        return "\(kwValue) kW"
+    }
+    return nil
+}
+
+fileprivate func formatMaxSpeed(_ maxSpeed: String?) -> String? {
+    guard var value = sanitizedVehicleText(maxSpeed) else { return nil }
+    if value.localizedCaseInsensitiveContains("km") {
+        return value
+    }
+    value = value.replacingOccurrences(of: ",", with: ".")
+    return "\(value) km/h"
+}
+
+fileprivate func formatDoorsSeats(doors: String?, seats: String?) -> String? {
+    let doorsValue = sanitizedVehicleText(doors)
+    let seatsValue = sanitizedVehicleText(seats)
+
+    switch (doorsValue, seatsValue) {
+    case let (doors?, seats?):
+        return "\(doors) porte / \(seats) posti"
+    case let (doors?, nil):
+        return "\(doors) porte"
+    case let (nil, seats?):
+        return "\(seats) posti"
+    default:
+        return nil
+    }
+}
+
+fileprivate func formatConsumption(_ consumption: String?) -> String? {
+    sanitizedVehicleText(consumption)
+}
+
+fileprivate func formatVIN(_ vin: String?) -> String? {
+    guard let vin = sanitizedUppercased(vin) else { return nil }
+    let groups = stride(from: 0, to: vin.count, by: 4).map { index -> String in
+        let start = vin.index(vin.startIndex, offsetBy: index)
+        let end = vin.index(start, offsetBy: 4, limitedBy: vin.endIndex) ?? vin.endIndex
+        return String(vin[start..<end])
+    }
+    return groups.joined(separator: " ")
+}
+
 fileprivate struct TyreInsightDisplay: Identifiable {
     let id = UUID()
     let title: String
@@ -752,7 +828,7 @@ struct CarDetailsView: View {
                                     // Verifica se l'utente può aggiungere altri pneumatici
                                     let tireCount = tyreViewModel.tyres.count
                                     if paywallManager.canAddTire(currentCount: tireCount) {
-                                        showTyreRegistration = true
+                                        showAddTyreSetSheet = true
                                     } else {
                                         paywallManager.showPaywall(for: .unlimitedTires)
                                     }
@@ -834,49 +910,7 @@ struct CarDetailsView: View {
                                 }
 
                                 // Card per aggiungere doppia misura pneumatico
-                                Button(action: {
-                                    showAddTyreSetSheet = true
-                                }) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .fill(
-                                                LinearGradient(
-                                                    gradient: Gradient(colors: [Color.orange.opacity(0.3), Color.orange.opacity(0.1)]),
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
-                                            .frame(width: 188, height: 231)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 16)
-                                                    .stroke(Color.orange.opacity(0.5), lineWidth: 2)
-                                            )
-
-                                        VStack(spacing: 12) {
-                                            Image(systemName: "plus.circle.fill")
-                                                .font(.system(size: 48, weight: .medium))
-                                                .foregroundColor(.orange)
-
-                                            VStack(spacing: 6) {
-                                                Text("Aggiungi")
-                                                    .font(.customFont(size: 15, weight: .bold))
-                                                    .foregroundColor(.white)
-                                                Text("doppia misura")
-                                                    .font(.customFont(size: 14, weight: .semibold))
-                                                    .foregroundColor(.white)
-                                                Text("pneumatico")
-                                                    .font(.customFont(size: 14, weight: .semibold))
-                                                    .foregroundColor(.white)
-                                            }
-
-                                            Text("Per veicoli\nperformance")
-                                                .font(.customFont(size: 12, weight: .regular))
-                                                .foregroundColor(.white.opacity(0.7))
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        .padding(16)
-                                    }
-                                }
+                                
                             }
                             .padding(.vertical, 9)
                             .padding(.horizontal, 8)
@@ -1013,7 +1047,11 @@ struct CarDetailsView: View {
                 PremiumSubscriptionScreen()
             }
             .sheet(isPresented: $showAddTyreSetSheet) {
-                AddTyreSetView(vehicleId: vehicle.vehicle.id, tyreViewModel: tyreViewModel)
+                AddTyreSetView(
+                    vehicleId: vehicle.vehicle.id,
+                    vehicleTyres: vehicle.tyres ?? [],
+                    tyreViewModel: tyreViewModel
+                )
             }
             .sheet(isPresented: $show360View) {
                 if let make = vehicle.vehicle.make,
@@ -1085,6 +1123,291 @@ struct CarDetailsView: View {
     
 }
 
+
+fileprivate struct VehicleInfoHighlight: Identifiable {
+    let id = UUID()
+    let icon: String
+    let title: LocalizedStringKey
+    let value: String
+}
+
+fileprivate struct VehicleInfoSpec: Identifiable {
+    let id = UUID()
+    let icon: String
+    let label: LocalizedStringKey
+    let value: String
+    let detail: String?
+
+    init(icon: String, label: LocalizedStringKey, value: String, detail: String? = nil) {
+        self.icon = icon
+        self.label = label
+        self.value = value
+        self.detail = detail
+    }
+}
+
+fileprivate struct VehicleInfoSection: View {
+    let vehicle: VehicleResponse
+    let onTapInfo: () -> Void
+    let onTap360: () -> Void
+
+    private let highlightColumns = [
+        GridItem(.adaptive(minimum: 150), spacing: 12, alignment: .leading)
+    ]
+
+    private let specColumns = [
+        GridItem(.adaptive(minimum: 170), spacing: 16, alignment: .top)
+    ]
+
+    private var plateValue: String {
+        sanitizedUppercased(vehicle.plate?.plateNumber) ?? "-"
+    }
+
+    private var registrationValue: String {
+        let formatted = formatVehicleInfoDate(vehicle.plate?.registrationDate)
+        return formatted == "N/A" ? "-" : formatted
+    }
+
+    private var powerValue: String {
+        formatPower(cv: vehicle.vehicle.powerCV, kw: vehicle.vehicle.powerKW) ?? "-"
+    }
+
+    private var highlightItems: [VehicleInfoHighlight] {
+        let items = [
+            VehicleInfoHighlight(
+                icon: "number.square.fill",
+                title: LocalizedStringKey("License plate"),
+                value: plateValue
+            ),
+            VehicleInfoHighlight(
+                icon: "calendar",
+                title: LocalizedStringKey("Registration"),
+                value: registrationValue
+            ),
+            VehicleInfoHighlight(
+                icon: "bolt.fill",
+                title: LocalizedStringKey("Power"),
+                value: powerValue
+            )
+        ]
+        let filtered = items.filter { $0.value != "-" }
+        return filtered.isEmpty ? items : filtered
+    }
+
+    private var specItems: [VehicleInfoSpec] {
+        var items: [VehicleInfoSpec] = []
+
+        if let make = sanitizedUppercased(vehicle.vehicle.make) {
+            items.append(VehicleInfoSpec(icon: "car.2.fill", label: "Make", value: make))
+        }
+        if let model = sanitizedUppercased(vehicle.vehicle.model) {
+            items.append(VehicleInfoSpec(icon: "car.fill", label: "Model", value: model))
+        }
+        if let year = vehicle.plate?.year {
+            items.append(VehicleInfoSpec(icon: "calendar", label: "Year", value: "\(year)"))
+        }
+        if let version = sanitizedUppercased(vehicle.vehicle.version) ?? sanitizedUppercased(vehicle.vehicle.modelDetail) {
+            items.append(VehicleInfoSpec(icon: "square.grid.2x2", label: "Version", value: version))
+        }
+        if let color = sanitizedUppercased(vehicle.vehicle.color) {
+            items.append(VehicleInfoSpec(icon: "paintpalette", label: "Color", value: color))
+        }
+        if let engine = sanitizedUppercased(vehicle.vehicle.engine) {
+            items.append(VehicleInfoSpec(icon: "gearshape.2", label: "Engine", value: engine))
+        }
+        if let displacement = formatDisplacement(vehicle.vehicle.displacementCC) {
+            items.append(VehicleInfoSpec(icon: "speedometer", label: "Displacement", value: displacement))
+        }
+        if let fuel = sanitizedUppercased(vehicle.vehicle.fuelType) {
+            items.append(VehicleInfoSpec(icon: "fuelpump", label: "Fuel Type", value: fuel))
+        }
+        if let power = formatPower(cv: vehicle.vehicle.powerCV, kw: vehicle.vehicle.powerKW) {
+            items.append(VehicleInfoSpec(icon: "bolt.fill", label: "Horsepower", value: power))
+        }
+        if let emission = sanitizedUppercased(vehicle.vehicle.emissionClass) {
+            items.append(VehicleInfoSpec(icon: "leaf.fill", label: "Emission Class", value: emission))
+        }
+        if let gearbox = sanitizedUppercased(vehicle.vehicle.gearbox) {
+            items.append(VehicleInfoSpec(icon: "gearshape", label: "Gearbox", value: gearbox))
+        }
+        if let traction = sanitizedUppercased(vehicle.vehicle.traction) {
+            items.append(VehicleInfoSpec(icon: "arrow.left.and.right", label: "Traction", value: traction))
+        }
+        if let body = sanitizedUppercased(vehicle.vehicle.bodyType) {
+            items.append(VehicleInfoSpec(icon: "car.rear", label: "Body Type", value: body))
+        }
+        if let cabin = formatDoorsSeats(doors: vehicle.vehicle.doors, seats: vehicle.vehicle.seats) {
+            items.append(VehicleInfoSpec(icon: "person.2.fill", label: "Interior", value: cabin))
+        }
+        if let consumption = formatConsumption(vehicle.vehicle.consumption) {
+            items.append(VehicleInfoSpec(icon: "chart.line.uptrend.xyaxis", label: "Consumption", value: consumption))
+        }
+        if let maxSpeed = formatMaxSpeed(vehicle.vehicle.maxSpeed) {
+            items.append(VehicleInfoSpec(icon: "gauge", label: "Max Speed", value: maxSpeed))
+        }
+        if let vin = formatVIN(vehicle.vehicle.vin) {
+            items.append(VehicleInfoSpec(icon: "barcode.viewfinder", label: "VIN", value: vin))
+        }
+
+        if let saleStart = sanitizedVehicleText(vehicle.vehicle.saleStart),
+           let saleEnd = sanitizedVehicleText(vehicle.vehicle.saleEnd) {
+            items.append(
+                VehicleInfoSpec(
+                    icon: "calendar.badge.plus",
+                    label: "Sale Period",
+                    value: "\(saleStart) - \(saleEnd)"
+                )
+            )
+        }
+
+        return items
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(LocalizedStringKey("Technical Specs"))
+                    .font(.customFont(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                HStack(spacing: 12) {
+                    Button(action: onTap360) {
+                        Image(systemName: "arkit")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.white.opacity(0.15), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onTapInfo) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.white.opacity(0.15), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if !highlightItems.isEmpty {
+                LazyVGrid(columns: highlightColumns, spacing: 12) {
+                    ForEach(highlightItems) { item in
+                        VehicleInfoHighlightCard(item: item)
+                    }
+                }
+            }
+
+            if !specItems.isEmpty {
+                Divider()
+                    .overlay(Color.white.opacity(0.08))
+
+                LazyVGrid(columns: specColumns, spacing: 16) {
+                    ForEach(specItems) { item in
+                        VehicleInfoSpecCard(item: item)
+                    }
+                }
+            } else {
+                Text(LocalizedStringKey("No vehicle details available."))
+                    .font(.customFont(size: 13, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.customFieldColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+}
+
+fileprivate struct VehicleInfoHighlightCard: View {
+    let item: VehicleInfoHighlight
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.white.opacity(0.12))
+                    )
+
+                Text(item.title)
+                    .font(.customFont(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+
+            Text(item.value)
+                .font(.customFont(size: 18, weight: .bold))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(14)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.12),
+                    Color.white.opacity(0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+fileprivate struct VehicleInfoSpecCard: View {
+    let item: VehicleInfoSpec
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                Text(item.label)
+                    .font(.customFont(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+
+            Text(item.value)
+                .font(.customFont(size: 15, weight: .semibold))
+                .foregroundColor(.white)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+
+            if let detail = item.detail {
+                Text(detail)
+                    .font(.customFont(size: 11, weight: .regular))
+                    .foregroundColor(.white.opacity(0.55))
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
+    }
+}
+
 struct AdvancedInfoSheet: View {
     let vehicle: VehicleResponse
     let registeredTyres: [TyreRegistered]
@@ -1096,25 +1419,49 @@ struct AdvancedInfoSheet: View {
     @State private var currentTab = 0
     @State private var tabSelectorOffset: CGFloat = 0
     @State private var isTabTransitioning = false
-    
+    @State private var isRefreshing = false
+
     private var tabs: [String] {
         [
+            String(localized: "Specifiche"),
             String(localized: "Revisions"),
             String(localized: "Supported Tyres"),
             String(localized: "Insurances"),
             String(localized: "Bollo")
         ]
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header with title and done button
+            // Enhanced Header with refresh button
             HStack {
-                Text(LocalizedStringKey("Vehicle Info"))
-                    .font(.customFont(size: 20, weight: .bold))
-                    .foregroundColor(.white)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("Vehicle Info"))
+                        .font(.customFont(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+
+                    if let make = vehicle.vehicle.make, let model = vehicle.vehicle.model {
+                        Text("\(make) \(model)")
+                            .font(.customFont(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
 
                 Spacer()
+
+                // Refresh button
+                Button(action: refreshData) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                        .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(10)
+                .disabled(isRefreshing)
 
                 if #available(iOS 26.0, *) {
                     Button(action: { dismiss() }) {
@@ -1124,44 +1471,63 @@ struct AdvancedInfoSheet: View {
                     }
                     .buttonStyle(.glass)
                 } else {
-                    // Fallback on earlier versions
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
             .padding(.bottom, 10)
-            
+
             // Enhanced Tab Picker with Liquid Glass Design
             VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
-                        let isSelected = currentTab == index
-                        
-                        Button(action: {
-                            withAnimation(SpringAnimation.bouncy) {
-                                currentTab = index
-                                isTabTransitioning = true
-                            }
-                            
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                isTabTransitioning = false
-                            }
-                        }) {
-                            VStack(spacing: 8) {
-                                HStack(spacing: 6) {
-                                    // Tab Icon
-                                    Image(systemName: tabIcon(for: index))
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-                                        .scaleEffect(isSelected ? 1.1 : 1.0)
-                                        .animation(SpringAnimation.snappy, value: isSelected)
-                                    
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                            let isSelected = currentTab == index
+
+                            Button(action: {
+                                withAnimation(SpringAnimation.bouncy) {
+                                    currentTab = index
+                                    isTabTransitioning = true
+                                }
+
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    isTabTransitioning = false
+                                }
+                            }) {
+                                HStack(spacing: 8) {
+                                    // Tab Icon - Fixed logic
+                                    if let iconName = tabIcon(for: index) {
+                                        if isCustomIcon(iconName) {
+                                            Image(iconName)
+                                                .renderingMode(.template)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: 16, height: 16)
+                                                .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                                .scaleEffect(isSelected ? 1.1 : 1.0)
+                                                .animation(SpringAnimation.snappy, value: isSelected)
+                                        } else {
+                                            Image(systemName: iconName)
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                                .scaleEffect(isSelected ? 1.1 : 1.0)
+                                                .animation(SpringAnimation.snappy, value: isSelected)
+                                        }
+                                    }
+
                                     Text(tab)
                                         .font(.customFont(size: 14, weight: .semibold))
                                         .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                        .lineLimit(1)
                                 }
-                                .padding(.vertical, 12)
-                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .fixedSize()
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(.ultraThinMaterial)
@@ -1186,20 +1552,28 @@ struct AdvancedInfoSheet: View {
                                         )
                                 )
                                 .animation(SpringAnimation.fluid, value: isSelected)
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                         }
-                        .frame(maxWidth: .infinity)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
+                    .padding(.bottom, 10)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                .padding(.bottom, 10)
             }
             .background(.thinMaterial)
-            
+
             // Content with spectacular transition animations
             ZStack {
                 if currentTab == 0 {
+                    // NEW: Specifiche Tab
+                    VehicleSpecificationsView(vehicle: vehicle)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)
+                        ))
+                } else if currentTab == 1 {
                     AdvancedRevisionsTable(
                         revisions: vehicle.revisions ?? [],
                         forecastRevisions: makeRevisionForecasts(for: vehicle),
@@ -1209,7 +1583,7 @@ struct AdvancedInfoSheet: View {
                         insertion: .move(edge: .leading).combined(with: .opacity),
                         removal: .move(edge: .trailing).combined(with: .opacity)
                     ))
-                } else if currentTab == 1 {
+                } else if currentTab == 2 {
                     AdvancedTyresTable(
                         tyres: vehicle.tyres ?? [],
                         registeredTyres: registeredTyres,
@@ -1221,7 +1595,7 @@ struct AdvancedInfoSheet: View {
                         insertion: .scale(scale: 0.8).combined(with: .opacity),
                         removal: .scale(scale: 0.8).combined(with: .opacity)
                     ))
-                } else if currentTab == 2 {
+                } else if currentTab == 3 {
                     AdvancedInsuranceTable(
                         insurances: vehicle.insurances ?? [],
                         forecastInsurances: makeInsuranceForecasts(for: vehicle),
@@ -1231,17 +1605,17 @@ struct AdvancedInfoSheet: View {
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
-                } else if currentTab == 3 {
-                        // Sezione Bollo
-                        BolloInfoView(vehicle: vehicle)
+                } else if currentTab == 4 {
+                    // Sezione Bollo
+                    BolloInfoView(vehicle: vehicle)
                         .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8).combined(with: .opacity),
-                        removal: .scale(scale: 0.8).combined(with: .opacity)
-                    ))
+                            insertion: .scale(scale: 0.8).combined(with: .opacity),
+                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
                 }
             }
             .animation(SpringAnimation.fluid, value: currentTab)
-            
+
             Spacer()
         }
         .background(
@@ -1257,22 +1631,300 @@ struct AdvancedInfoSheet: View {
             .ignoresSafeArea()
         )
     }
-    
-    private func tabIcon(for index: Int) -> String {
+
+    private func tabIcon(for index: Int) -> String? {
         switch index {
-        case 0: return "doc.text.magnifyingglass"
-        case 1: return "car.circle"
-        case 2: return "shield.checkered"
-        default: return "questionmark"
+        case 0:
+            return "info.circle.fill"
+        case 1:
+            return "doc.text.magnifyingglass"
+        case 2:
+            return "tyreIcon"
+        case 3:
+            return "shield.checkered"
+        case 4:
+            return "bolloIcon"
+        default:
+            return nil
         }
     }
-    
+
+    private func isCustomIcon(_ iconName: String) -> Bool {
+        return iconName == "tyreIcon" || iconName == "bolloIcon"
+    }
+
     private func tabGradientColors(for index: Int) -> [Color] {
         switch index {
-        case 0: return [.green, .mint] // Revisions
-        case 1: return [.blue, .cyan] // Tyres
-        case 2: return [.purple, .pink] // Insurance
+        case 0: return [.blue, .cyan]
+        case 1: return [.green, .mint]
+        case 2: return [.orange, .yellow]
+        case 3: return [.purple, .pink]
+        case 4: return [.red, .orange]
         default: return [.gray, .gray]
+        }
+    }
+
+    private func refreshData() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isRefreshing = true
+        }
+
+        // Simulate refresh with haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isRefreshing = false
+            }
+
+            let successGenerator = UINotificationFeedbackGenerator()
+            successGenerator.notificationOccurred(.success)
+        }
+    }
+}
+
+// MARK: - Vehicle Specifications View
+struct VehicleSpecificationsView: View {
+    let vehicle: VehicleResponse
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 20) {
+                // Vehicle Identity Section
+                SpecificationSection(
+                    title: "Identificazione",
+                    icon: "car.fill",
+                    color: .blue,
+                    items: [
+                        ("Marca", vehicle.vehicle.make ?? "N/A"),
+                        ("Modello", vehicle.vehicle.model ?? "N/A"),
+                        ("Versione", vehicle.vehicle.version ?? "N/A"),
+                        ("Dettagli Modello", vehicle.vehicle.modelDetail ?? "N/A"),
+                        ("VIN", vehicle.vehicle.vin ?? "N/A"),
+                        ("Targa", vehicle.plate?.plateNumber ?? "N/A"),
+                        ("Anno Immatricolazione", vehicle.plate?.year != nil ? "\(vehicle.plate!.year!)" : "N/A"),
+                        ("Data Immatricolazione", vehicle.plate?.registrationDate ?? "N/A")
+                    ]
+                )
+
+                // Engine & Performance Section
+                SpecificationSection(
+                    title: "Motore & Prestazioni",
+                    icon: "engine.combustion.fill",
+                    color: .orange,
+                    items: [
+                        ("Motorizzazione", vehicle.vehicle.engine ?? "N/A"),
+                        ("Alimentazione", vehicle.vehicle.fuelType ?? "N/A"),
+                        ("Cilindrata", vehicle.vehicle.displacementCC != nil ? "\(vehicle.vehicle.displacementCC!) cc" : "N/A"),
+                        ("Potenza", vehicle.vehicle.powerCV != nil ? "\(vehicle.vehicle.powerCV!) CV" : "N/A"),
+                        ("Potenza (kW)", vehicle.vehicle.powerKW ?? "N/A"),
+                        ("Velocità Massima", vehicle.vehicle.maxSpeed ?? "N/A"),
+                        ("Classe Emissioni", vehicle.vehicle.emissionClass ?? "N/A"),
+                        ("Consumo", vehicle.vehicle.consumption ?? "N/A")
+                    ]
+                )
+
+                // Technical Details Section
+                SpecificationSection(
+                    title: "Caratteristiche Tecniche",
+                    icon: "gearshape.2.fill",
+                    color: .purple,
+                    items: [
+                        ("Cambio", vehicle.vehicle.gearbox ?? "N/A"),
+                        ("Trazione", vehicle.vehicle.traction ?? "N/A"),
+                        ("Carrozzeria", vehicle.vehicle.bodyType ?? "N/A"),
+                        ("Porte", vehicle.vehicle.doors ?? "N/A"),
+                        ("Posti", vehicle.vehicle.seats ?? "N/A"),
+                        ("Colore", vehicle.vehicle.color?.capitalized ?? "N/A")
+                    ]
+                )
+
+                // Production & Sales Section
+                SpecificationSection(
+                    title: "Produzione e Vendita",
+                    icon: "calendar.badge.clock",
+                    color: .green,
+                    items: [
+                        ("Inizio Vendita", vehicle.vehicle.saleStart ?? "N/A"),
+                        ("Fine Vendita", vehicle.vehicle.saleEnd ?? "N/A"),
+                        ("Data Creazione Record", vehicle.vehicle.createdAt ?? "N/A")
+                    ]
+                )
+
+                // Tyres Summary (if available)
+                if let tyres = vehicle.tyres, !tyres.isEmpty {
+                    TyresSummarySection(tyres: tyres)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+        }
+    }
+}
+
+// MARK: - Specification Section Component
+struct SpecificationSection: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let items: [(String, String)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section Header
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.2))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(color)
+                }
+
+                Text(title)
+                    .font(.customFont(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+
+                Spacer()
+            }
+
+            // Items Grid
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    SpecificationRow(label: item.0, value: item.1)
+
+                    if index < items.count - 1 {
+                        Divider()
+                            .background(Color.customGray.opacity(0.3))
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.black.opacity(0.25))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(color.opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+    }
+}
+
+// MARK: - Specification Row Component
+struct SpecificationRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(label)
+                .font(.customFont(size: 14, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(value)
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - Tyres Summary Section
+struct TyresSummarySection: View {
+    let tyres: [VehicleTyre]
+
+    var tyreSets: [String: [VehicleTyre]] {
+        Dictionary(grouping: tyres) { $0.setName ?? "Standard" }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section Header
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.2))
+                        .frame(width: 44, height: 44)
+
+                    Image("tyreIcon")
+                        .renderingMode(.template)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 22, height: 22)
+                        .foregroundColor(.orange)
+                }
+
+                Text("Riepilogo Pneumatici")
+                    .font(.customFont(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+
+                Spacer()
+            }
+
+            // Tyre Sets
+            VStack(spacing: 12) {
+                ForEach(Array(tyreSets.keys.sorted()), id: \.self) { setName in
+                    if let setTyres = tyreSets[setName] {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(setName)
+                                .font(.customFont(size: 15, weight: .bold))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 12)
+
+                            ForEach(setTyres) { tyre in
+                                HStack {
+                                    Text(tyre.sizeLabel ?? "N/A")
+                                        .font(.customFont(size: 14, weight: .semibold))
+                                        .foregroundColor(.white)
+
+                                    Spacer()
+
+                                    if let speedIndex = tyre.speedIndex, !speedIndex.isEmpty {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "speedometer")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.white.opacity(0.6))
+                                            Text(speedIndex)
+                                                .font(.customFont(size: 13, weight: .medium))
+                                                .foregroundColor(.white.opacity(0.8))
+                                        }
+                                    }
+
+                                    if let loadIndex = tyre.loadIndex, !loadIndex.isEmpty {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "scalemass")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.white.opacity(0.6))
+                                            Text(loadIndex)
+                                                .font(.customFont(size: 13, weight: .medium))
+                                                .foregroundColor(.white.opacity(0.8))
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                            }
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.black.opacity(0.25))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -2346,7 +2998,6 @@ struct EmptyStateView: View {
     }
 }
 
-
 struct DetailItem: View {
     let label: String
     let value: String
@@ -2357,7 +3008,6 @@ struct DetailItem: View {
                 .inset(by: 0.5)
                 .stroke(Color(red: 0.95, green: 0.4, blue: 0.34), lineWidth: 1)
                 .frame(width: 1, height: 40)
-                //.padding(.trailing, 4)
             VStack(alignment: .leading, spacing: 3) {
                 Text(label)
                     .font(.customFont(size: 12, weight: .semibold))
@@ -2673,4 +3323,3 @@ struct InsuranceForecastRow: View {
         )
     }
 }
-

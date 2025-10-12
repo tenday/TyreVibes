@@ -116,6 +116,7 @@ public struct PlateData {
     public var powerCVKW: String?
     
     public var revisioni: [Revisione]?
+    public var bollo: BolloCalculationResult? = nil
     
     public var vehicleImage: UIImage?
     public var vehicleAngle: Int?
@@ -3089,4 +3090,3 @@ extension VehicleImageService {
         }
     }
 }
-

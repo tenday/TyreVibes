@@ -114,36 +114,6 @@
             endingLineNumber = "25"
             landmarkName = "toHex()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "5141D40E-7290-4EE2-977B-7E823879A639 - 68ac416c7129b0c3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SwiftUI.Color.toHex() -&gt; Swift.Optional&lt;Swift.String&gt;"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Utility/Color+Hex.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "25"
-                  endingLineNumber = "25">
-               </Location>
-               <Location
-                  uuid = "5141D40E-7290-4EE2-977B-7E823879A639 - 68ac416c7129b0c3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SwiftUI.Color.toHex() -&gt; Swift.Optional&lt;Swift.String&gt;"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Utility/Color+Hex.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "25"
-                  endingLineNumber = "25">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -576,36 +546,6 @@
             endingLineNumber = "139"
             landmarkName = "insertTyre(vehicleId:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "FB5EB708-ABC2-4A13-8AB5-55B33EAD8F42 - 68a1ff515b6fb70b"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.insertTyre(vehicleId: Swift.Int) -&gt; ()"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "140"
-                  endingLineNumber = "140">
-               </Location>
-               <Location
-                  uuid = "FB5EB708-ABC2-4A13-8AB5-55B33EAD8F42 - 3e8ad432d12de2ea"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in TyreVibes.TyreViewModel.insertTyre(vehicleId: Swift.Int) -&gt; ()"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "140"
-                  endingLineNumber = "140">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -702,36 +642,6 @@
             endingLineNumber = "612"
             landmarkName = "fetchQuattroruotePlateData(plate:anchorURL:completion:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "0DED2273-463F-4E8C-B0C5-88E82C3A655A - d57d6c3ad1e404b1"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 (Swift.Result&lt;Swift.String, Swift.Error&gt;) -&gt; () in static TyreVibes.LicensePlateReader.fetchQuattroruotePlateData(plate: Swift.String, anchorURL: Swift.String, completion: (Swift.Result&lt;Swift.Dictionary&lt;Swift.String, Any&gt;, Swift.Error&gt;) -&gt; ()) -&gt; ()"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Helper/LicensePlateReader.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "612"
-                  endingLineNumber = "612">
-               </Location>
-               <Location
-                  uuid = "0DED2273-463F-4E8C-B0C5-88E82C3A655A - d57d6c3ad1e404b1"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 (Swift.Result&lt;Swift.String, Swift.Error&gt;) -&gt; () in static TyreVibes.LicensePlateReader.fetchQuattroruotePlateData(plate: Swift.String, anchorURL: Swift.String, completion: (Swift.Result&lt;Swift.Dictionary&lt;Swift.String, Any&gt;, Swift.Error&gt;) -&gt; ()) -&gt; ()"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Helper/LicensePlateReader.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "612"
-                  endingLineNumber = "612">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -764,36 +674,6 @@
             endingLineNumber = "609"
             landmarkName = "fetchQuattroruotePlateData(plate:anchorURL:completion:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "57699F0D-315F-4DCE-A90A-9D2694E6DB64 - d57d6c3ad1e4052c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 (Swift.Result&lt;Swift.String, Swift.Error&gt;) -&gt; () in static TyreVibes.LicensePlateReader.fetchQuattroruotePlateData(plate: Swift.String, anchorURL: Swift.String, completion: (Swift.Result&lt;Swift.Dictionary&lt;Swift.String, Any&gt;, Swift.Error&gt;) -&gt; ()) -&gt; ()"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Helper/LicensePlateReader.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "609"
-                  endingLineNumber = "609">
-               </Location>
-               <Location
-                  uuid = "57699F0D-315F-4DCE-A90A-9D2694E6DB64 - d57d6c3ad1e4052c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 @Sendable (Swift.Optional&lt;Foundation.Data&gt;, Swift.Optional&lt;__C.NSURLResponse&gt;, Swift.Optional&lt;Swift.Error&gt;) -&gt; () in closure #1 (Swift.Result&lt;Swift.String, Swift.Error&gt;) -&gt; () in static TyreVibes.LicensePlateReader.fetchQuattroruotePlateData(plate: Swift.String, anchorURL: Swift.String, completion: (Swift.Result&lt;Swift.Dictionary&lt;Swift.String, Any&gt;, Swift.Error&gt;) -&gt; ()) -&gt; ()"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Helper/LicensePlateReader.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "609"
-                  endingLineNumber = "609">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

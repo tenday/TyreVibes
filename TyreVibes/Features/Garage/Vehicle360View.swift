@@ -10,7 +10,7 @@ struct Vehicle360View: View {
     @State private var images: [UIImage?] = []
     @State private var currentIndex: Int = 0
     @State private var isPlaying: Bool = false
-    @State private var timer: Timer?
+    @State private var animationTask: Task<Void, Never>?
     @Binding var loadingProgress: Double
     @Binding var isLoading: Bool
     @State private var scale: CGFloat = 1.0
@@ -175,10 +175,10 @@ struct Vehicle360View: View {
         )
         .onAppear {
             preload()
-            stopTimer()
+            stopAutoRotateTask()
         }
         .onDisappear {
-            stopTimer()
+            stopAutoRotateTask()
             VehicleImageService.clearCache()
         }
     }
@@ -211,28 +211,35 @@ struct Vehicle360View: View {
         )
     }
 
-    private func startTimer() {
-        stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { _ in
-            withAnimation(.linear(duration: 0.1)) {
-                currentIndex = (currentIndex + 1) % max(angles.count, 1)
+    private func startAutoRotateTask() {
+        stopAutoRotateTask()
+        animationTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 120_000_000) // 0.12s
+                withAnimation(.linear(duration: 0.1)) {
+                    currentIndex = (currentIndex + 1) % max(angles.count, 1)
+                }
             }
         }
     }
 
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
+    private func stopAutoRotateTask() {
+        animationTask?.cancel()
+        animationTask = nil
     }
 
     private func togglePlay() {
         isPlaying.toggle()
-        isPlaying ? startTimer() : stopTimer()
+        if isPlaying {
+            startAutoRotateTask()
+        } else {
+            stopAutoRotateTask()
+        }
     }
 
     private func handleDrag(_ value: DragGesture.Value) {
         if isPlaying {
-            stopTimer()
+            stopAutoRotateTask()
             isPlaying = false
             baseIndex = currentIndex
         }

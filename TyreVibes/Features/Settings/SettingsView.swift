@@ -84,15 +84,15 @@ struct SettingsView: View {
             .task {
                 viewModel.onAppear()
             }
-            .onChange(of: viewModel.backgroundSync) { _ in viewModel.handleBackgroundSyncChange() }
-            .onChange(of: viewModel.batteryOptimization) { _ in viewModel.handleBatteryOptimizationChange() }
-            .onChange(of: viewModel.imageQuality) { _ in viewModel.handleImageQualityChange() }
-            .onChange(of: viewModel.cacheManagement) { _ in viewModel.handleCacheManagementChange() }
-            .onChange(of: viewModel.biometricAuth) { _ in viewModel.handleBiometricChange() }
-            .onChange(of: viewModel.privacyLevel) { _ in viewModel.handlePrivacyLevelChange() }
-            .onChange(of: viewModel.selectedLanguage) { _ in viewModel.handleLanguageChange() }
-            .onChange(of: viewModel.locationPermission) { _ in viewModel.handleLocationChange() }
-            .onChange(of: viewModel.cameraPermission) { _ in viewModel.handleCameraChange() }
+            .onChange(of: viewModel.backgroundSync) { oldValue, newValue in viewModel.handleBackgroundSyncChange() }
+            .onChange(of: viewModel.batteryOptimization) { oldValue, newValue in viewModel.handleBatteryOptimizationChange() }
+            .onChange(of: viewModel.imageQuality) { oldValue, newValue in viewModel.handleImageQualityChange() }
+            .onChange(of: viewModel.cacheManagement) { oldValue, newValue in viewModel.handleCacheManagementChange() }
+            .onChange(of: viewModel.biometricAuth) { oldValue, newValue in viewModel.handleBiometricChange() }
+            .onChange(of: viewModel.privacyLevel) { oldValue, newValue in viewModel.handlePrivacyLevelChange() }
+            .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in viewModel.handleLanguageChange() }
+            .onChange(of: viewModel.locationPermission) { oldValue, newValue in viewModel.handleLocationChange() }
+            .onChange(of: viewModel.cameraPermission) { oldValue, newValue in viewModel.handleCameraChange() }
         }
     }
 }

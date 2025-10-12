@@ -37,30 +37,31 @@ struct MapView: View {
                 performSearch()
             }
         }
-        .onChange(of: mapManager.searchResults) { newValue in
-            guard !newValue.isEmpty else {
+        .onChange(of: mapManager.searchResults) {
+            let results = mapManager.searchResults
+            guard !results.isEmpty else {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                     selectedResult = nil
                 }
                 return
             }
 
-            let coordinates = newValue.map { $0.placemark.coordinate }
+            let coordinates = results.map { $0.placemark.coordinate }
             let region = regionFor(coordinates: coordinates)
 
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 cameraPosition = .region(region)
             }
 
-            if let current = selectedResult, newValue.contains(current) {
+            if let current = selectedResult, results.contains(current) {
                 selectedResult = current
             } else {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                    selectedResult = newValue.first
+                    selectedResult = results.first
                 }
             }
         }
-        .onChange(of: selectedCategory) { _ in
+        .onChange(of: selectedCategory) {
             performSearch(haptics: true)
         }
     }

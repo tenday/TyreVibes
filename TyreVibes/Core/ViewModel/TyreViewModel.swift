@@ -1,5 +1,72 @@
 import Foundation
 
+struct TyreRegistrationPayload {
+    let brand: String
+    let model: String
+    let size: String
+    let dot: String
+    let loadIndex: String
+    let speedRating: String
+    let season: String
+
+    init(
+        brand: String,
+        model: String,
+        size: String,
+        dot: String,
+        loadIndex: String,
+        speedRating: String,
+        season: String
+    ) {
+        self.brand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.model = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.size = size.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.dot = dot.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.loadIndex = loadIndex.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.speedRating = speedRating.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.season = season.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func toDictionary(vehicleId: Int) -> [String: Any] {
+        [
+            "vehicle_id": vehicleId,
+            "brand": brand,
+            "model": model,
+            "size": size,
+            "dot": dot,
+            "loadIndex": loadIndex,
+            "speedRating": speedRating,
+            "season": season
+        ]
+    }
+}
+
+enum TyreRegistrationError: LocalizedError {
+    case missingBaseURL
+    case invalidURL
+    case encodingFailed
+    case server(status: Int, message: String?)
+    case emptyResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .missingBaseURL:
+            return "Base URL non configurato"
+        case .invalidURL:
+            return "URL non valido"
+        case .encodingFailed:
+            return "Errore nella codifica dei dati pneumatico"
+        case let .server(status, message):
+            if let message = message, !message.isEmpty {
+                return "Errore server (\(status)): \(message)"
+            }
+            return "Errore server (\(status))"
+        case .emptyResponse:
+            return "Risposta vuota dal server"
+        }
+    }
+}
+
 // MARK: - Cache Manager
 class TyreCacheManager {
     static let shared = TyreCacheManager()
@@ -97,73 +164,17 @@ class TyreViewModel: ObservableObject {
     }
 
     func insertTyre(vehicleId: Int) {
+        let payload = TyreRegistrationPayload(
+            brand: brand,
+            model: model,
+            size: size,
+            dot: dot,
+            loadIndex: loadIndex,
+            speedRating: speedRating,
+            season: season
+        )
 
-        guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
-            errorMessage = "Base URL non configurato"
-            return
-        }
-
-        guard let url = URL(string: baseURLString + "/v1/tyres_vehicles") else {
-            errorMessage = "URL non valido"
-            return
-        }
-
-        let record: [String: Any] = [
-            "vehicle_id": vehicleId,
-            "brand": brand,
-            "model": model.trimmingCharacters(in: .whitespacesAndNewlines),
-            "size": size,
-            "dot": dot,
-            "loadIndex": loadIndex,
-            "speedRating": speedRating,
-            "season": season
-        ]
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: record, options: [])
-        } catch {
-            errorMessage = "Errore JSON: \(error.localizedDescription)"
-            return
-        }
-
-        isLoading = true
-        errorMessage = nil
-        success = false
-
-        print("🔄 Inviando richiesta insertTyre per vehicleId: \(vehicleId)")
-        print("📦 Dati: \(record)")
-
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                if let error = error {
-                    print("❌ Errore network: \(error.localizedDescription)")
-                    self?.errorMessage = error.localizedDescription
-                    return
-                }
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("📡 Status code: \(httpResponse.statusCode)")
-                    if !(200...299).contains(httpResponse.statusCode) {
-                        if let data = data, let responseBody = String(data: data, encoding: .utf8) {
-                            print("📄 Response body: \(responseBody)")
-                        }
-                        self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
-                        return
-                    }
-                }
-                if let data = data, let responseBody = String(data: data, encoding: .utf8) {
-                    print("✅ Response: \(responseBody)")
-                }
-                print("✅ Inserimento completato con successo")
-                self?.success = true
-                // Invalida la cache dopo l'inserimento
-                TyreCacheManager.shared.invalidateCache(forVehicleId: vehicleId)
-            }
-        }.resume()
+        registerTyres([payload], vehicleId: vehicleId)
     }
 
     func fetchTyres(vehicleId: Int, forceRefresh: Bool = false) {
@@ -273,4 +284,117 @@ class TyreViewModel: ObservableObject {
         }.resume()
     }
 
+    func registerTyres(
+        _ payloads: [TyreRegistrationPayload],
+        vehicleId: Int,
+        invalidateCache: Bool = true,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard !payloads.isEmpty else {
+            completion?(.success(()))
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+        success = false
+
+        let sanitizedPayloads = payloads.map {
+            TyreRegistrationPayload(
+                brand: $0.brand,
+                model: $0.model,
+                size: $0.size,
+                dot: $0.dot.uppercased(),
+                loadIndex: $0.loadIndex,
+                speedRating: $0.speedRating.uppercased(),
+                season: $0.season
+            )
+        }
+
+        func registerNext(at index: Int) {
+            performRegistration(payload: sanitizedPayloads[index], vehicleId: vehicleId) { [weak self] result in
+                guard let self = self else { return }
+
+                switch result {
+                case .success:
+                    let nextIndex = index + 1
+                    if nextIndex < sanitizedPayloads.count {
+                        registerNext(at: nextIndex)
+                    } else {
+                        self.isLoading = false
+                        self.success = true
+                        if invalidateCache {
+                            TyreCacheManager.shared.invalidateCache(forVehicleId: vehicleId)
+                        }
+                        completion?(.success(()))
+                    }
+                case .failure(let error):
+                    self.isLoading = false
+                    self.errorMessage = error.localizedDescription
+                    completion?(.failure(error))
+                }
+            }
+        }
+
+        registerNext(at: 0)
+    }
+
+    private func performRegistration(
+        payload: TyreRegistrationPayload,
+        vehicleId: Int,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
+            completion(.failure(TyreRegistrationError.missingBaseURL))
+            return
+        }
+
+        guard let url = URL(string: baseURLString + "/v1/tyres_vehicles") else {
+            completion(.failure(TyreRegistrationError.invalidURL))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let body = payload.toDictionary(vehicleId: vehicleId)
+            print("🔄 Inviando registrazione pneumatico: \(body)")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        } catch {
+            completion(.failure(TyreRegistrationError.encodingFailed))
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Errore network: \(error.localizedDescription)")
+                    completion(.failure(error))
+                    return
+                }
+
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 Status code: \(httpResponse.statusCode)")
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        var message: String?
+                        if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                            print("📄 Response body: \(responseBody)")
+                            message = responseBody
+                        }
+                        completion(.failure(TyreRegistrationError.server(status: httpResponse.statusCode, message: message)))
+                        return
+                    }
+                }
+
+                if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                    print("✅ Response: \(responseBody)")
+                }
+
+                print("✅ Registrazione pneumatico completata")
+                completion(.success(()))
+            }
+        }.resume()
+    }
 }
