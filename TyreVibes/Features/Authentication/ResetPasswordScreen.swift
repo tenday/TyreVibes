@@ -2,17 +2,10 @@ import SwiftUI
 
 struct ResetPasswordScreen: View {
     
+    @StateObject private var viewModel = ResetPasswordViewModel()
     @Environment(\.dismiss) private var dismiss
-    @State private var password = ""
-    @State private var confirmPassword = ""
     @State private var showPassword = false
     @State private var showConfirmPassword = false
-    
-    // Password validation states
-    @State private var hasUpperCase = false
-    @State private var hasNumber = false
-    @State private var hasMinLength = false
-    @State private var hasSpecialChar = false
     
     var body: some View {
         NavigationView {
@@ -71,20 +64,20 @@ struct ResetPasswordScreen: View {
                                         .frame(height: 24)
                                     
                                     if showPassword {
-                                        TextField("Enter Password", text: $password)
+                                        TextField("Enter Password", text: $viewModel.password)
                                             .frame(maxHeight: .infinity)
                                             .font(.customFont(size: 16, weight: .semibold))
                                             .foregroundColor(.white)
-                                            .onChange(of: password) {
-                                                validatePassword(password)
+                                            .onChange(of: viewModel.password) {
+                                                viewModel.validatePassword()
                                             }
                                     } else {
-                                        SecureField("Enter Password", text: $password)
+                                        SecureField("Enter Password", text: $viewModel.password)
                                             .frame(maxHeight: .infinity)
                                             .font(.customFont(size: 16, weight: .semibold))
                                             .foregroundColor(.white)
-                                            .onChange(of: password) {
-                                                validatePassword(password)
+                                            .onChange(of: viewModel.password) {
+                                                viewModel.validatePassword()
                                             }
                                     }
                                     
@@ -105,22 +98,22 @@ struct ResetPasswordScreen: View {
                                 VStack(alignment: .leading, spacing: 12) {
                                  //   PasswordRequirementRow(
                                  //       requirement: Pass, text: "At least one upper case letter",
-                                 //       isValid: hasUpperCase
+                                 //       isValid: viewModel.hasUpperCase
                                  //   )
                                     
                                  //   PasswordRequirement(
                                  //       text: "At least one numeral (0-9)",
-                                 //       isValid: hasNumber
+                                 //       isValid: viewModel.hasNumber
                                  //   )
                                  
                                  //   PasswordRequirement(
                                  //       text: "Minimum 6 characters",
-                                 //       isValid: hasMinLength
+                                 //       isValid: viewModel.hasMinLength
                                  //   )
                                     
                                   //  PasswordRequirement(
                                   //      text: "At least one special symbol (!@#$%^&*<>()-)",
-                                  //      isValid: hasSpecialChar
+                                  //      isValid: viewModel.hasSpecialChar
                                   //  )
                                 }
                                 .padding(.top, 0)
@@ -132,20 +125,20 @@ struct ResetPasswordScreen: View {
                                         .frame(height: 24)
                                     
                                     if showConfirmPassword {
-                                        TextField("Confirm Password", text: $confirmPassword)
+                                        TextField("Confirm Password", text: $viewModel.confirmPassword)
                                             .frame(maxHeight: .infinity)
                                             .font(.customFont(size: 16, weight: .semibold))
                                             .foregroundColor(.white)
                                     } else {
-                                        SecureField("Confirm Password", text: $confirmPassword)
+                                        SecureField("Confirm Password", text: $viewModel.confirmPassword)
                                             .frame(maxHeight: .infinity)
                                             .font(.customFont(size: 16, weight: .semibold))
                                             .foregroundColor(.white)
                                     }
                                     
-                                    if !confirmPassword.isEmpty {
-                                        Image(systemName: password == confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                            .foregroundColor(password == confirmPassword ? .green : .red)
+                                    if !viewModel.confirmPassword.isEmpty {
+                                        Image(systemName: viewModel.password == viewModel.confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .foregroundColor(viewModel.password == viewModel.confirmPassword ? .green : .red)
                                             .frame(width: 24, height: 24)
                                     }
                                 }
@@ -158,24 +151,27 @@ struct ResetPasswordScreen: View {
                             
                             // Reset Password Button
                             Button(action: {
-                                // Reset password action
-                                print("Reset password")
-                                // Qui puoi aggiungere la logica per il reset della password
+                                viewModel.resetPassword()
                             }) {
-                                Text("Reset Password")
-                                    .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: buttonHeight)
-                                    .background(
-                                        isFormValid() ?
-                                        Color.customBitterSweet :
-                                        Color.customBitterSweet.opacity(0.6)
-                                    )
-                                    .cornerRadius(screenWidth * 0.133)
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Text("Reset Password")
+                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
                             }
-                            .disabled(!isFormValid())
-                            .animation(.easeInOut(duration: 0.2), value: isFormValid())
+                            .frame(maxWidth: .infinity)
+                            .frame(height: buttonHeight)
+                            .background(
+                                viewModel.isResetButtonEnabled ?
+                                Color.customBitterSweet :
+                                Color.customBitterSweet.opacity(0.6)
+                            )
+                            .cornerRadius(screenWidth * 0.133)
+                            .disabled(!viewModel.isResetButtonEnabled)
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.isResetButtonEnabled)
                             
                             Spacer()
                         }
@@ -187,20 +183,15 @@ struct ResetPasswordScreen: View {
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
-    }
-    
-    // MARK: - Helper Functions
-    
-    private func validatePassword(_ password: String) {
-        hasUpperCase = password.rangeOfCharacter(from: .uppercaseLetters) != nil
-        hasNumber = password.rangeOfCharacter(from: .decimalDigits) != nil
-        hasMinLength = password.count >= 6
-        hasSpecialChar = password.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*<>()-")) != nil
-    }
-    
-    private func isFormValid() -> Bool {
-        return hasUpperCase && hasNumber && hasMinLength && hasSpecialChar &&
-               !password.isEmpty && !confirmPassword.isEmpty && password == confirmPassword
+        .alert(item: $viewModel.alertItem) { alertItem in
+            Alert(title: Text(alertItem.title), message: Text(alertItem.message), dismissButton: .default(Text("OK"), action: {
+                if viewModel.didResetPassword {
+                    // Navigate to login screen or dismiss
+                    // For now, just dismiss
+                    dismiss()
+                }
+            }))
+        }
     }
 }
 

@@ -7,11 +7,13 @@
 
 import SwiftUI
 import GoogleSignIn
+import Supabase
 
 @main
 struct TyreVibesApp: App {
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
     @StateObject private var languageManager = LanguageManager.shared
+    @State private var showResetPasswordScreen = false
 
     var body: some Scene {
         WindowGroup {
@@ -22,14 +24,30 @@ struct TyreVibesApp: App {
                     LoginScreen()
                 }
                 SplashScreen()
-                    .onOpenURL { url in
-                        GIDSignIn.sharedInstance.handle(url)
-                    }
+            }
+            .sheet(isPresented: $showResetPasswordScreen) {
+                ResetPasswordScreen()
+            }
+            .onOpenURL { url in
+                if GIDSignIn.sharedInstance.handle(url) {
+                    return
+                }
+
+                if url.scheme == "it.tyrevibes.app" && url.host == "reset-password" {
+                    showResetPasswordScreen = true
+                }
             }
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
             .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
                 isLoggedIn = false
+            }
+            .onAppear {
+                SupabaseManager.client.auth.onAuthStateChange { event, session in
+                    if case .passwordRecovery = event {
+                        showResetPasswordScreen = true
+                    }
+                }
             }
         }
     }
