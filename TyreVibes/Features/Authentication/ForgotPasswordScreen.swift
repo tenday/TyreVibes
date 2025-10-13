@@ -2,8 +2,8 @@ import SwiftUI
 
 struct ForgotPasswordScreen: View {
     
+    @StateObject private var viewModel = ForgotPasswordViewModel()
     @Environment(\.dismiss) private var dismiss
-    @State private var email = ""
     
     var body: some View {
         NavigationView {
@@ -45,7 +45,7 @@ struct ForgotPasswordScreen: View {
                                     .foregroundColor(.white)
                                     .padding(.top, 30)
                                 
-                                Text("Enter the email associated with your account and we'll send an OTP to reset your password.")
+                                Text("Enter the email associated with your account and we'll send a link to reset your password.")
                                     .font(.customFont(size: 16, weight: .regular))
                                     .foregroundColor(.gray)
                                     .lineSpacing(4)
@@ -59,7 +59,7 @@ struct ForgotPasswordScreen: View {
                                     .foregroundColor(.gray)
                                     .frame(height: 24)
                                 
-                                TextField("Enter Email", text: $email)
+                                TextField("Enter Email", text: $viewModel.email)
                                     .frame(maxHeight: .infinity)
                                     .font(.customFont(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
@@ -72,28 +72,29 @@ struct ForgotPasswordScreen: View {
                             .cornerRadius(18)
                             .frame(height: 62)
                             
-
-                            
                             // Send Button
                             Button(action: {
-                                // Send OTP action
-                                print("Send OTP to email: \(email)")
-                                // Qui puoi aggiungere la logica per inviare l'OTP
+                                viewModel.sendPasswordResetLink()
                             }) {
-                                Text("Send")
-                                    .font(.customFont(size: buttonFontSize, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: buttonHeight)
-                                    .background(
-                                        email.isEmpty ?
-                                        Color.customBitterSweet.opacity(0.6) :
-                                        Color.customBitterSweet
-                                    )
-                                    .cornerRadius(screenWidth * 0.133)
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Text("Send")
+                                        .font(.customFont(size: buttonFontSize, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
                             }
-                            .disabled(email.isEmpty)
-                            .animation(.easeInOut(duration: 0.2), value: email.isEmpty)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: buttonHeight)
+                            .background(
+                                viewModel.isSendButtonEnabled ?
+                                Color.customBitterSweet :
+                                Color.customBitterSweet.opacity(0.6)
+                            )
+                            .cornerRadius(screenWidth * 0.133)
+                            .disabled(!viewModel.isSendButtonEnabled)
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.isSendButtonEnabled)
                             .padding(.top, 20)
                             
                             Spacer()
@@ -105,6 +106,13 @@ struct ForgotPasswordScreen: View {
         }
         .navigationBarHidden(true)
         .preferredColorScheme(.dark)
+        .alert(item: $viewModel.alertItem) { alertItem in
+            Alert(title: Text(alertItem.title), message: Text(alertItem.message), dismissButton: .default(Text("OK"), action: {
+                if viewModel.didSendResetLink {
+                    dismiss()
+                }
+            }))
+        }
     }
 }
 

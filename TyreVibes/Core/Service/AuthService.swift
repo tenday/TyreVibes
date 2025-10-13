@@ -218,4 +218,19 @@ class AuthService {
             credentials: .init(provider: .google, idToken: idToken, nonce: nil)
         )
     }
+
+    func sendPasswordReset(email: String) async throws {
+        try await SupabaseManager.client.auth.resetPassword(
+            for: email,
+            redirectTo: URL(string: "it.tyrevibes.app://reset-password")!
+        )
+    }
+
+    func updateUserPassword(password: String) async throws {
+        try await SupabaseManager.client.auth.update(
+            user: UserAttributes(
+                password: password
+            )
+        )
+    }
 }
