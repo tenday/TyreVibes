@@ -2212,9 +2212,20 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
 
         @Sendable func fetchWithFallback<T>(label: String, fallback: T, timeout: Double = 10.0, operation: @escaping @Sendable () async throws -> T) async -> T {
             do {
-                return try await withTimeout(timeout) { try await operation() }
+                return try await withTimeout(timeout) {
+                    try await operation()
+                }
             } catch {
-                print("⚠️ [PlateSummary] \(label) fallback per targa \(plate): \(error.localizedDescription)")
+                print("⚠️ [PlateSummary] Fallback per '\(label)' sulla targa \(plate): \(error.localizedDescription)")
+
+                // Se l'operazione fallita è quella delle revisioni, schedula il retry in background
+                if label == "Revisioni" {
+                    Task { @MainActor in
+                        print("🔄 Scheduling background retry for revisions due to fetch failure.")
+                        RevisionRetryManager.shared.scheduleBackgroundRetry(for: plate)
+                    }
+                }
+
                 return fallback
             }
         }
