@@ -206,11 +206,14 @@ struct ProfileView: View {
                 UserDefaults.standard.set(false, forKey: "useFaceID")
                 UserDefaults.standard.removeObject(forKey: "cachedVehicles")
                 UserDefaults.standard.removeObject(forKey: "userPreferences")
+
+                // Post the notification to inform the app about the logout
+                NotificationCenter.default.post(name: .didRequestLogout, object: nil)
+
                 loginViewModel.showHomeScreen = false
                 loginViewModel.email = ""
                 loginViewModel.password = ""
                 loginViewModel.rememberMe = false
-                isLoggedIn = false
             } catch {
                 print("Errore logout: \(error.localizedDescription)")
             }

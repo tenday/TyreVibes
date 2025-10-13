@@ -22,9 +22,12 @@ struct TyreVibesApp: App {
                     LoginScreen()
                 }
                 SplashScreen()
-                    .onOpenURL { url in
-                        GIDSignIn.sharedInstance.handle(url)
-                    }
+            }
+            .onOpenURL { url in
+                GIDSignIn.sharedInstance.handle(url)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
+                isLoggedIn = false
             }
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
