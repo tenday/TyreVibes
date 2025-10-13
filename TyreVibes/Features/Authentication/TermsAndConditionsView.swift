@@ -123,57 +123,13 @@ struct TermsAndConditionsView: View {
 
     private var termsContent: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Group {
-                Text("Last Updated: January 2025")
-                    .font(.customFont(size: 14, weight: .regular))
-                    .foregroundColor(.gray)
+            Text("Last Updated: October 2025")
+                .font(.customFont(size: 14, weight: .regular))
+                .foregroundColor(.gray)
 
-                sectionTitle("1. Acceptance of Terms")
-                sectionText("By accessing and using TyreVibes, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.")
-
-                sectionTitle("2. Description of Service")
-                sectionText("TyreVibes provides tire monitoring and maintenance tracking services for vehicle owners. The service includes tire condition analysis, maintenance reminders, and safety recommendations.")
-
-                sectionTitle("3. User Account")
-                sectionText("To use certain features of TyreVibes, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete.")
-
-                sectionTitle("4. Privacy Policy")
-                sectionText("Your use of TyreVibes is also governed by our Privacy Policy. Please review our Privacy Policy, which also governs the Service and informs users of our data collection practices.")
-
-                sectionTitle("5. User Responsibilities")
-                sectionText("You are responsible for:\n• Maintaining the confidentiality of your account credentials\n• All activities that occur under your account\n• Ensuring all information provided is accurate\n• Using the service in compliance with applicable laws")
-            }
-
-            Group {
-                sectionTitle("6. Tire Safety Disclaimer")
-                sectionText("While TyreVibes provides tire monitoring and analysis, it does not replace professional tire inspection and maintenance. Users should regularly have their tires inspected by qualified professionals. TyreVibes is not liable for any damages or injuries resulting from tire-related issues.")
-
-                sectionTitle("7. Subscription and Payments")
-                sectionText("Certain features of TyreVibes may require a subscription. Subscription fees are billed in advance on a recurring basis. You can cancel your subscription at any time through your account settings.")
-
-                sectionTitle("8. Intellectual Property")
-                sectionText("The Service and its original content, features, and functionality are and will remain the exclusive property of TyreVibes and its licensors. The Service is protected by copyright, trademark, and other laws.")
-
-                sectionTitle("9. Apple App Store Requirements")
-                sectionText("These Terms are between you and TyreVibes only, and not with Apple Inc. (\"Apple\"). TyreVibes, not Apple, is solely responsible for the App and its content.\n\nApple and Apple's subsidiaries are third party beneficiaries of these Terms, and upon your acceptance of these Terms, Apple will have the right to enforce these Terms against you as a third party beneficiary.\n\nYou represent and warrant that (i) you are not located in a country that is subject to a U.S. Government embargo, or that has been designated by the U.S. Government as a \"terrorist supporting\" country; and (ii) you are not listed on any U.S. Government list of prohibited or restricted parties.")
-
-                sectionTitle("10. Apple's Role and Responsibilities")
-                sectionText("Apple has no obligation whatsoever to furnish any maintenance and support services with respect to the App.\n\nIn the event of any failure of the App to conform to any applicable warranty, you may notify Apple, and Apple will refund the purchase price (if any) for the App to you. To the maximum extent permitted by applicable law, Apple will have no other warranty obligation whatsoever with respect to the App.\n\nApple is not responsible for addressing any claims you have or any claims of any third party relating to the App or your possession and use of the App, including: (i) product liability claims; (ii) any claim that the App fails to conform to any applicable legal or regulatory requirement; and (iii) claims arising under consumer protection or similar legislation.")
-
-                sectionTitle("11. Intellectual Property Claims")
-                sectionText("In the event of any third party claim that the App or your possession and use of the App infringes that third party's intellectual property rights, TyreVibes, not Apple, will be solely responsible for the investigation, defense, settlement and discharge of any such intellectual property infringement claim.")
-
-                sectionTitle("12. Limitation of Liability")
-                sectionText("In no event shall TyreVibes, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.\n\nApple and Apple's subsidiaries shall not be liable for any damages whatsoever arising out of or in connection with your use of the App.")
-
-                sectionTitle("13. Legal Compliance")
-                sectionText("You must comply with applicable third party terms of agreement when using the App (e.g., you must not be in violation of your wireless data service agreement when using the App).\n\nYou agree to comply with all applicable local, state, national, and international laws and regulations.")
-
-                sectionTitle("14. Changes to Terms")
-                sectionText("We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect.")
-
-                sectionTitle("15. Contact Information")
-                sectionText("For questions about these Terms, contact TyreVibes at:\nsupport@tyrevibes.com\n\nFor App-related support, contact TyreVibes, not Apple.\n\nApple and its subsidiaries are third party beneficiaries of these Terms and may enforce them directly against you.")
+            ForEach(TermsAndConditions.sections, id: \.title) { section in
+                sectionTitle(section.title)
+                sectionText(section.content)
             }
 
             Spacer(minLength: 40)
@@ -335,7 +291,7 @@ struct PrivacyPolicyView: View {
     private var privacyContent: some View {
         VStack(alignment: .leading, spacing: 20) {
             Group {
-                Text("Last Updated: January 2025")
+                Text("Last Updated: October 2025")
                     .font(.customFont(size: 14, weight: .regular))
                     .foregroundColor(.gray)
 

@@ -119,7 +119,28 @@ final class SettingsViewModel: NSObject, ObservableObject {
     }
 
     func requestDataDeletion() {
-        alert = SettingsAlert(title: "Request Sent", message: "We recorded your request to remove personal data. Our team will follow up within 30 days.", style: .info)
+        Task {
+            do {
+                let authService = AuthService()
+                try await authService.deleteCurrentUser()
+
+                // Clear all user-related data
+                clearCaches()
+                UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+                UserDefaults.standard.synchronize()
+
+                // Navigate to the login screen
+                await MainActor.run {
+                    // This assumes you have a way to reset the app's root view controller
+                    // For example, by posting a notification that the app delegate observes
+                    NotificationCenter.default.post(name: .didRequestLogout, object: nil)
+                }
+            } catch {
+                await MainActor.run {
+                    alert = SettingsAlert(title: "Deletion Failed", message: "We couldn't delete your account. Please try again.", style: .info)
+                }
+            }
+        }
     }
 
     func exportMyData() {

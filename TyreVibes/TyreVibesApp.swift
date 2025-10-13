@@ -28,6 +28,9 @@ struct TyreVibesApp: App {
             }
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
+            .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
+                isLoggedIn = false
+            }
         }
     }
 }

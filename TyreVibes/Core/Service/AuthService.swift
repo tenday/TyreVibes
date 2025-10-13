@@ -141,6 +141,23 @@ class AuthService {
             throw AuthServiceError.signUpFailed("Logout fallito: \(error.localizedDescription)")
         }
     }
+
+    func deleteCurrentUser() async throws {
+        guard let userId = await Self.currentUserId else {
+            throw AuthServiceError.noUserFound
+        }
+
+        // Use the UUID type for the user ID
+        guard let userUUID = UUID(uuidString: userId) else {
+            throw AuthServiceError.noUserFound
+        }
+
+        do {
+            try await SupabaseManager.client.auth.admin.deleteUser(id: userUUID)
+        } catch {
+            throw AuthServiceError.signUpFailed("Failed to delete user: \(error.localizedDescription)")
+        }
+    }
     
     @MainActor
     func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws {
