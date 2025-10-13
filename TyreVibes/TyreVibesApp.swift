@@ -25,6 +25,7 @@ struct TyreVibesApp: App {
                 }
                 SplashScreen()
             }
+
             .sheet(isPresented: $showResetPasswordScreen) {
                 ResetPasswordScreen()
             }
@@ -36,6 +37,11 @@ struct TyreVibesApp: App {
                 if url.scheme == "it.tyrevibes.app" && url.host == "reset-password" {
                     showResetPasswordScreen = true
                 }
+            .onOpenURL { url in
+                GIDSignIn.sharedInstance.handle(url)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
+                isLoggedIn = false
             }
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
