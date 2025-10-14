@@ -13,6 +13,7 @@ struct TireAnalysisView: View {
     let vehicle: VehicleResponse
     let tyre: TyreRegistered
     @State private var selectedTire: TirePosition? = .frontLeft
+    @State private var navigateToResult = false
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
@@ -60,6 +61,28 @@ struct TireAnalysisView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 
                 Spacer()
+
+                // Start Analysis Button
+                Button(action: {
+                    if selectedTire != nil {
+                        navigateToResult = true
+                    }
+                }) {
+                    Text("Start Analysis")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(selectedTire != nil ? Color(hex: "#FF6B6B") : Color.gray)
+                        .cornerRadius(25)
+                }
+                .disabled(selectedTire == nil)
+                .padding(.horizontal)
+                .padding(.bottom)
+
+                NavigationLink(destination: TreadAnalysisResultView(vehicle: vehicle), isActive: $navigateToResult) {
+                    EmptyView()
+                }
             }
         }
         .navigationBarHidden(true)
