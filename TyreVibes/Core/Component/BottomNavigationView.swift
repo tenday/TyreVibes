@@ -8,8 +8,8 @@ struct BottomNavigationView: View {
     // Aggiunto un namespace per l'animazione
     @Namespace private var animationNamespace
 
-    // Nomi delle icone come da screenshot (uso SF Symbols come placeholder)
-    let iconNames = ["vehicleIcon", "reportIcon", "storeIcon", "settingIcon"]
+    // Nomi delle icone (asset o SF Symbols)
+    let iconNames = ["vehicleIcon", "reportIcon", "map.fill", "settingIcon"]
     
     var body: some View {
         GeometryReader { proxy in
@@ -32,7 +32,7 @@ struct BottomNavigationView: View {
                     case 3:
                         SettingsView()
                     case 4:
-                        TireAnalysisSelectionView()
+                        ShopScreen()
                     default:
                         GarageScreen()
                     }
@@ -95,7 +95,7 @@ struct BottomNavigationView: View {
                         Spacer()
                             .frame(width: width * 0.2)
 
-                        // Right side - Store
+                        // Right side - Map
                         Button(action: {
                             withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 2 }
                         }) {
@@ -121,7 +121,7 @@ struct BottomNavigationView: View {
                     Button(action: {
                         withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 4 }
                     }) {
-                        TabItem(iconName: "Archi", isSelected: selectedIndex == 4, namespace: animationNamespace)
+                        TabItem(iconName: "storeIcon", isSelected: selectedIndex == 4, namespace: animationNamespace)
                             .frame(width: 80, height: 80)
                             .contentShape(Circle())
                     }
@@ -148,7 +148,7 @@ struct TabItem: View {
 
     var body: some View {
         ZStack {
-            if iconName == "Archi" {
+            if iconName == "storeIcon" {
                 // Central floating button with liquid glass effect
                 ZStack {
                     // Base glass circle
@@ -191,7 +191,7 @@ struct TabItem: View {
                         .opacity(0.8)
 
                     // Icon overlay
-                    Image("Archi")
+                    Image("storeIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 50, height: 50)
@@ -241,12 +241,19 @@ struct TabItem: View {
                         .matchedGeometryEffect(id: "selected_tab", in: namespace)
                     }
 
-                    Image(iconName)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
-                        .foregroundColor(isSelected ? .white : .gray)
+                    if UIImage(named: iconName) != nil {
+                        Image(iconName)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(isSelected ? .white : .gray)
+                    } else {
+                        Image(systemName: iconName)
+                            .font(.system(size: 22))
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(isSelected ? .white : .gray)
+                    }
                 }
             }
         }
