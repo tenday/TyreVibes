@@ -32,6 +32,7 @@ struct TyreDetailView: View {
 
                 ScrollView {
                     VStack(spacing: 0) {
+                        HStack {
                         // Header with tyre info
                         if let tyre = tyre {
                             VStack(alignment: .leading, spacing: 16) {
@@ -45,13 +46,14 @@ struct TyreDetailView: View {
                         }
 
                         // Tyre visual representation
-                        HStack {
+                        
                             Spacer()
                             TyreVisualizationView()
-                                .frame(width: 200, height: 200)
+                            .frame(width: 200, height: 200)
                             Spacer()
                         }
                         .padding(.vertical, 20)
+                        .padding(.bottom, 30)
 
                         // Tread depth measurements
                         VStack(spacing: 20) {
@@ -88,15 +90,19 @@ struct TyreDetailView: View {
                             }
                         }
                         .padding(.horizontal, 20)
+                        .padding(.bottom, 30)
 
                         // Remaining life
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
+                                
                                 Text("Remaining Life")
                                     .font(.customFont(size: 16, weight: .medium))
                                     .foregroundColor(.gray)
                                 Spacer()
                             }
+                            .padding(.horizontal)
+                            .padding(.top)
 
                             HStack {
                                 Text("80%")
@@ -104,13 +110,19 @@ struct TyreDetailView: View {
                                     .foregroundColor(.white)
                                 Spacer()
                             }
+                            .padding(.horizontal)
 
                             ProgressView(value: 0.8)
                                 .progressViewStyle(CustomProgressViewStyle(color: .cyan))
-                                .frame(height: 8)
+                                //.frame(height: 12)
+                                .padding()
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.customFieldColor)
+                        .cornerRadius(14)
                         .padding(.horizontal, 20)
-                        .padding(.top, 30)
+                        
+                        
 
                         // Tire Lifecycle Chart
                         VStack(alignment: .leading, spacing: 15) {
@@ -120,46 +132,18 @@ struct TyreDetailView: View {
                                     .foregroundColor(.white)
                                 Spacer()
                             }
+                            .padding(.horizontal)
+                            .padding(.top)
 
                             TireLifecycleChart()
-                                .frame(height: 200)
+                                .padding()
                         }
+                        .background(Color.customFieldColor)
+                        .cornerRadius(14)
                         .padding(.horizontal, 20)
                         .padding(.top, 30)
 
-                        // Compatible Tire Dimensions
-                        if let tyre = tyre {
-                            VStack(alignment: .leading, spacing: 15) {
-                                HStack {
-                                    Text("Compatible Tire Dimensions")
-                                        .font(.customFont(size: 18, weight: .semibold))
-                                        .foregroundColor(.white)
-                                    Spacer()
-                                }
-
-                                VStack(spacing: 12) {
-                                    TireDimensionRow(
-                                        label: "Standard:",
-                                        dimension: tyre.size,
-                                        isRecommended: true
-                                    )
-
-                                    TireDimensionRow(
-                                        label: "Speed Rating:",
-                                        dimension: tyre.speedRating,
-                                        isRecommended: false
-                                    )
-
-                                    TireDimensionRow(
-                                        label: "Load Index:",
-                                        dimension: tyre.loadIndex,
-                                        isRecommended: false
-                                    )
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 30)
-                        }
+                        
 
                         // Tire Condition
                         VStack(alignment: .leading, spacing: 15) {
@@ -169,20 +153,24 @@ struct TyreDetailView: View {
                                     .foregroundColor(.white)
                                 Spacer()
                             }
+                            .padding()
 
                             HStack(spacing: 20) {
                                 TireConditionIcon()
 
-                                HStack(spacing: 25) {
+                                HStack(spacing: 20) {
                                     TireConditionBar(position: "FL", percentage: 70, color: .green)
                                     TireConditionBar(position: "FR", percentage: 80, color: .green)
                                     TireConditionBar(position: "RL", percentage: 50, color: .orange)
                                     TireConditionBar(position: "RR", percentage: 35, color: .red)
                                 }
 
-                                Spacer()
                             }
+                            //.padding()
+                            
                         }
+                        .background(Color.customFieldColor)
+                        .cornerRadius(14)
                         .padding(.horizontal, 20)
                         .padding(.top, 30)
                         .padding(.bottom, 40)
@@ -212,12 +200,15 @@ struct TyreDetailView: View {
                     Button(action: {
                         // Export/Share functionality
                     }) {
-                        Image(systemName: "arrow.down.to.line")
+                        Image("downloadIcon")
                             .foregroundColor(.white)
                             .font(.system(size: 18, weight: .medium))
                     }
                 }
+                
             }
+            .scrollIndicators(.hidden)
+
         }
         .preferredColorScheme(.dark)
     }
@@ -231,11 +222,11 @@ struct InfoRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
-                .font(.customFont(size: 14, weight: .medium))
+                .font(.customFont(size: 16, weight: .semibold))
                 .foregroundColor(.gray)
 
             Text(value)
-                .font(.customFont(size: 24, weight: .bold))
+                .font(.customFont(size: 18, weight: .bold))
                 .foregroundColor(.white)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -246,29 +237,17 @@ struct InfoRow: View {
 struct TyreVisualizationView: View {
     var body: some View {
         ZStack {
-            // Main tire circle
-            Circle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 180, height: 180)
-
-            // Inner rim
-            Circle()
-                .fill(Color.gray.opacity(0.6))
-                .frame(width: 120, height: 120)
-
-            // Rim spokes
-            ForEach(0..<6) { spoke in
-                Rectangle()
-                    .fill(Color.gray.opacity(0.8))
-                    .frame(width: 4, height: 40)
-                    .offset(y: -20)
-                    .rotationEffect(.degrees(Double(spoke) * 60))
-            }
-
-            // Center hub
-            Circle()
-                .fill(Color.gray.opacity(0.9))
-                .frame(width: 30, height: 30)
+            Image("tyreElements")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 253, height: 396)
+                .offset(y : -70)
+            Image("tyreDetails")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 220, height: 208)
+                .shadow(color: .black.opacity(0.5), radius: 10, x: 0, y: 4)
+                .offset(x: -60, y: 10)
         }
     }
 }
@@ -288,7 +267,7 @@ struct TreadDepthCard: View {
                     .foregroundColor(.gray)
                 Spacer()
                 Text(position)
-                    .font(.customFont(size: 14, weight: .bold))
+                    .font(.customFont(size: 14, weight: .semibold))
                     .foregroundColor(.white)
             }
 
@@ -298,7 +277,7 @@ struct TreadDepthCard: View {
 
             ProgressView(value: progress)
                 .progressViewStyle(CustomProgressViewStyle(color: color))
-                .frame(height: 6)
+                .frame(height: 12)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
@@ -316,13 +295,13 @@ struct CustomProgressViewStyle: ProgressViewStyle {
             ZStack(alignment: .leading) {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
-                    .frame(height: 6)
-                    .cornerRadius(3)
+                    .frame(height: 12)
+                    .cornerRadius(15)
 
                 Rectangle()
                     .fill(color)
-                    .frame(width: geometry.size.width * CGFloat(configuration.fractionCompleted ?? 0), height: 6)
-                    .cornerRadius(3)
+                    .frame(width: geometry.size.width * CGFloat(configuration.fractionCompleted ?? 0), height: 12)
+                    .cornerRadius(15)
             }
         }
     }
@@ -330,68 +309,225 @@ struct CustomProgressViewStyle: ProgressViewStyle {
 
 // MARK: - Tire Lifecycle Chart
 struct TireLifecycleChart: View {
-    let dataPoints: [ChartDataPoint] = [
-        ChartDataPoint(distance: 5, depth: 10.0),
-        ChartDataPoint(distance: 10, depth: 7.0),
-        ChartDataPoint(distance: 15, depth: 4.5),
-        ChartDataPoint(distance: 20, depth: 2.8),
-        ChartDataPoint(distance: 25, depth: 1.0)
+    @State private var selectedPoint: ChartDataPoint?
+
+    let historicalData: [ChartDataPoint] = [
+        ChartDataPoint(distance: 0, depth: 10.0, isProjected: false),
+        ChartDataPoint(distance: 5, depth: 8.5, isProjected: false),
+        ChartDataPoint(distance: 10, depth: 7.2, isProjected: false),
+        ChartDataPoint(distance: 15, depth: 5.8, isProjected: false),
+        ChartDataPoint(distance: 20, depth: 4.5, isProjected: false)
     ]
 
-    var body: some View {
-        Chart(dataPoints, id: \.distance) { point in
-            LineMark(
-                x: .value("Distance", point.distance),
-                y: .value("Tread Depth", point.depth)
-            )
-            .foregroundStyle(.cyan)
-            .lineStyle(StrokeStyle(lineWidth: 3))
+    let projectedData: [ChartDataPoint] = [
+        ChartDataPoint(distance: 20, depth: 4.5, isProjected: true),
+        ChartDataPoint(distance: 25, depth: 3.0, isProjected: true),
+        ChartDataPoint(distance: 30, depth: 1.8, isProjected: true),
+        ChartDataPoint(distance: 32, depth: 1.6, isProjected: true)
+    ]
 
-            PointMark(
-                x: .value("Distance", point.distance),
-                y: .value("Tread Depth", point.depth)
-            )
-            .foregroundStyle(.cyan)
-            .symbolSize(60)
+    let legalMinimum: Double = 1.6
+    let warningThreshold: Double = 3.0
+    let optimalThreshold: Double = 6.0
+
+    var body: some View {
+        VStack(spacing: 16) {
+            mainChart
+            legendAndInfo
         }
-        .chartXScale(domain: 0...25)
+    }
+
+    private var mainChart: some View {
+        Chart {
+            safetyZones
+            legalMinimumLine
+            historicalAreaMarks
+            historicalLineMarks
+            historicalPointMarks
+            projectedAreaMarks
+            projectedLineMarks
+            projectedPointMarks
+        }
+        .chartXScale(domain: 0...35)
         .chartYScale(domain: 0...12)
         .chartXAxis {
-            AxisMarks(values: [5, 10, 15, 20, 25]) { value in
-                AxisGridLine()
-                    .foregroundStyle(Color.gray.opacity(0.3))
+            AxisMarks(values: .stride(by: 5)) { value in
+                AxisGridLine().foregroundStyle(Color.gray.opacity(0.2))
                 AxisValueLabel {
                     if let intValue = value.as(Int.self) {
-                        Text("\(intValue)K")
-                            .foregroundColor(.gray)
-                            .font(.system(size: 12))
+                        Text("\(intValue)K").foregroundColor(.gray).font(.system(size: 11))
                     }
                 }
             }
         }
         .chartYAxis {
-            AxisMarks(values: [0, 2.5, 5.0, 7.5, 10]) { value in
-                AxisGridLine()
-                    .foregroundStyle(Color.gray.opacity(0.3))
+            AxisMarks(values: [0, 2, 4, 6, 8, 10, 12]) { value in
+                AxisGridLine().foregroundStyle(Color.gray.opacity(0.2))
                 AxisValueLabel {
                     if let doubleValue = value.as(Double.self) {
-                        Text(String(format: "%.1f", doubleValue))
-                            .foregroundColor(.gray)
-                            .font(.system(size: 12))
+                        Text(String(format: "%.0f", doubleValue)).foregroundColor(.gray).font(.system(size: 11))
                     }
                 }
             }
         }
-        .chartXAxisLabel("Distance (km)", alignment: .center)
-        .chartYAxisLabel("Tread Depth (mm)", alignment: .center)
-        .foregroundColor(.white)
-        .background(Color.customBackgroundColor)
+        .frame(height: 280)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 12)
+        .cornerRadius(12)
+    }
+
+    @ChartContentBuilder
+    private var safetyZones: some ChartContent {
+        RectangleMark(xStart: .value("Start", 0), xEnd: .value("End", 35), yStart: .value("Bottom", 0), yEnd: .value("Top", legalMinimum))
+            .foregroundStyle(Color.red.opacity(0.15))
+        RectangleMark(xStart: .value("Start", 0), xEnd: .value("End", 35), yStart: .value("Bottom", legalMinimum), yEnd: .value("Top", warningThreshold))
+            .foregroundStyle(Color.orange.opacity(0.1))
+        RectangleMark(xStart: .value("Start", 0), xEnd: .value("End", 35), yStart: .value("Bottom", warningThreshold), yEnd: .value("Top", optimalThreshold))
+            .foregroundStyle(Color.yellow.opacity(0.08))
+        RectangleMark(xStart: .value("Start", 0), xEnd: .value("End", 35), yStart: .value("Bottom", optimalThreshold), yEnd: .value("Top", 12))
+            .foregroundStyle(Color.green.opacity(0.1))
+    }
+
+    @ChartContentBuilder
+    private var legalMinimumLine: some ChartContent {
+        RuleMark(y: .value("Legal Min", legalMinimum))
+            .foregroundStyle(Color.red)
+            .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
+    }
+
+    @ChartContentBuilder
+    private var historicalAreaMarks: some ChartContent {
+        ForEach(historicalData, id: \.distance) { point in
+            AreaMark(x: .value("Distance", point.distance), yStart: .value("Min", 0), yEnd: .value("Depth", point.depth))
+                .foregroundStyle(LinearGradient(colors: [depthColor(point.depth).opacity(0.5), depthColor(point.depth).opacity(0.1)], startPoint: .top, endPoint: .bottom))
+                .interpolationMethod(.catmullRom)
+        }
+    }
+
+    @ChartContentBuilder
+    private var historicalLineMarks: some ChartContent {
+        ForEach(historicalData, id: \.distance) { point in
+            LineMark(x: .value("Distance", point.distance), y: .value("Tread Depth", point.depth))
+                .foregroundStyle(depthColor(point.depth))
+                .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round))
+                .interpolationMethod(.catmullRom)
+        }
+    }
+
+    @ChartContentBuilder
+    private var historicalPointMarks: some ChartContent {
+        ForEach(historicalData, id: \.distance) { point in
+            PointMark(x: .value("Distance", point.distance), y: .value("Tread Depth", point.depth))
+                .foregroundStyle(depthColor(point.depth))
+                .symbolSize(80)
+        }
+    }
+
+    @ChartContentBuilder
+    private var projectedAreaMarks: some ChartContent {
+        ForEach(projectedData, id: \.distance) { point in
+            AreaMark(x: .value("Distance", point.distance), yStart: .value("Min", 0), yEnd: .value("Depth", point.depth))
+                .foregroundStyle(LinearGradient(colors: [Color.cyan.opacity(0.3), Color.cyan.opacity(0.05)], startPoint: .top, endPoint: .bottom))
+                .interpolationMethod(.catmullRom)
+        }
+    }
+
+    @ChartContentBuilder
+    private var projectedLineMarks: some ChartContent {
+        ForEach(projectedData, id: \.distance) { point in
+            LineMark(x: .value("Distance", point.distance), y: .value("Tread Depth", point.depth))
+                .foregroundStyle(Color.cyan.opacity(0.7))
+                .lineStyle(StrokeStyle(lineWidth: 3, dash: [8, 4]))
+                .interpolationMethod(.catmullRom)
+        }
+    }
+
+    @ChartContentBuilder
+    private var projectedPointMarks: some ChartContent {
+        ForEach(projectedData.dropFirst(), id: \.distance) { point in
+            PointMark(x: .value("Distance", point.distance), y: .value("Tread Depth", point.depth))
+                .foregroundStyle(Color.cyan.opacity(0.6))
+                .symbolSize(40)
+        }
+    }
+
+    private var legendAndInfo: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 20) {
+                ChartLegendItem(color: .green, text: "Optimal (>6mm)")
+                ChartLegendItem(color: .orange, text: "Warning (<3mm)")
+                ChartLegendItem(color: .red, text: "Replace (<1.6mm)")
+            }
+            HStack(spacing: 16) {
+                InfoPill(icon: "calendar", text: "~12K km remaining", color: .cyan)
+                InfoPill(icon: "calendar.badge.clock", text: "Replace by Mar 2026", color: .orange)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func depthColor(_ depth: Double) -> Color {
+        if depth >= optimalThreshold {
+            return .green
+        } else if depth >= warningThreshold {
+            return .yellow
+        } else if depth >= legalMinimum {
+            return .orange
+        } else {
+            return .red
+        }
     }
 }
 
-struct ChartDataPoint {
+struct ChartDataPoint: Equatable {
     let distance: Int
     let depth: Double
+    let isProjected: Bool
+
+    init(distance: Int, depth: Double, isProjected: Bool = false) {
+        self.distance = distance
+        self.depth = depth
+        self.isProjected = isProjected
+    }
+}
+
+// MARK: - Chart Legend Item
+struct ChartLegendItem: View {
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.gray)
+        }
+    }
+}
+
+// MARK: - Info Pill
+struct InfoPill: View {
+    let icon: String
+    let text: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(color)
+            Text(text)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.2))
+        .cornerRadius(12)
+    }
 }
 
 // MARK: - Tire Dimension Row
@@ -430,22 +566,15 @@ struct TireDimensionRow: View {
 // MARK: - Tire Condition Icon
 struct TireConditionIcon: View {
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color.gray.opacity(0.8))
-                .frame(width: 50, height: 50)
-
-            // Simplified tire icon
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.black)
-                .frame(width: 32, height: 32)
-
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.gray)
-                .frame(width: 20, height: 20)
+        Image("tyreDetails")
+            .resizable()
+            .scaledToFit()
+            .frame(height: 132)
         }
-    }
+    
+    
 }
+
 
 // MARK: - Tire Condition Bar
 struct TireConditionBar: View {
@@ -455,23 +584,23 @@ struct TireConditionBar: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Rectangle()
-                .fill(color)
-                .frame(width: 20, height: CGFloat(percentage))
-                .cornerRadius(4)
-                .frame(height: 80, alignment: .bottom)
-
-            Text("\(percentage)%")
-                .font(.customFont(size: 12, weight: .bold))
-                .foregroundColor(color)
-
+            ZStack(alignment: .top) {
+                Rectangle()
+                    .fill(color)
+                    .frame(width: 26, height: CGFloat(percentage))
+                    .cornerRadius(6)
+                    .frame(height: 80, alignment: .bottom)
+                Text("\(percentage)%")
+                    .font(.customFont(size: 10, weight: .semibold))
+                    .foregroundColor(.white)
+            }
             Text(position)
-                .font(.customFont(size: 12, weight: .medium))
+                .font(.customFont(size: 14, weight: .semibold))
                 .foregroundColor(.white)
         }
     }
 }
 
 #Preview {
-    TyreDetailView()
+    TyreDetailView(tyre: TyreRegistered(id: 1, vehicleId: 1, brand: "Michelin", model: "Pilot Sport 4", size: "225/40R18", dot: "1221", loadIndex: "92", speedRating: "Y", season: "Summer"))
 }

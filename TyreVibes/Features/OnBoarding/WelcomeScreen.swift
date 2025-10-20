@@ -212,6 +212,20 @@ struct WelcomeScreen: View {
                     isLoggedIn = true
                 }
             }
+            .onChange(of: isLoggedIn) { _, newValue in
+                if newValue {
+                    goToLogin = false
+                } else {
+                    viewModel.showHomeScreen = false
+                    goToLogin = true
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
+                viewModel.showHomeScreen = false
+                viewModel.email = ""
+                viewModel.password = ""
+                goToLogin = true
+            }
             .navigationDestination(isPresented: $goToLogin) {
                 LoginScreen()
                     .navigationBarBackButtonHidden(true)

@@ -12,6 +12,7 @@ class ConfirmDetailsViewModel: ObservableObject {
     @Published var vehicleImageOriginal: UIImage?
 
     private let plateAPIService = PlateAPIService()
+    private var activeImageRequestID = UUID()
 
     private func ensureRenderable(_ image: UIImage) -> UIImage {
         if image.cgImage != nil { return image }
@@ -69,6 +70,10 @@ class ConfirmDetailsViewModel: ObservableObject {
     func savePlate(plateData originalPlateData: PlateData, color: String, angle: Int) async {
         let plateData = enrichPlateDataWithBollo(originalPlateData)
         isLoading = true
+        activeImageRequestID = UUID()
+        let requestID = activeImageRequestID
+
+        VehicleImageService.clearCache()
         Task {
             VehicleImageService.fetchVehicleImage(
                 make: plateData.make ?? "",
@@ -77,10 +82,12 @@ class ConfirmDetailsViewModel: ObservableObject {
                 paintId: color,
                 angle: angle,
                 plate: plateData.plate
-            ) { result in
+            ) { [weak self] result in
+                guard let self = self, self.activeImageRequestID == requestID else { return }
                 switch result {
                 case .success(let imgColored):
                     Task { @MainActor in
+                        guard self.activeImageRequestID == requestID else { return }
                         let safeImageColored = self.ensureRenderable(imgColored)
                         self.vehicleImageColored = safeImageColored
                         VehicleImageService.fetchVehicleImage(
@@ -90,10 +97,12 @@ class ConfirmDetailsViewModel: ObservableObject {
                             paintId: "",
                             angle: angle,
                             plate: plateData.plate
-                        ) { result in
+                        ) { [weak self] result in
+                            guard let self = self, self.activeImageRequestID == requestID else { return }
                             switch result {
                             case .success(let imgOriginal):
                                 Task { @MainActor in
+                                    guard self.activeImageRequestID == requestID else { return }
                                     let safeImageOriginal = self.ensureRenderable(imgOriginal)
                                     self.vehicleImageOriginal = safeImageOriginal
                                     VehicleImageService.fetchVehicleImage(
@@ -103,10 +112,12 @@ class ConfirmDetailsViewModel: ObservableObject {
                                         paintId: color,
                                         angle: 12,
                                         plate: plateData.plate
-                                    ) { safeImageColored12 in
+                                    ) { [weak self] safeImageColored12 in
+                                        guard let self = self, self.activeImageRequestID == requestID else { return }
                                         switch safeImageColored12 {
                                         case .success(let imageColored12Result):
                                             Task { @MainActor in
+                                                guard self.activeImageRequestID == requestID else { return }
                                                 let imageColored12 = self.ensureRenderable(imageColored12Result)
                                                 VehicleImageService.fetchVehicleImage(
                                                     make: plateData.make ?? "",
@@ -115,10 +126,12 @@ class ConfirmDetailsViewModel: ObservableObject {
                                                     paintId: "",
                                                     angle: 12,
                                                     plate: plateData.plate
-                                                ) { imageNoColor12 in
+                                                ) { [weak self] imageNoColor12 in
+                                                    guard let self = self, self.activeImageRequestID == requestID else { return }
                                                     switch imageNoColor12 {
                                                     case .success(let noColorImage12):
                                                         Task { @MainActor in
+                                                            guard self.activeImageRequestID == requestID else { return }
                                                             let ImageNeutral12 = self.ensureRenderable(noColorImage12)
                                                             do {
                                                                 try await self.plateAPIService.savePlate(
@@ -131,6 +144,7 @@ class ConfirmDetailsViewModel: ObservableObject {
                                                                 self.vehicleImage = safeImageColored
                                                                 self.didSavePlate = true
                                                             } catch let apiError as PlateAPIError {
+                                                                guard self.activeImageRequestID == requestID else { return }
                                                                 self.didSavePlate = false
                                                                 switch apiError {
                                                                 case .invalidURL:
@@ -150,10 +164,12 @@ class ConfirmDetailsViewModel: ObservableObject {
                                                                 self.didSavePlate = false
                                                                 self.alertItem = AlertItem(title: "Error", message: error.localizedDescription)
                                                             }
+                                                            guard self.activeImageRequestID == requestID else { return }
                                                             self.isLoading = false
                                                         }
                                                     case .failure(let err):
                                                         Task { @MainActor in
+                                                            guard self.activeImageRequestID == requestID else { return }
                                                             print("Errore nel recupero immagine -45: \(err.localizedDescription)")
                                                             self.didSavePlate = false
                                                             self.alertItem = AlertItem(title: "Errore immagine", message: err.localizedDescription)
@@ -164,6 +180,7 @@ class ConfirmDetailsViewModel: ObservableObject {
                                             }
                                         case .failure(let err):
                                             Task { @MainActor in
+                                                guard self.activeImageRequestID == requestID else { return }
                                                 print("Errore nel recupero immagine +45: \(err.localizedDescription)")
                                                 self.didSavePlate = false
                                                 self.alertItem = AlertItem(title: "Errore immagine", message: err.localizedDescription)
@@ -174,6 +191,7 @@ class ConfirmDetailsViewModel: ObservableObject {
                                 }
                             case .failure(let err):
                                 Task { @MainActor in
+                                    guard self.activeImageRequestID == requestID else { return }
                                     print("Errore nel recupero immagine originale: \(err.localizedDescription)")
                                     self.vehicleImageOriginal = nil
                                     self.didSavePlate = false

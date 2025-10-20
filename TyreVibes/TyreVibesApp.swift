@@ -14,7 +14,8 @@ struct TyreVibesApp: App {
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
     @StateObject private var languageManager = LanguageManager.shared
     @State private var showResetPasswordScreen = false
-
+    @State private var authStateChangeTask: Any? = nil
+    
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -25,7 +26,7 @@ struct TyreVibesApp: App {
                 }
                 SplashScreen()
             }
-
+            
             .sheet(isPresented: $showResetPasswordScreen) {
                 ResetPasswordScreen()
             }
@@ -33,27 +34,30 @@ struct TyreVibesApp: App {
                 if GIDSignIn.sharedInstance.handle(url) {
                     return
                 }
-
                 if url.scheme == "it.tyrevibes.app" && url.host == "reset-password" {
                     showResetPasswordScreen = true
                 }
-            .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
             }
             .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
                 isLoggedIn = false
             }
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
-            .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
-                isLoggedIn = false
-            }
             .onAppear {
-                SupabaseManager.client.auth.onAuthStateChange { event, session in
-                    if case .passwordRecovery = event {
-                        showResetPasswordScreen = true
+                Task { @MainActor in
+                    let token = await SupabaseManager.client.auth.onAuthStateChange { event, session in
+                        if case .passwordRecovery = event {
+                            showResetPasswordScreen = true
+                        }
                     }
+                    authStateChangeTask = token as Any
                 }
+            }
+            .onDisappear {
+                if let cancellable = authStateChangeTask as? AnyObject, cancellable.responds(to: Selector(("cancel"))) {
+                    _ = cancellable.perform(Selector(("cancel")))
+                }
+                authStateChangeTask = nil
             }
         }
     }

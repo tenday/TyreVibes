@@ -109,14 +109,9 @@ class PlateAPIService {
     
     private func convertRegistrationDate(_ dateStr: String?) -> String {
         guard let dateStr = dateStr else { return "-" }
-        let formatterInput = DateFormatter()
-        formatterInput.dateFormat = "MM/yyyy"
-        formatterInput.locale = Locale(identifier: "it_IT_POSIX")
-        if let date = formatterInput.date(from: dateStr) {
-            let formatterOutput = DateFormatter()
-            formatterOutput.dateFormat = "yyyy-MM-dd"
-            formatterOutput.locale = Locale(identifier: "it_IT_POSIX")
-            return formatterOutput.string(from: date)
+        let comps = dateStr.split(separator: "/")
+        if comps.count == 2, let month = comps.first, let year = comps.last {
+            return "\(year)-\(month)-01"
         }
         return "-"
     }
@@ -148,7 +143,7 @@ class PlateAPIService {
     
     
     
-    func checkPlate(plateNumber: String) async throws -> PlateData? {
+    func checkPlate(plateNumber: String) async throws -> Int? {
         guard var components = URLComponents(string: checkPlateBaseURL) else {
             throw PlateAPIError.invalidURL
         }
@@ -171,17 +166,7 @@ class PlateAPIService {
         if (200...299).contains(httpResponse.statusCode) {
             do {
                 let apiResponse = try JSONDecoder().decode(PlateAPIResponse.self, from: data)
-                return PlateData(
-                    plate: apiResponse.plate,
-                    make: apiResponse.make,
-                    model: apiResponse.model,
-                    color: apiResponse.color,
-                    // fuel: apiResponse.fuel_type,
-                    powerKW: apiResponse.power_kw,
-                    displacementCC: apiResponse.cilindrata,
-                    vin: apiResponse.vin,
-                    
-                )
+                return apiResponse.plate_id
             } catch {
                 throw PlateAPIError.requestFailed(error) // JSON decoding error
             }

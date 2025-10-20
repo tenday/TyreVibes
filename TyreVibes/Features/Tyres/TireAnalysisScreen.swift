@@ -9,28 +9,37 @@ struct TireAnalysisScreen: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.black.edgesIgnoringSafeArea(.all)
+        GeometryReader { geometry in
+            let carWidth = geometry.size.width * 0.6
+            let carHeight = carWidth * 1.8
 
-            VStack {
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+
                 if viewModel.isLoading {
                     ProgressView()
                 } else if let image = viewModel.carImage {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .padding(32)
+                        .frame(width: carWidth, height: carHeight)
                 } else if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding()
                 }
+
+                TirePlaceholdersOverlay(
+                    geometrySize: geometry.size,
+                    carWidth: carWidth,
+                    carHeight: carHeight
+                )
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
             .onAppear {
                 viewModel.fetchImage()
             }
-
-            // Tire placeholders
-            TirePlaceholdersOverlay()
         }
         .navigationBarTitle("Tire Analysis", displayMode: .inline)
         .navigationBarBackButtonHidden(true)
@@ -50,36 +59,52 @@ struct TireAnalysisScreen: View {
 }
 
 struct TirePlaceholdersOverlay: View {
+    let geometrySize: CGSize
+    let carWidth: CGFloat
+    let carHeight: CGFloat
+
     var body: some View {
-        GeometryReader { geometry in
-            let carWidth = geometry.size.width * 0.6
-            let carHeight = carWidth * 1.8
-            let tireWidth = carWidth * 0.15
-            let tireHeight = tireWidth * 2.5
+        let tireWidth = carWidth * 0.15
+        let tireHeight = tireWidth * 2.5
 
-            let topOffset = (geometry.size.height - carHeight) / 2
-            let sideOffset = (geometry.size.width - carWidth) / 2
+        let topOffset = (geometrySize.height - carHeight) / 2
+        let sideOffset = (geometrySize.width - carWidth) / 2
 
+        return ZStack {
             // Front-left tire
             TirePlaceholderView()
                 .frame(width: tireWidth, height: tireHeight)
-                .position(x: sideOffset, y: topOffset + tireHeight * 0.7)
+                .position(
+                    x: sideOffset + tireWidth / 2,
+                    y: topOffset + tireHeight * 0.7
+                )
 
             // Front-right tire
             TirePlaceholderView()
                 .frame(width: tireWidth, height: tireHeight)
-                .position(x: geometry.size.width - sideOffset, y: topOffset + tireHeight * 0.7)
+                .position(
+                    x: geometrySize.width - sideOffset - tireWidth / 2,
+                    y: topOffset + tireHeight * 0.7
+                )
 
             // Rear-left tire
             TirePlaceholderView()
                 .frame(width: tireWidth, height: tireHeight)
-                .position(x: sideOffset, y: topOffset + carHeight - tireHeight * 0.7)
+                .position(
+                    x: sideOffset + tireWidth / 2,
+                    y: topOffset + carHeight - tireHeight * 0.7
+                )
 
             // Rear-right tire
             TirePlaceholderView()
                 .frame(width: tireWidth, height: tireHeight)
-                .position(x: geometry.size.width - sideOffset, y: topOffset + carHeight - tireHeight * 0.7)
+                .position(
+                    x: geometrySize.width - sideOffset - tireWidth / 2,
+                    y: topOffset + carHeight - tireHeight * 0.7
+                )
         }
+        .frame(width: geometrySize.width, height: geometrySize.height)
+        .allowsHitTesting(false)
     }
 }
 

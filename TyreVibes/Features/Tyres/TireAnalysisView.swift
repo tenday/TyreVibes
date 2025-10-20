@@ -228,59 +228,14 @@ enum TirePosition: String, CaseIterable {
 }
 
 // MARK: - Preview
-struct TireAnalysisView_Previews: PreviewProvider {
-    static var previews: some View {
-        TireAnalysisView(
-            vehicle: .previewSample,
-            tyre: .previewSample
-        )
-    }
-}
-
-#if DEBUG
-extension VehicleResponse {
-    static var previewSample: VehicleResponse {
-        VehicleResponse(
-            vehicle: Vehicle(
-                id: 1,
-                modelDetail: "Model S Long Range",
-                engine: "Dual Motor",
-                make: "Tesla",
-                model: "Model S",
-                version: "Plaid",
-                fuelType: "Electric",
-                displacementCC: nil,
-                powerCV: 1020,
-                powerKW: "750",
-                emissionClass: "Euro 6",
-                gearbox: "Automatic",
-                maxSpeed: "322 km/h",
-                bodyType: "Sedan",
-                doors: "5",
-                seats: "5",
-                consumption: "18 kWh/100 km",
-                traction: "AWD",
-                saleStart: "2019",
-                saleEnd: nil,
-                color: "Red",
-                vin: "5YJSA1E26LF000001",
-                createdAt: nil
-            ),
-            plate: Plate(
-                id: 1,
-                plateNumber: "AB123CD",
-                registrationDate: "2021-06-15",
-                year: 2021,
-                month: 6,
-                createdAt: nil
-            ),
-            image: nil,
-            tyres: [],
-            revisions: [],
-            insurances: []
-        )
-    }
-}
+//struct TireAnalysisView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        TireAnalysisView(
+//            vehicle: .previewSample,
+//            tyre: .previewSample
+//        )
+//    }
+//}
 
 extension TyreRegistered {
     static var previewSample: TyreRegistered {
@@ -297,7 +252,6 @@ extension TyreRegistered {
         )
     }
 }
-#endif
 
 // MARK: - IMPORTANT NOTE
 /*

@@ -7,7 +7,11 @@
       "Bash(swiftc:*)",
       "Bash(claude mcp add:*)",
       "Bash(claude mcp list)",
-      "Read(//Users/matteolamanna/**)"
+      "Read(//Users/matteolamanna/**)",
+      "Bash(cat ~/.claude/local/claude)",
+      "Bash(ln -sf ../@anthropic-ai/claude-code/cli.js claude)",
+      "Bash(ln -s ../@anthropic-ai/.claude-code-yVCMXhVl/cli.js claude)",
+      "Bash(curl --version)"
     ],
     "deny": [],
     "ask": []

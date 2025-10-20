@@ -186,7 +186,9 @@ struct ProfileView: View {
     }
 
     private var logoutButton: some View {
-        Button(action: { showLogoutAlert = true }) {
+        Button(action: {
+            showLogoutAlert = true
+        }) {
             HStack {
                 Image(systemName: "arrow.right.square").font(.system(size: 20))
                 Text("Esci").font(.customFont(size: 18, weight: .semibold)).foregroundColor(.white)
@@ -207,6 +209,8 @@ struct ProfileView: View {
                 UserDefaults.standard.removeObject(forKey: "cachedVehicles")
                 UserDefaults.standard.removeObject(forKey: "userPreferences")
 
+                isLoggedIn = false
+
                 // Post the notification to inform the app about the logout
                 NotificationCenter.default.post(name: .didRequestLogout, object: nil)
 
@@ -214,6 +218,9 @@ struct ProfileView: View {
                 loginViewModel.email = ""
                 loginViewModel.password = ""
                 loginViewModel.rememberMe = false
+
+                onFullScreenDismiss?()
+                dismiss()
             } catch {
                 print("Errore logout: \(error.localizedDescription)")
             }

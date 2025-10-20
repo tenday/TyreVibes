@@ -12,23 +12,6 @@ struct BolloInfoView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                Image(systemName: "doc.text.fill")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 20))
-
-                Text("Bollo Auto")
-                    .font(.customFont(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-
-                Spacer()
-
-                if isLoading {
-                    ProgressView()
-                        .tint(.white)
-                }
-            }
 
             if isAuthenticated {
                 // Utente autenticato - mostra info bollo
@@ -390,51 +373,3 @@ enum BolloError: LocalizedError {
     }
 }
 
-// MARK: - Preview
-
-#Preview {
-    let sampleVehicle = VehicleResponse(
-        vehicle: Vehicle(
-            id: 1,
-            modelDetail: "Test",
-            engine: "1.6 TDI",
-            make: "Volkswagen",
-            model: "Golf",
-            version: nil,
-            fuelType: "Diesel",
-            displacementCC: 1600,
-            powerCV: 110,
-            powerKW: "81",
-            emissionClass: "Euro 6",
-            gearbox: nil,
-            maxSpeed: nil,
-            bodyType: nil,
-            doors: nil,
-            seats: nil,
-            consumption: nil,
-            traction: nil,
-            saleStart: nil,
-            saleEnd: nil,
-            color: "Nero",
-            vin: nil,
-            createdAt: nil
-        ),
-        plate: Plate(
-            id: 1,
-            plateNumber: "AB123CD",
-            registrationDate: "2020-01-01",
-            year: 2020,
-            month: 1,
-            createdAt: nil
-        ),
-        image: nil,
-        tyres: nil,
-        revisions: nil,
-        insurances: nil
-    )
-
-    BolloInfoView(vehicle: sampleVehicle)
-        .preferredColorScheme(.dark)
-        .padding()
-        .background(Color.customBackgroundColor)
-}

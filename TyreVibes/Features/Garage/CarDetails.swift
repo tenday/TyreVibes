@@ -10,6 +10,379 @@ extension String {
     }
 }
 
+private struct BolloEstimateView: View {
+    let vehicle: VehicleResponse
+    @State private var referenceDate: Date
+    @State private var isHistoricVehicle: Bool
+
+    init(vehicle: VehicleResponse) {
+        self.vehicle = vehicle
+
+        let today = Date()
+        if let registration = parseVehicleInfoDate(vehicle.plate?.registrationDate) {
+            let initial = max(registration, today)
+            _referenceDate = State(initialValue: initial)
+        } else {
+            _referenceDate = State(initialValue: today)
+        }
+
+        let currentYear = Calendar.current.component(.year, from: today)
+        let historicThreshold = currentYear - 30
+        let isHistoric = (vehicle.plate?.year ?? 0) > 0 && (vehicle.plate?.year ?? 0) <= historicThreshold
+        _isHistoricVehicle = State(initialValue: isHistoric)
+    }
+
+    private var calculationResult: BolloCalculationResult? {
+        guard let powerKW = extractPowerKW() else { return nil }
+
+        return BolloCalculator.calculateBollo(
+            powerKW: powerKW,
+            emissionClassRaw: vehicle.vehicle.emissionClass,
+            firstRegistrationDate: parseVehicleInfoDate(vehicle.plate?.registrationDate),
+            referenceDate: referenceDate,
+            fuelType: vehicle.vehicle.fuelType,
+            isHistoricVehicle: isHistoricVehicle
+        )
+    }
+
+    private var referenceDateRange: ClosedRange<Date> {
+        let today = Date()
+        let minDate = parseVehicleInfoDate(vehicle.plate?.registrationDate) ?? Calendar.current.date(byAdding: .year, value: -20, to: today) ?? today
+        let maxDate = Calendar.current.date(byAdding: .year, value: 2, to: today) ?? today
+        return min(minDate, today)...maxDate
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                header
+                configurationCard
+
+                if let result = calculationResult {
+                    summaryCard(for: result)
+                    breakdownCard(for: result)
+                    rateCard(for: result)
+                    advisoryCard
+                } else {
+                    EmptyStateView(
+                        icon: "questionmark.circle",
+                        title: String(localized: "Impossibile calcolare il bollo"),
+                        subtitle: String(localized: "Aggiorna i dati di potenza o immatricolazione per ottenere una stima.")
+                    )
+                }
+                
+                
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.purple)
+                        Text(LocalizedStringKey("Vuoi la massima precisione?"))
+                            .font(.customFont(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    
+                    BolloInfoView(vehicle: vehicle)
+                }
+                .padding(16)
+                .background(cardBackground)
+
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 24)
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.teal.opacity(0.2))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: "eurosign.circle.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.teal)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(LocalizedStringKey("Stima costo bollo"))
+                    .font(.customFont(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Text(LocalizedStringKey("Calcolo basato sui dati del veicolo e sulle tariffe nazionali."))
+                    .font(.customFont(size: 13, weight: .regular))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+
+            Spacer()
+        }
+    }
+
+    private var configurationCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LocalizedStringKey("Data di riferimento"))
+                    .font(.customFont(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+
+                DatePicker(
+                    "",
+                    selection: $referenceDate,
+                    in: referenceDateRange,
+                    displayedComponents: [.date]
+                )
+                .labelsHidden()
+                .datePickerStyle(.compact)
+                .tint(.teal)
+            }
+
+            Divider().background(Color.white.opacity(0.1))
+
+            Toggle(isOn: $isHistoricVehicle) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(LocalizedStringKey("Veicolo storico / esente"))
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    Text(LocalizedStringKey("Applica esenzione bollo per veicoli storici o dichiarati esenti."))
+                        .font(.customFont(size: 12, weight: .regular))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .toggleStyle(SwitchToggleStyle(tint: .teal))
+        }
+        .padding(16)
+        .background(cardBackground)
+    }
+
+    private func summaryCard(for result: BolloCalculationResult) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(LocalizedStringKey("Importo stimato"))
+                .font(.customFont(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.6))
+
+            Text(currencyString(result.total))
+                .font(.customFont(size: 30, weight: .bold))
+                .foregroundColor(.teal)
+
+            HStack(spacing: 25) {
+                summaryBadge(
+                    label: String(localized: "Potenza tassabile"),
+                    value: String(format: "%.0f kW", result.taxablePowerKW)
+                )
+
+                summaryBadge(
+                    label: String(localized: "Classe emiss."),
+                    value: emissionLabel(for: result.emissionClass)
+                )
+
+                if let registration = parseVehicleInfoDate(vehicle.plate?.registrationDate) {
+                    let iso = isoDateFormatter.string(from: registration)
+                    summaryBadge(
+                        label: String(localized: "Immatricolazione"),
+                        value: formatVehicleInfoDate(iso)
+                    )
+                }
+            }
+        }
+        .padding(20)
+        .background(cardBackground)
+    }
+
+    private func breakdownCard(for result: BolloCalculationResult) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(LocalizedStringKey("Dettaglio importi"))
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+
+            breakdownRow(
+                icon: "car.side",
+                title: String(localized: "Bollo base"),
+                value: currencyString(result.baseBollo),
+                description: String(localized: "Tariffa proporzionale alla potenza fino a 100 kW e oltre.")
+            )
+
+            if result.superBollo > 0 {
+                breakdownRow(
+                    icon: "speedometer",
+                    title: String(localized: "Superbollo"),
+                    value: currencyString(result.superBollo),
+                    description: String(localized: "Applicato per la quota di potenza oltre i 185 kW.")
+                )
+            }
+
+            breakdownRow(
+                icon: "calendar.badge.clock",
+                title: String(localized: "Data di riferimento"),
+                value: formatVehicleInfoDate(isoDateFormatter.string(from: referenceDate)),
+                description: String(localized: "Stima calcolata considerando la data selezionata.")
+            )
+        }
+        .padding(20)
+        .background(cardBackground)
+    }
+
+    private func rateCard(for result: BolloCalculationResult) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(LocalizedStringKey("Aliquote applicate"))
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+
+            HStack(spacing: 16) {
+                rateColumn(
+                    title: String(localized: "Fino a 100 kW"),
+                    value: tariffString(result.appliedRates.upTo100kW)
+                )
+
+                rateColumn(
+                    title: String(localized: "Oltre 100 kW"),
+                    value: tariffString(result.appliedRates.over100kW)
+                )
+            }
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .background(cardBackground)
+    }
+
+    private var advisoryCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(LocalizedStringKey("Nota importante"))
+                .font(.customFont(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+
+            Text(LocalizedStringKey("La stima ha valore puramente informativo e potrebbe variare in base alla Regione di residenza o ad agevolazioni specifiche. Verifica sempre sul portale ACI prima del pagamento."))
+                .font(.customFont(size: 12, weight: .regular))
+                .foregroundColor(.white.opacity(0.6))
+        }
+        .padding(16)
+        .background(cardBackground)
+    }
+
+    private func summaryBadge(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.customFont(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.6))
+
+            Text(value)
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func breakdownRow(icon: String, title: String, value: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.teal)
+                .frame(width: 28, height: 28)
+                .background(Color.teal.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(title)
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    Spacer()
+
+                    Text(value)
+                        .font(.customFont(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                Text(description)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+        }
+    }
+
+    private func rateColumn(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.customFont(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.6))
+
+            Text(value)
+                .font(.customFont(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func emissionLabel(for emission: BolloCalculator.EmissionClass) -> String {
+        switch emission {
+        case .euro0: return "Euro 0"
+        case .euro1: return "Euro 1"
+        case .euro2: return "Euro 2"
+        case .euro3: return "Euro 3"
+        case .euro4: return "Euro 4"
+        case .euro5: return "Euro 5"
+        case .euro6: return "Euro 6"
+        }
+    }
+
+    private func currencyString(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? "€ \(String(format: "%.2f", value))"
+    }
+
+    private func tariffString(_ value: Double) -> String {
+        let formatted = String(format: "%.2f", value)
+        return "€ \(formatted) / kW"
+    }
+
+    private func extractPowerKW() -> Double? {
+        if let kwString = vehicle.vehicle.powerKW, let parsed = parseNumericValue(from: kwString) {
+            return parsed
+        }
+
+        if let powerCV = vehicle.vehicle.powerCV {
+            return Double(powerCV) * 0.735499
+        }
+
+        return nil
+    }
+
+    private func parseNumericValue(from raw: String) -> Double? {
+        let sanitized = raw.replacingOccurrences(of: ",", with: ".")
+        let components = sanitized.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
+        guard let fragment = components.last(where: { !$0.isEmpty }),
+              let value = Double(fragment) else {
+            return nil
+        }
+        return value
+    }
+
+    private var isoDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color.black.opacity(0.25))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+    }
+}
+
 // MARK: - Advanced Animation Helpers
 struct SpringAnimation {
     static let gentle = Animation.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.1)
@@ -1418,8 +1791,17 @@ struct AdvancedInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentTab = 0
     @State private var tabSelectorOffset: CGFloat = 0
-    @State private var isTabTransitioning = false
+
     @State private var isRefreshing = false
+
+    // Tab styling variants
+    enum TabPickerStyleVariant {
+        case selectedPillMaterial
+        case compactCapsuleContainer
+    }
+
+    // Change this to switch style
+    @State private var tabPickerStyle: TabPickerStyleVariant = .compactCapsuleContainer
 
     private var tabs: [String] {
         [
@@ -1480,140 +1862,179 @@ struct AdvancedInfoSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
-            .padding(.bottom, 10)
+            .padding(.bottom, 20)
 
             // Enhanced Tab Picker with Liquid Glass Design
-            VStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
-                        ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
-                            let isSelected = currentTab == index
+            Group {
+                switch tabPickerStyle {
+                case .selectedPillMaterial:
+                    ScrollViewReader { proxy in
+                        VStack(spacing: 0) {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: 12) {
+                                    ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                                        let isSelected = currentTab == index
 
-                            Button(action: {
-                                withAnimation(SpringAnimation.bouncy) {
-                                    currentTab = index
-                                    isTabTransitioning = true
-                                }
+                                        Button(action: {
+                                            withAnimation(SpringAnimation.bouncy) {
+                                                currentTab = index
+                                            }
+                                        }) {
+                                            HStack(spacing: 8) {
+                                                if let iconName = tabIcon(for: index) {
+                                                    if isCustomIcon(iconName) {
+                                                        Image(iconName)
+                                                            .renderingMode(.template)
+                                                            .resizable()
+                                                            .aspectRatio(contentMode: .fit)
+                                                            .frame(width: 16, height: 16)
+                                                            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                                            .scaleEffect(isSelected ? 1.1 : 1.0)
+                                                            .animation(SpringAnimation.snappy, value: isSelected)
+                                                    } else {
+                                                        Image(systemName: iconName)
+                                                            .font(.system(size: 16, weight: .medium))
+                                                            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                                            .scaleEffect(isSelected ? 1.1 : 1.0)
+                                                            .animation(SpringAnimation.snappy, value: isSelected)
+                                                    }
+                                                }
 
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    isTabTransitioning = false
-                                }
-                            }) {
-                                HStack(spacing: 8) {
-                                    // Tab Icon - Fixed logic
-                                    if let iconName = tabIcon(for: index) {
-                                        if isCustomIcon(iconName) {
-                                            Image(iconName)
-                                                .renderingMode(.template)
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fit)
-                                                .frame(width: 16, height: 16)
-                                                .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-                                                .scaleEffect(isSelected ? 1.1 : 1.0)
-                                                .animation(SpringAnimation.snappy, value: isSelected)
-                                        } else {
-                                            Image(systemName: iconName)
-                                                .font(.system(size: 16, weight: .medium))
-                                                .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-                                                .scaleEffect(isSelected ? 1.1 : 1.0)
-                                                .animation(SpringAnimation.snappy, value: isSelected)
+                                                Text(tab)
+                                                    .font(.customFont(size: 14, weight: .semibold))
+                                                    .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                                    .lineLimit(1)
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .fixedSize()
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .fill(.ultraThinMaterial)
+                                                    .opacity(isSelected ? 1.0 : 0.0)
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 12)
+                                                            .stroke(
+                                                                LinearGradient(
+                                                                    colors: tabGradientColors(for: index),
+                                                                    startPoint: .topLeading,
+                                                                    endPoint: .bottomTrailing
+                                                                ),
+                                                                lineWidth: isSelected ? 2 : 0
+                                                            )
+                                                            .opacity(isSelected ? 0.8 : 0.0)
+                                                    )
+                                                    .shadow(
+                                                        color: tabGradientColors(for: index).first?.opacity(0.3) ?? .clear,
+                                                        radius: isSelected ? 10 : 0,
+                                                        x: 0,
+                                                        y: isSelected ? 5 : 0
+                                                    )
+                                            )
+                                            .animation(SpringAnimation.fluid, value: isSelected)
+                                            .contentShape(Rectangle())
                                         }
+                                        .buttonStyle(.plain)
+                                        .id(index)
                                     }
-
-                                    Text(tab)
-                                        .font(.customFont(size: 14, weight: .semibold))
-                                        .foregroundColor(isSelected ? .white : .white.opacity(0.6))
-                                        .lineLimit(1)
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .fixedSize()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(.ultraThinMaterial)
-                                        .opacity(isSelected ? 1.0 : 0.0)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(
-                                                    LinearGradient(
-                                                        colors: tabGradientColors(for: index),
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing
-                                                    ),
-                                                    lineWidth: isSelected ? 2 : 0
-                                                )
-                                                .opacity(isSelected ? 0.8 : 0.0)
-                                        )
-                                        .shadow(
-                                            color: tabGradientColors(for: index).first?.opacity(0.3) ?? .clear,
-                                            radius: isSelected ? 10 : 0,
-                                            x: 0,
-                                            y: isSelected ? 5 : 0
-                                        )
-                                )
-                                .animation(SpringAnimation.fluid, value: isSelected)
-                                .contentShape(Rectangle())
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 2)
                             }
-                            .buttonStyle(.plain)
+                        }
+                        .onChange(of: currentTab) { newTab in
+                            withAnimation {
+                                proxy.scrollTo(newTab, anchor: .center)
+                            }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 10)
-                    .padding(.bottom, 10)
+                case .compactCapsuleContainer:
+                    ScrollViewReader { proxy in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                                    let isSelected = currentTab == index
+                                    Button(action: {
+                                        withAnimation(SpringAnimation.bouncy) {
+                                            currentTab = index
+                                        }
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            if let iconName = tabIcon(for: index) {
+                                                if isCustomIcon(iconName) {
+                                                    Image(iconName)
+                                                        .renderingMode(.template)
+                                                        .resizable()
+                                                        .aspectRatio(contentMode: .fit)
+                                                        .frame(width: 14, height: 14)
+                                                        .foregroundColor(isSelected ? .black : .white.opacity(0.7))
+                                                } else {
+                                                    Image(systemName: iconName)
+                                                        .font(.system(size: 14, weight: .medium))
+                                                        .foregroundColor(isSelected ? .black : .white.opacity(0.7))
+                                                }
+                                            }
+                                            Text(tab)
+                                                .font(.customFont(size: 13, weight: .semibold))
+                                                .foregroundColor(isSelected ? .black : .white.opacity(0.8))
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 7)
+                                        .background(
+                                            Capsule(style: .continuous)
+                                                .fill(isSelected ? Color.white : Color.white.opacity(0.08))
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .id(index)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                        .padding(.bottom, 10)
+                        .onChange(of: currentTab) { newTab in
+                            withAnimation {
+                                proxy.scrollTo(newTab, anchor: .center)
+                            }
+                        }
+                    }
                 }
             }
-            .background(.thinMaterial)
+            .padding(.bottom, 0)
 
             // Content with spectacular transition animations
-            ZStack {
-                if currentTab == 0 {
-                    // NEW: Specifiche Tab
-                    VehicleSpecificationsView(vehicle: vehicle)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .leading).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        ))
-                } else if currentTab == 1 {
-                    AdvancedRevisionsTable(
-                        revisions: vehicle.revisions ?? [],
-                        forecastRevisions: makeRevisionForecasts(for: vehicle),
-                        selectedIndex: $selectedRevisionIndex
-                    )
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .leading).combined(with: .opacity),
-                        removal: .move(edge: .trailing).combined(with: .opacity)
-                    ))
-                } else if currentTab == 2 {
-                    AdvancedTyresTable(
-                        tyres: vehicle.tyres ?? [],
-                        registeredTyres: registeredTyres,
-                        vehicleId: vehicle.vehicle.id,
-                        selectedIndex: $selectedTyreIndex,
-                        tyreViewModel: tyreViewModel
-                    )
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.8).combined(with: .opacity),
-                        removal: .scale(scale: 0.8).combined(with: .opacity)
-                    ))
-                } else if currentTab == 3 {
-                    AdvancedInsuranceTable(
-                        insurances: vehicle.insurances ?? [],
-                        forecastInsurances: makeInsuranceForecasts(for: vehicle),
-                        selectedIndex: $selectedInsuranceIndex
-                    )
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing).combined(with: .opacity),
-                        removal: .move(edge: .leading).combined(with: .opacity)
-                    ))
-                } else if currentTab == 4 {
-                    // Sezione Bollo
-                    BolloInfoView(vehicle: vehicle)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.8).combined(with: .opacity),
-                            removal: .scale(scale: 0.8).combined(with: .opacity)
-                        ))
-                }
+            TabView(selection: $currentTab) {
+                VehicleSpecificationsView(vehicle: vehicle)
+                    .tag(0)
+
+                AdvancedRevisionsTable(
+                    revisions: vehicle.revisions ?? [],
+                    forecastRevisions: makeRevisionForecasts(for: vehicle),
+                    selectedIndex: $selectedRevisionIndex
+                )
+                .tag(1)
+
+                AdvancedTyresTable(
+                    tyres: vehicle.tyres ?? [],
+                    registeredTyres: registeredTyres,
+                    vehicleId: vehicle.vehicle.id,
+                    selectedIndex: $selectedTyreIndex,
+                    tyreViewModel: tyreViewModel
+                )
+                .tag(2)
+
+                AdvancedInsuranceTable(
+                    insurances: vehicle.insurances ?? [],
+                    forecastInsurances: makeInsuranceForecasts(for: vehicle),
+                    selectedIndex: $selectedInsuranceIndex
+                )
+                .tag(3)
+
+                BolloEstimateView(vehicle: vehicle)
+                    .tag(4)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(SpringAnimation.fluid, value: currentTab)
 
             Spacer()
@@ -1643,7 +2064,7 @@ struct AdvancedInfoSheet: View {
         case 3:
             return "shield.checkered"
         case 4:
-            return "bolloIcon"
+            return "eurosign.circle.fill"
         default:
             return nil
         }
@@ -1659,7 +2080,7 @@ struct AdvancedInfoSheet: View {
         case 1: return [.green, .mint]
         case 2: return [.orange, .yellow]
         case 3: return [.purple, .pink]
-        case 4: return [.red, .orange]
+        case 4: return [.teal, .blue]
         default: return [.gray, .gray]
         }
     }
@@ -1704,7 +2125,7 @@ struct VehicleSpecificationsView: View {
                         ("VIN", vehicle.vehicle.vin ?? "N/A"),
                         ("Targa", vehicle.plate?.plateNumber ?? "N/A"),
                         ("Anno Immatricolazione", vehicle.plate?.year != nil ? "\(vehicle.plate!.year!)" : "N/A"),
-                        ("Data Immatricolazione", vehicle.plate?.registrationDate ?? "N/A")
+                        ("Data Immatricolazione", formatVehicleInfoDate(vehicle.plate?.registrationDate))
                     ]
                 )
 

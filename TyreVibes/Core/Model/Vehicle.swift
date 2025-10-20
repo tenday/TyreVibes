@@ -66,6 +66,7 @@ struct Plate: Codable, Identifiable, Hashable {
         case month
         case createdAt = "created_at"
     }
+    
 }
 
 struct VehicleImage: Codable, Identifiable, Hashable {

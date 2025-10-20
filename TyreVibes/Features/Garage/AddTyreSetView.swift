@@ -337,11 +337,11 @@ struct AddTyreSetView: View {
                     }
                     .padding(16)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(setType == type ? Color.orange.opacity(0.15) : Color.white.opacity(0.05))
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(setType == type ? Color.orange.opacity(0.15) : Color.customFieldColor)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: 18)
                             .stroke(setType == type ? Color.orange.opacity(0.5) : Color.white.opacity(0.1), lineWidth: 1)
                     )
                 }
@@ -378,7 +378,7 @@ struct AddTyreSetView: View {
                 .font(.customFont(size: 15, weight: .medium))
                 .foregroundColor(.white)
                 .padding(14)
-                .background(Color.white.opacity(0.08))
+                .background(Color.customFieldColor)
                 .cornerRadius(10)
         }
         .padding(.horizontal, 20)
@@ -400,11 +400,11 @@ struct AddTyreSetView: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.customFieldColor)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 18)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
         .padding(.horizontal, 20)
@@ -438,11 +438,11 @@ struct AddTyreSetView: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.customFieldColor)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 18)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
@@ -471,13 +471,9 @@ struct AddTyreSetView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.orange, Color.orange.opacity(0.85)]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                Color.customBitterSweet
             )
-            .cornerRadius(12)
+            .cornerRadius(100)
         }
         .disabled(isStartDisabled)
         .opacity(isStartDisabled ? 0.5 : 1.0)
@@ -551,3 +547,28 @@ struct AddTyreSetView: View {
         isPresentingScanner || (setType == .custom && !isCustomNameValid)
     }
 }
+
+
+#if DEBUG
+private final class TyreViewModelPreview: TyreViewModel {
+    override func fetchTyres(vehicleId: Int, forceRefresh: Bool = false) {
+        // No-op in preview
+    }
+}
+
+
+#Preview("AddTyreSetView") {
+
+    let vm = TyreViewModelPreview()
+
+    NavigationStack {
+        AddTyreSetView(
+            vehicleId: 1,
+            vehicleTyres: [],
+            tyreViewModel: vm
+        )
+    }
+    .preferredColorScheme(.dark)
+    .background(Color.customBackgroundColor)
+}
+#endif

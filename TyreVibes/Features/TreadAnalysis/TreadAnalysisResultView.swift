@@ -78,6 +78,6 @@ struct TreadAnalysisResultView: View {
     }
 }
 
-#Preview {
-    TreadAnalysisResultView(vehicle: .previewSample)
-}
+//#Preview {
+//    TreadAnalysisResultView(vehicle: .previewSample)
+//}

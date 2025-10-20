@@ -20,23 +20,41 @@ private func extractCleanModel(from model: String?) -> String {
 }
 
 // Helper function to extract clean engine info (e.g., "1.5 ETSI", "2.0 TDI")
-private func extractCleanEngine(from engine: String?) -> String {
-    guard let engine = engine else { return "" }
-
-    let trimmed = engine.trimmingCharacters(in: .whitespacesAndNewlines)
-
-    // Extract displacement and engine type (e.g., "1.5 ETSI", "2.0 TDI")
-    // Pattern: number (with optional decimal) followed by optional space and letters
-    if let range = trimmed.range(of: #"\d+\.?\d*\s*[A-Za-z]+"#, options: .regularExpression) {
-        return String(trimmed[range])
-    }
-
-    // If no match, try to extract just the displacement
-    if let range = trimmed.range(of: #"\d+\.?\d*"#, options: .regularExpression) {
-        return String(trimmed[range])
-    }
-
-    return trimmed
+private func extractCleanEngine(from engine: String) -> String? {
+    // Lista di parole chiave valide che identificano motori / alimentazioni
+        let validEngineTokens: Set<String> = [
+            "BZ", "BENZINA", "TSI", "TFSI", "MPI", "GDI", "VTEC",
+            "DIESEL", "TDI", "CDTI", "DCI", "JTD", "MULTIJET", "CRDI", "HDI", "BLUEHDI",
+            "HYBRID", "MHEV", "PHEV", "HEV", "EHYBRID",
+            "GPL", "CNG", "METANO", "ECOFUEL",
+            "EV", "ELETTRICO", "BEV",
+            "ETSI", "ECOBOOST", "MHYBRID"
+        ]
+        
+        // Regex per catturare "numero decimale" + "sigla motore"
+        let pattern = #"(\d+(\.\d+)?)\s*([a-zA-Z]+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+            return nil
+        }
+        
+        let range = NSRange(engine.startIndex..<engine.endIndex, in: engine)
+        let matches = regex.matches(in: engine, options: [], range: range)
+        
+        for match in matches {
+            if match.numberOfRanges >= 4,
+               let cilindrataRange = Range(match.range(at: 1), in: engine),
+               let siglaRange = Range(match.range(at: 3), in: engine) {
+                
+                let cilindrata = String(engine[cilindrataRange])
+                let sigla = String(engine[siglaRange])
+                
+                if validEngineTokens.contains(sigla.uppercased()) {
+                    return "\(cilindrata) \(sigla)"
+                }
+            }
+        }
+        
+        return nil
 }
 
 struct GarageScreen: View {
@@ -448,7 +466,7 @@ struct GarageScreen: View {
                     .fullScreenCover(isPresented: $showProfileScreen) {
                         ProfileView(
                             onFullScreenDismiss: {
-                                showScanPlate = false
+                                showProfileScreen = false
                             }
                         )
                     }
