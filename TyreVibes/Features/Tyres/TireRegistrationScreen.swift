@@ -113,7 +113,7 @@ class TireOCRManager: NSObject, ObservableObject {
         // Skip processing if memory usage is too high (> 300MB - more reasonable limit)
         if kerr == KERN_SUCCESS {
             let memoryUsage = memoryInfo.resident_size
-            if memoryUsage > 500_000_000 {
+            if memoryUsage > 800_000_000 {
                 print("Memory usage too high: \(memoryUsage / 1_000_000)MB, skipping OCR")
                 return
             }
@@ -125,7 +125,6 @@ class TireOCRManager: NSObject, ObservableObject {
             return
         }
         
-        print("Processing image: \(image.width)x\(image.height)")
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
@@ -151,7 +150,6 @@ class TireOCRManager: NSObject, ObservableObject {
                 timeoutQueue.asyncAfter(deadline: .now() + 2.0, execute: timeoutItem)
                 
                 try handler.perform([self.textRecognitionRequest])
-                print("OCR processing started")
                 
                 // Cancel timeout if processing completes successfully
                 timeoutItem.cancel()
@@ -293,8 +291,13 @@ class TireOCRManager: NSObject, ObservableObject {
         
         var allDetectedText: [String] = []
         
+        // Sort observations by bounding box area (descending) to prioritize larger text
+        let sortedObservations = observations.sorted {
+            ($0.boundingBox.width * $0.boundingBox.height) > ($1.boundingBox.width * $1.boundingBox.height)
+        }
+        
         // Limit number of observations more aggressively
-        let limitedObservations = observations.prefix(10) // Reduced from 20 to 10
+        let limitedObservations = sortedObservations.prefix(10)
         
         // Extract all detected text
         for observation in limitedObservations {
@@ -1100,11 +1103,11 @@ class TireOCRManager: NSObject, ObservableObject {
 
         // Modelli comuni per marca
         let knownModels: [String: [String]] = [
-            "MICHELIN": ["PILOT SPORT", "ENERGY SAVER", "PRIMACY", "CROSSCLIMATE", "LATITUDE", "DEFENDER"],
-            "PIRELLI": ["CINTURATO", "P ZERO", "SCORPION", "WINTER SOTTOZERO", "CARRIER"],
-            "CONTINENTAL": ["CONTISPORTCONTACT", "CONTIPROCONTACT", "EXTREMECONTACT", "CONTIWINTERCONTACT"],
-            "BRIDGESTONE": ["POTENZA", "TURANZA", "DUELER", "BLIZZAK", "ECOPIA"],
-            "GOODYEAR": ["EAGLE", "EFFICIENTGRIP", "VECTOR", "ULTRAGRIP", "WRANGLER"],
+            "MICHELIN": ["PILOT SPORT", "ENERGY SAVER", "PRIMACY", "CROSSCLIMATE", "LATITUDE", "DEFENDER", "X-ICE", "ALPIN", "AGILIS"],
+            "PIRELLI": ["CINTURATO", "P ZERO", "SCORPION", "WINTER SOTTOZERO", "CARRIER", "WEATHERACTIVE", "POWERGY", "P4"],
+            "CONTINENTAL": ["CONTISPORTCONTACT", "CONTIPROCONTACT", "EXTREMECONTACT", "CONTIWINTERCONTACT", "TRUECONTACT", "CROSSCONTACT", "PURECONTACT", "VANCONTACT", "VIKINGCONTACT", "TERRAINCONTACT"],
+            "BRIDGESTONE": ["POTENZA", "TURANZA", "DUELER", "BLIZZAK", "ECOPIA", "ALENZA", "WEATHERPEAK", "DRIVEGUARD"],
+            "GOODYEAR": ["EAGLE", "EFFICIENTGRIP", "VECTOR", "ULTRAGRIP", "WRANGLER", "ASSURANCE", "FORTITUDE", "COMFORTDRIVE"],
             "DUNLOP": ["SPORT MAXX", "BLURESPONSE", "WINTER SPORT", "GRANDTREK"],
             "YOKOHAMA": ["ADVAN", "BLUEARTH", "GEOLANDAR", "ICEGUARD"],
             "HANKOOK": ["VENTUS", "KINERGY", "DYNAPRO", "WINTER"],
@@ -1395,6 +1398,13 @@ struct TyreRegistrationView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         navigateToConfirm = true
                     }
+                }
+            }
+            .onChange(of: navigateToConfirm) {
+                // This is triggered when the user returns from the confirmation view,
+                // ensuring the scanning state is reset for a new session.
+                if !navigateToConfirm {
+                    resetScanningSession()
                 }
             }
             .navigationDestination(isPresented: $navigateToConfirm) {
@@ -1733,12 +1743,13 @@ class OCRCameraView: UIView {
         let session = AVCaptureSession()
         
         // USA PHOTO per massima qualità (invece di .high o .medium)
-        if session.canSetSessionPreset(.photo) {
+        if session.canSetSessionPreset(.hd4K3840x2160) {
+            session.sessionPreset = .hd4K3840x2160  // 4K Ultra HD
+            print("Using 4K capture preset")
+        } else if session.canSetSessionPreset(.photo) {
             session.sessionPreset = .photo
         } else if session.canSetSessionPreset(.high) {
             session.sessionPreset = .high
-        } else {
-            session.sessionPreset = .hd1920x1080  // Fallback HD
         }
         
         guard let device = AVCaptureDevice.default(for: .video) else { return }
@@ -1846,7 +1857,6 @@ class OCRCameraView: UIView {
         // Ottieni dimensioni originali
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
-        print("Original buffer size: \(width)x\(height)")
         
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         
@@ -1860,16 +1870,14 @@ class OCRCameraView: UIView {
         
         // NON scalare l'immagine o scalare minimamente
         // Solo se necessario per performance, usa un fattore alto
-        let shouldScale = width > 3000 // Solo se veramente grande
+        let shouldScale = false // Solo se veramente grande
         let finalImage: CIImage
         
         if shouldScale {
             let scaleFactor: CGFloat = 2000.0 / CGFloat(width)  // Mantieni almeno 2000px
             finalImage = ciImage.transformed(by: CGAffineTransform(scaleX: scaleFactor, y: scaleFactor))
-            print("Scaled to: \(Int(CGFloat(width) * scaleFactor))x\(Int(CGFloat(height) * scaleFactor))")
         } else {
             finalImage = ciImage
-            print("Using original resolution")
         }
         
         // Crea CGImage mantenendo la qualità
@@ -1877,7 +1885,6 @@ class OCRCameraView: UIView {
         
         // Crop migliorato che mantiene più risoluzione
         if let croppedImage = cropImageToCircleHighRes(cgImage) {
-            print("Cropped size: \(croppedImage.width)x\(croppedImage.height)")
             ocrManager?.extractTextFromImage(croppedImage)
         }
     }
@@ -1932,7 +1939,6 @@ class OCRCameraView: UIView {
         
         // Verifica dimensione minima
         guard image.width >= 400 && image.height >= 400 else {
-            print("Image too small for OCR: \(image.width)x\(image.height)")
             return
         }
         

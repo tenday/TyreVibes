@@ -54,6 +54,7 @@ struct TireAnalysisSelectionView: View {
                                     }
                                 }
                                 .padding(.horizontal, 24)
+                                .padding(.vertical, 5)
                             }
                         }
 
@@ -104,6 +105,7 @@ struct TireAnalysisSelectionView: View {
                                             }
                                         }
                                         .padding(.horizontal, 24)
+                                        .padding(.vertical, 5)
                                     }
                                 }
                             }
@@ -341,5 +343,7 @@ struct RegisteredTyreCard: View {
 struct TireAnalysisSelectionView_Previews: PreviewProvider {
     static var previews: some View {
         TireAnalysisSelectionView()
+            .previewDisplayName("Default")
+            .preferredColorScheme(.dark)
     }
 }

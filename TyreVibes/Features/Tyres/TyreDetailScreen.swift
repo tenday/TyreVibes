@@ -14,11 +14,9 @@ struct TyreDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTyre = "FL"
+    @State private var isReady = false
 
-    init(tyre: TyreRegistered? = nil, onConfirmCompletion: (() -> Void)? = nil) {
-        self.tyre = tyre
-        self.onConfirmCompletion = onConfirmCompletion
-    }
+    
 
     var tyreName: String {
         guard let tyre = tyre else { return "Tyre Name" }
@@ -26,7 +24,7 @@ struct TyreDetailView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.customBackgroundColor.ignoresSafeArea()
 
@@ -171,11 +169,11 @@ struct TyreDetailView: View {
                         }
                         .background(Color.customFieldColor)
                         .cornerRadius(14)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 30)
-                        .padding(.bottom, 40)
+                        .padding()
                     }
                 }
+                .opacity(isReady ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: isReady)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -209,6 +207,13 @@ struct TyreDetailView: View {
             }
             .scrollIndicators(.hidden)
 
+        }
+        .task {
+            // Ensure NavigationStack and fonts are properly initialized before showing content
+            try? await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+            withAnimation {
+                isReady = true
+            }
         }
         .preferredColorScheme(.dark)
     }
@@ -589,11 +594,14 @@ struct TireConditionBar: View {
                     .fill(color)
                     .frame(width: 26, height: CGFloat(percentage))
                     .cornerRadius(6)
-                    .frame(height: 80, alignment: .bottom)
+
                 Text("\(percentage)%")
                     .font(.customFont(size: 10, weight: .semibold))
                     .foregroundColor(.white)
+                    .padding(.top, 6)
             }
+            .frame(height: 80, alignment: .bottom)
+            
             Text(position)
                 .font(.customFont(size: 14, weight: .semibold))
                 .foregroundColor(.white)

@@ -242,10 +242,6 @@ struct CameraPreview: UIViewControllerRepresentable {
                 }
             }
 
-            if result != original {
-                print("OCR Correction: '\(original)' → '\(result)'")
-            }
-
             return result
         }
 
@@ -474,8 +470,14 @@ struct CameraPreview: UIViewControllerRepresentable {
                             guard isIT || isEU || isAny else { return nil }
                             let letters = s.filter { $0.isLetter }.count
                             let digits = s.filter { $0.isNumber }.count
-                            // Score: premia IT, poi EU, poi any
-                            let score = (isIT ? 100 : isEU ? 60 : 20) + s.count * 2 + min(letters, 4) + min(digits, 4)
+                            // Score: premia IT, poi EU, poi any. Add bonus for 'G' in IT plates.
+                            var score = (isIT ? 100 : isEU ? 60 : 20) + s.count * 2 + min(letters, 4) + min(digits, 4)
+                            if isIT && s.count == 7 {
+                                let chars = Array(s)
+                                if chars[0] == "G" || chars[1] == "G" || chars[5] == "G" || chars[6] == "G" {
+                                    score += 1
+                                }
+                            }
                             return (s, score)
                         }
 
@@ -737,16 +739,6 @@ struct ScanPlateView: View {
                                     .opacity(plateText.isEmpty ? 0.7 : 1.0)
                                     .animation(.easeOut(duration: 0.4), value: plateText.isEmpty)
 
-                                if !plateText.isEmpty {
-                                    VStack(spacing: 8) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.system(size: 40))
-                                            .foregroundColor(.green)
-                                            .transition(.scale.combined(with: .opacity))
-                                            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: plateText)
-                                    }
-                                    .offset(y: -plateHeight * 0.8)
-                                }
                             }
 
                             // Testo dinamico e suggerimenti sotto al riquadro
@@ -816,9 +808,7 @@ struct ScanPlateView: View {
             }
             .alert("Errore", isPresented: $showErrorAlert) {
                 Button("OK") {
-                    showErrorAlert = false
-                    plateText = ""
-                    // Reset per permettere nuova scansione
+                    resetScanningState()
                 }
             } message: {
                 Text(errorMessage)

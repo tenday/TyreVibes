@@ -3,8 +3,15 @@ import UIKit
 
 struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
-    @StateObject private var notificationStore = NotificationStore()
+    @EnvironmentObject private var notificationStore: NotificationStore
     @State private var showNotifications = false
+
+    // MARK: - Additional Settings State
+    @State private var notificationsEnabled = true
+    @State private var promotionNotifications = true
+    @State private var updateNotifications = false
+    @State private var analysisNotifications = true
+    @State private var selectedTheme: AppTheme = .system
 
     var body: some View {
         NavigationStack {
@@ -42,6 +49,20 @@ struct SettingsView: View {
                         .padding(.top, 24)
 
                         LanguageSection(selectedLanguage: $viewModel.selectedLanguage)
+                            .padding(.top, 24)
+
+                        NotificationsSection(
+                            notificationsEnabled: $notificationsEnabled,
+                            promotionNotifications: $promotionNotifications,
+                            updateNotifications: $updateNotifications,
+                            analysisNotifications: $analysisNotifications
+                        )
+                        .padding(.top, 24)
+
+                        AppearanceSection(selectedTheme: $selectedTheme)
+                            .padding(.top, 24)
+                        
+                        AboutSection()
                             .padding(.top, 24)
 
                         Spacer(minLength: 100)
@@ -467,7 +488,155 @@ struct LanguageCard: View {
     }
 }
 
+// MARK: - Additional Sections & Components
+
+struct NotificationsSection: View {
+    @Binding var notificationsEnabled: Bool
+    @Binding var promotionNotifications: Bool
+    @Binding var updateNotifications: Bool
+    @Binding var analysisNotifications: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Notifications")
+                .font(.custom("Sora-SemiBold", size: 22))
+                .foregroundColor(.white)
+
+            ToggleCard(
+                title: "Enable Notifications",
+                subtitle: "Receive alerts and updates from the app",
+                isOn: $notificationsEnabled
+            )
+
+            if notificationsEnabled {
+                VStack(spacing: 18) {
+                    ToggleCard(
+                        title: "Promotions & Offers",
+                        subtitle: "Get notified about special deals",
+                        isOn: $promotionNotifications
+                    )
+                    ToggleCard(
+                        title: "App Updates",
+                        subtitle: "Know when a new version is available",
+                        isOn: $updateNotifications
+                    )
+                    ToggleCard(
+                        title: "Analysis Complete",
+                        subtitle: "Receive an alert when tyre analysis is done",
+                        isOn: $analysisNotifications
+                    )
+                }
+                .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity.combined(with: .move(edge: .bottom))))
+                .animation(.default, value: notificationsEnabled)
+            }
+        }
+    }
+}
+
+struct AppearanceSection: View {
+    @Binding var selectedTheme: AppTheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Appearance")
+                .font(.custom("Sora-SemiBold", size: 22))
+                .foregroundColor(.white)
+
+            HStack(spacing: 16) {
+                ForEach(AppTheme.allCases, id: \.self) { theme in
+                    ThemeButton(
+                        theme: theme,
+                        isSelected: selectedTheme == theme
+                    ) {
+                        selectedTheme = theme
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct ThemeButton: View {
+    let theme: AppTheme
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCard(
+                height: 62,
+                borderColor: isSelected ? Color(hex: "2FB8FF") : Color(hex: "5CEBFF").opacity(0.4)
+            ) {
+                Text(theme.rawValue)
+                    .font(.custom(isSelected ? "Sora-Bold" : "Sora-Regular", size: 16))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct AboutSection: View {
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "N/A"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("About & Support")
+                .font(.custom("Sora-SemiBold", size: 22))
+                .foregroundColor(.white)
+
+            AboutButton(title: "Help Center") { /* TODO: Action */ }
+            AboutButton(title: "Terms of Service") { /* TODO: Action */ }
+            AboutButton(title: "Privacy Policy") { /* TODO: Action */ }
+            AboutButton(title: "Rate This App") {
+                // TODO: Logic to open App Store
+            }
+
+            HStack {
+                Text("App Version")
+                    .font(.custom("Sora-Regular", size: 14))
+                    .foregroundColor(.white.opacity(0.6))
+                Spacer()
+                Text(appVersion)
+                    .font(.custom("Sora-SemiBold", size: 14))
+                    .foregroundColor(.white)
+            }
+            .padding(.top, 10)
+        }
+    }
+}
+
+struct AboutButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCard(height: 62) {
+                HStack {
+                    Text(title)
+                        .font(.custom("Sora-SemiBold", size: 16))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .padding(.horizontal, 18)
+            }
+        }
+    }
+}
+
 // MARK: - Models
+
+enum AppTheme: String, CaseIterable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+}
+
 enum PrivacyLevel: String, CaseIterable {
     case basic = "Basic"
     case balanced = "Balanced"
@@ -478,5 +647,6 @@ enum PrivacyLevel: String, CaseIterable {
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView()
+            .environmentObject(NotificationStore())
     }
 }

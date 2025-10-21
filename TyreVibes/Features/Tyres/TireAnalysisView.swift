@@ -228,14 +228,14 @@ enum TirePosition: String, CaseIterable {
 }
 
 // MARK: - Preview
-//struct TireAnalysisView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        TireAnalysisView(
-//            vehicle: .previewSample,
-//            tyre: .previewSample
-//        )
-//    }
-//}
+struct TireAnalysisView_Previews: PreviewProvider {
+    static var previews: some View {
+        TireAnalysisView(
+            vehicle: .previewSample,
+            tyre: .previewSample
+        )
+    }
+}
 
 extension TyreRegistered {
     static var previewSample: TyreRegistered {
@@ -249,6 +249,50 @@ extension TyreRegistered {
             loadIndex: "96",
             speedRating: "Y",
             season: "Summer"
+        )
+    }
+}
+
+extension VehicleResponse {
+    static var previewSample: VehicleResponse {
+        VehicleResponse(
+            vehicle: Vehicle(
+                id: 1,
+                modelDetail: "GTI",
+                engine: "2.0 TSI",
+                make: "Volkswagen",
+                model: "Golf",
+                version: "8",
+                fuelType: "Petrol",
+                displacementCC: 1984,
+                powerCV: 245,
+                powerKW: "180",
+                emissionClass: "Euro 6",
+                gearbox: "DSG",
+                maxSpeed: "250 km/h",
+                bodyType: "Hatchback",
+                doors: "5",
+                seats: "5",
+                consumption: "7.4 l/100km",
+                traction: "Front",
+                saleStart: "2020",
+                saleEnd: nil,
+                color: "Red",
+                vin: "WVWZZZAUZLP000001",
+                createdAt: "2024-01-01T12:00:00Z"
+            ),
+            plate: Plate(
+                id: 1,
+                plateNumber: "AB123CD",
+                registrationDate: "2021-05-10",
+                year: 2021,
+                month: 5,
+                createdAt: "2024-01-01T12:00:00Z"
+            ),
+            image: nil,
+            tyres: nil,
+            revisions: nil,
+            insurances: nil
         )
     }
 }

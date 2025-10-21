@@ -114,36 +114,6 @@
             endingLineNumber = "25"
             landmarkName = "toHex()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "5141D40E-7290-4EE2-977B-7E823879A639 - 68ac416c7129b0c3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SwiftUI.Color.toHex() -&gt; Swift.Optional&lt;Swift.String&gt;"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Utility/Color+Hex.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "25"
-                  endingLineNumber = "25">
-               </Location>
-               <Location
-                  uuid = "5141D40E-7290-4EE2-977B-7E823879A639 - 68ac416c7129b0c3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "SwiftUI.Color.toHex() -&gt; Swift.Optional&lt;Swift.String&gt;"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/Utility/Color+Hex.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "25"
-                  endingLineNumber = "25">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -460,8 +430,8 @@
             filePath = "TyreVibes/Features/LicensePlate/ScanPlateScreen.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "302"
-            endingLineNumber = "302"
+            startingLineNumber = "298"
+            endingLineNumber = "298"
             landmarkName = "handleCameraAuthorization()"
             landmarkType = "7">
          </BreakpointContent>
@@ -478,8 +448,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "93"
             endingLineNumber = "93"
-            landmarkName = "TyreViewModel"
-            landmarkType = "3">
+            landmarkName = "getTyres(forVehicleId:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -492,8 +462,8 @@
             filePath = "TyreVibes/Features/Tyres/TireRegistrationScreen.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1212"
-            endingLineNumber = "1212"
+            startingLineNumber = "1210"
+            endingLineNumber = "1210"
             landmarkName = "TyreRegistrationView"
             landmarkType = "14">
          </BreakpointContent>
@@ -526,7 +496,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "112"
             endingLineNumber = "112"
-            landmarkName = "insertTyre(vehicleId:)"
+            landmarkName = "invalidateCache(forVehicleId:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -542,108 +512,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "149"
             endingLineNumber = "149"
-            landmarkName = "insertTyre(vehicleId:)"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - f69d4f812e03c5f4"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "property wrapper backing initializer of TyreVibes.TyreViewModel.size : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - 5049c8da584d70de"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.size.getter : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - 81f347e713646122"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.size.setter : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - 66906b8e027044dd"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.size.modify : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - 6a52bc0773e9c53b"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$size.getter : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - 55ffc175d7abf438"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$size.setter : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/%3Cstdin%3E"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "5F433EFB-32B1-4017-BEF4-1EC18E38B12B - e925fc46b356463e"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$size.modify : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-            </Locations>
+            landmarkName = "TyreViewModel"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -658,8 +528,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "144"
             endingLineNumber = "144"
-            landmarkName = "insertTyre(vehicleId:)"
-            landmarkType = "7">
+            landmarkName = "TyreRegistered"
+            landmarkType = "14">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -674,8 +544,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "139"
             endingLineNumber = "139"
-            landmarkName = "insertTyre(vehicleId:)"
-            landmarkType = "7">
+            landmarkName = "CodingKeys"
+            landmarkType = "13">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -690,8 +560,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "134"
             endingLineNumber = "134"
-            landmarkName = "insertTyre(vehicleId:)"
-            landmarkType = "7">
+            landmarkName = "CodingKeys"
+            landmarkType = "13">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -706,108 +576,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "150"
             endingLineNumber = "150"
-            landmarkName = "insertTyre(vehicleId:)"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - b54b13cc9e8f5379"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "property wrapper backing initializer of TyreVibes.TyreViewModel.dot : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - 867797b2d66402a3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.dot.getter : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - f1fe3cad896772b7"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.dot.setter : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - 927dd588701156a6"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.dot.modify : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - 2979c5d2c90ed28c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$dot.getter : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - 61b088a304cacba7"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$dot.setter : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/%3Cstdin%3E"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "6D581500-E611-43FF-B8D9-C0B956E05349 - e64f2cbe4b61df83"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$dot.modify : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-            </Locations>
+            landmarkName = "TyreViewModel"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -822,108 +592,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "152"
             endingLineNumber = "152"
-            landmarkName = "insertTyre(vehicleId:)"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - 37b828c2c29e63b6"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "property wrapper backing initializer of TyreVibes.TyreViewModel.speedRating : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - cf968f3bc4946b98"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.speedRating.getter : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - 37ccf40577ff5bec"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.speedRating.setter : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - f90e39fd087bf9f"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.speedRating.modify : Swift.String"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - 7b6b137d2a540ec5"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$speedRating.getter : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - 72188cbbc265bffe"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$speedRating.setter : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/%3Cstdin%3E"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-               <Location
-                  uuid = "9C34A05F-1EB8-45FD-876E-3C08FF0E9B15 - 1a96f2b614898bf8"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "TyreVibes.TyreViewModel.$speedRating.modify : Combine.Published&lt;Swift.String&gt;.Publisher"
-                  moduleName = "TyreVibes.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/matteolamanna/Documents/TyreVibes/TyreVibes/Core/ViewModel/TyreViewModel.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "0"
-                  endingLineNumber = "0">
-               </Location>
-            </Locations>
+            landmarkName = "TyreViewModel"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy

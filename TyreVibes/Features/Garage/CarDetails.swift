@@ -1409,12 +1409,13 @@ struct CarDetailsView: View {
                     vehicleid: vehicle.vehicle.id
                 )
             }
-            .fullScreenCover(isPresented: $showTyreDetails) {
-                if let selectedTyre = selectedTyre {
-                    TyreDetailView(tyre: selectedTyre) {
-                        showTyreDetails = false
+            .fullScreenCover(item: $selectedTyre) { tyre in
+                TyreDetailView(
+                    tyre: tyre,
+                    onConfirmCompletion: {
+                        selectedTyre = nil
                     }
-                }
+                )
             }
             .fullScreenCover(isPresented: $showPremiumScreen) {
                 PremiumSubscriptionScreen()
@@ -2057,12 +2058,9 @@ struct AdvancedInfoSheet: View {
         switch index {
         case 0:
             return "info.circle.fill"
-        case 1:
-            return "doc.text.magnifyingglass"
-        case 2:
-            return "tyreIcon"
-        case 3:
-            return "shield.checkered"
+        case 1: return "wrench.and.screwdriver"
+        case 2: return "circle.dashed"
+        case 3: return "shield.lefthalf.filled"
         case 4:
             return "eurosign.circle.fill"
         default:
@@ -2942,7 +2940,7 @@ struct AdvancedTyresTable: View {
 
                     if tyres.isEmpty {
                         EmptyStateView(
-                            icon: "car.circle",
+                            icon: "circle.dashed",
                             title: "Nessun Pneumatico",
                             subtitle: "Non ci sono pneumatici disponibili"
                         )
@@ -3179,7 +3177,7 @@ struct TyreRow: View {
                             .fill(Color.blue.opacity(0.2))
                             .frame(width: 50, height: 50)
                         
-                        Image(systemName: "car.circle.fill")
+                        Image(systemName: "circle.dashed")
                             .font(.system(size: 24, weight: .medium))
                             .foregroundColor(.blue)
                     }
