@@ -15,6 +15,19 @@ struct TyreVibesApp: App {
     @StateObject private var languageManager = LanguageManager.shared
     @State private var showResetPasswordScreen = false
     @State private var authStateChangeTask: Any? = nil
+
+    init() {
+        // Track app launch with cold start time
+        let launchTime = ProcessInfo.processInfo.systemUptime
+        Task {
+            await AnalyticsManager.shared.track(
+                .appLaunched(coldStartTime: launchTime)
+            )
+        }
+
+        // Initialize SessionManager
+        _ = SessionManager.shared
+    }
     
     var body: some Scene {
         WindowGroup {
@@ -44,6 +57,13 @@ struct TyreVibesApp: App {
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
             .onAppear {
+                // Track app opened
+                Task {
+                    await AnalyticsManager.shared.track(
+                        .appOpened(timestamp: Date())
+                    )
+                }
+
                 Task { @MainActor in
                     let token = await SupabaseManager.client.auth.onAuthStateChange { event, session in
                         if case .passwordRecovery = event {
