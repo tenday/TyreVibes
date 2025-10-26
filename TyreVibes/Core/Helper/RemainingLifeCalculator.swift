@@ -108,6 +108,8 @@ class RemainingLifeCalculator {
             wearRate *= 1.6
         case .feathering:
             wearRate *= 1.4
+        case .excessive:
+            wearRate *= 2.0
         }
 
         // Adjust for wear severity
@@ -280,6 +282,12 @@ class RemainingLifeCalculator {
                 impact: -0.35,
                 description: "Convergenza errata riduce la durata"
             ))
+        case .excessive:
+            factors.append(LifeFactor(
+                name: "Usura Eccessiva",
+                impact: -0.60,
+                description: "Usura eccessiva richiede sostituzione immediata"
+            ))
         }
 
         // Depth uniformity factor
@@ -325,6 +333,12 @@ class RemainingLifeCalculator {
                 name: "Vicino al Limite",
                 impact: -0.10,
                 description: "Prossimo al limite legale, sostituzione imminente"
+            ))
+        case .warning:
+            factors.append(LifeFactor(
+                name: "Attenzione",
+                impact: -0.20,
+                description: "Profondità sotto soglia di sicurezza consigliata"
             ))
         case .illegal:
             factors.append(LifeFactor(

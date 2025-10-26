@@ -257,7 +257,7 @@ class PDFReportBuilder {
         drawSectionTitle(context: context, title: "Zone Analysis")
 
         for zone in report.wearAnalysis.zoneAnalysis {
-            let zoneText = "\(zone.zone.rawValue): \(String(format: "%.2f mm", zone.averageDepth)) (\(zone.status))"
+            let zoneText = "\(zone.zone.rawValue): \(String(format: "%.2f mm", zone.averageDepth)) (Wear: \(String(format: "%.1f%%", zone.wearPercentage * 100)))"
             let zoneAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13),
                 .foregroundColor: UIColor.black
@@ -356,8 +356,10 @@ class PDFReportBuilder {
             ("Critical (<1.6mm)", distribution.critical)
         ]
 
+        let total = distribution.excellent + distribution.good + distribution.fair + distribution.poor + distribution.critical
+
         for (label, count) in distributionData {
-            let percentage = Double(count) / Double(distribution.total) * 100
+            let percentage = total > 0 ? (Double(count) / Double(total) * 100) : 0
             drawProgressBar(
                 context: context,
                 label: label,

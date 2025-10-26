@@ -250,11 +250,11 @@ class TyreAnalysisReportGenerator: ObservableObject {
         }
 
         return DepthAnalysis(
-            measurements: measurements,
             average: result.averageDepth,
             minimum: result.minDepth,
             maximum: result.maxDepth,
             standardDeviation: result.standardDeviation,
+            measurements: measurements,
             legalStatus: legalStatus,
             depthDistribution: distribution
         )
@@ -295,9 +295,9 @@ class TyreAnalysisReportGenerator: ObservableObject {
         return WearAnalysis(
             pattern: pattern,
             severity: severity,
-            causes: causes,
+            unevenWearIndex: min(1.0, unevenWearIndex),
             zoneAnalysis: zoneAnalysis,
-            unevenWearIndex: min(1.0, unevenWearIndex)
+            causes: causes
         )
     }
 
@@ -357,12 +357,12 @@ class TyreAnalysisReportGenerator: ObservableObject {
             conditionScore * 0.10
         ) * 100
 
-        let rating = SafetyScore.fromScore(overall)
+        let rating = SafetyScore.Rating.fromScore(overall)
 
         return SafetyScore(
             overall: overall,
-            components: components,
-            rating: rating
+            rating: rating,
+            components: components
         )
     }
 
@@ -436,6 +436,16 @@ class TyreAnalysisReportGenerator: ObservableObject {
                 description: "Feathering indicates toe alignment issues.",
                 action: "Get toe alignment corrected",
                 urgency: .withinMonth
+            ))
+
+        case .excessive:
+            recommendations.append(Recommendation(
+                priority: .critical,
+                category: .safety,
+                title: "Immediate Replacement Required",
+                description: "Excessive wear poses a serious safety risk.",
+                action: "Replace tyres immediately",
+                urgency: .immediate
             ))
 
         case .uniform:
@@ -573,6 +583,13 @@ class TyreAnalysisReportGenerator: ObservableObject {
                 description: "Convergenza non corretta causa usura a piuma"
             ))
 
+        case .excessive:
+            causes.append(WearCause(
+                type: .drivingStyle,
+                probability: 0.90,
+                description: "Guida aggressiva e carico eccessivo causano usura prematura"
+            ))
+
         case .uniform:
             // No specific causes for uniform wear
             break
@@ -591,12 +608,12 @@ class TyreAnalysisReportGenerator: ObservableObject {
     }
 
     private func analyzeZones(measurements: [TreadDepthAnalyzer.DepthMeasurement]) -> [WearAnalysis.ZoneWearInfo] {
-        let zones: [DepthMeasurementPoint.TyreZone] = [.center, .innerEdge, .outerEdge, .shoulder]
+        let zones: [WearAnalysis.Zone] = [.inner, .center, .outer]
         var zoneInfo: [WearAnalysis.ZoneWearInfo] = []
 
         for zone in zones {
             let zoneMeasurements = measurements.filter { measurement in
-                determineZone(for: measurement.location) == zone
+                mapToWearZone(determineZone(for: measurement.location)) == zone
             }
 
             guard !zoneMeasurements.isEmpty else { continue }
@@ -604,28 +621,25 @@ class TyreAnalysisReportGenerator: ObservableObject {
             let avgDepth = zoneMeasurements.map { $0.depth }.reduce(0, +) / Double(zoneMeasurements.count)
             let wearPercentage = 1.0 - (avgDepth / 8.0)
 
-            let status: String
-            if avgDepth > 6.0 {
-                status = "Excellent"
-            } else if avgDepth > 4.0 {
-                status = "Good"
-            } else if avgDepth > 2.5 {
-                status = "Fair"
-            } else if avgDepth > 1.6 {
-                status = "Poor"
-            } else {
-                status = "Critical"
-            }
-
             zoneInfo.append(WearAnalysis.ZoneWearInfo(
                 zone: zone,
                 averageDepth: avgDepth,
-                wearPercentage: wearPercentage,
-                status: status
+                wearPercentage: wearPercentage
             ))
         }
 
         return zoneInfo
+    }
+
+    private func mapToWearZone(_ tyreZone: DepthMeasurementPoint.TyreZone) -> WearAnalysis.Zone {
+        switch tyreZone {
+        case .innerEdge:
+            return .inner
+        case .center:
+            return .center
+        case .outerEdge, .shoulder:
+            return .outer
+        }
     }
 
     private func interpolateDepth(at point: CGPoint, from measurements: [TreadDepthAnalyzer.DepthMeasurement]) -> Double {
@@ -660,6 +674,7 @@ class TyreAnalysisReportGenerator: ObservableObject {
         case .innerEdgeWear, .outerEdgeWear: return 0.6
         case .patchyWear: return 0.4
         case .cuppingWear, .feathering: return 0.3
+        case .excessive: return 0.1
         }
     }
 

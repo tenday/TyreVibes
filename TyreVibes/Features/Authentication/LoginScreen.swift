@@ -258,6 +258,8 @@ struct LoginScreen: View {
                 .onReceive(viewModel.$alertItem) { newValue in
                     if newValue != nil {
                         showAlert = true
+                    } else {
+                        showAlert = false
                     }
                 }
                 .onAppear {
@@ -271,6 +273,7 @@ struct LoginScreen: View {
                     primaryButtonTitle: "OK",
                     primaryButtonAction: {
                         viewModel.alertItem = nil
+                        showAlert = false
                     }
                 )
             }

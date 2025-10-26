@@ -8,6 +8,8 @@
 	<string>https://www.tyrevibes.com/api</string>
 	<key>SavePlateURL</key>
 	<string>https://www.tyrevibes.com/api/v1/save_plate</string>
+	<key>ManualPlateURL</key>
+	<string>https://www.tyrevibes.com/api/v1/manual_plate</string>
 	<key>GetAllCars</key>
 	<string>https://www.tyrevibes.com/api/vehicles/:userId</string>
 	<key>IMAGE_GENERATOR_URL</key>

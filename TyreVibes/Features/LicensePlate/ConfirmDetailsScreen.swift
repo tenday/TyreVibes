@@ -206,6 +206,10 @@ struct ConfirmDetailsView: View {
             }
             .onReceive(viewModel.$didSavePlate) { newValue in
                 if newValue {
+                    // The plate was saved successfully, which means the color was updated on the backend.
+                    // Now, clear the client-side cache to force a fresh data fetch next time.
+                    VehicleService.shared.clearCache()
+
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                         isContinueEnabled = true
                         navigateToCheckDetails = true
@@ -282,12 +286,12 @@ struct ConfirmDetailsView: View {
         // Logica esistente per dati automatici
         guard let plate = plateData else { return }
 
+        let colorName = ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor)
         if LicensePlateReader.exists, !plate.plate.isEmpty {
             Task {
-                await viewModel.associateVehicleWithUser(vehicleId: plate.vehicleId ?? 0)
+                await viewModel.associateVehicleWithUser(vehicleId: plate.vehicleId ?? 0, vehicleData: plate, color: colorName)
             }
         } else {
-            let colorName = ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor)
             Task {
                 await viewModel.savePlate(plateData: plate, color: colorName, angle: 23)
             }

@@ -113,51 +113,6 @@ struct WeatherInfo: Codable {
     let conditions: String
 }
 
-// MARK: - Depth Analysis
-struct DepthAnalysis: Codable {
-    let measurements: [DepthMeasurementPoint]
-    let average: Double
-    let minimum: Double
-    let maximum: Double
-    let standardDeviation: Double
-    let legalStatus: LegalStatus
-    let depthDistribution: DepthDistribution
-
-    enum LegalStatus: String, Codable {
-        case legal = "Legal"
-        case nearLimit = "Near Legal Limit"
-        case illegal = "Below Legal Limit"
-
-        var color: Color {
-            switch self {
-            case .legal: return .green
-            case .nearLimit: return .orange
-            case .illegal: return .red
-            }
-        }
-
-        var description: String {
-            switch self {
-            case .legal: return "Profondità battistrada legale (>1.6mm)"
-            case .nearLimit: return "Vicino al limite legale (1.6-2.5mm)"
-            case .illegal: return "Sotto il limite legale (<1.6mm)"
-            }
-        }
-    }
-
-    struct DepthDistribution: Codable {
-        let excellent: Int  // > 6mm
-        let good: Int       // 4-6mm
-        let fair: Int       // 2.5-4mm
-        let poor: Int       // 1.6-2.5mm
-        let critical: Int   // < 1.6mm
-
-        var total: Int {
-            excellent + good + fair + poor + critical
-        }
-    }
-}
-
 struct DepthMeasurementPoint: Codable, Identifiable {
     let id: UUID
     let x: Double  // Normalized 0-1
@@ -180,87 +135,6 @@ struct DepthMeasurementPoint: Codable, Identifiable {
         self.depth = depth
         self.confidence = confidence
         self.zone = zone
-    }
-}
-
-// MARK: - Wear Analysis
-struct WearAnalysis: Codable {
-    let pattern: WearPattern
-    let severity: WearSeverity
-    let causes: [WearCause]
-    let zoneAnalysis: [ZoneWearInfo]
-    let unevenWearIndex: Double  // 0-1, higher = more uneven
-
-    enum WearPattern: String, Codable {
-        case uniform = "Uniform"
-        case centerWear = "Center Wear"
-        case edgeWear = "Edge Wear"
-        case innerEdgeWear = "Inner Edge Wear"
-        case outerEdgeWear = "Outer Edge Wear"
-        case patchyWear = "Patchy Wear"
-        case cuppingWear = "Cupping Wear"
-        case feathering = "Feathering"
-
-        var icon: String {
-            switch self {
-            case .uniform: return "checkmark.circle.fill"
-            case .centerWear: return "arrow.down.circle"
-            case .edgeWear: return "arrow.left.and.right.circle"
-            case .innerEdgeWear: return "arrow.left.circle"
-            case .outerEdgeWear: return "arrow.right.circle"
-            case .patchyWear: return "exclamationmark.triangle"
-            case .cuppingWear: return "waveform"
-            case .feathering: return "wind"
-            }
-        }
-
-        var description: String {
-            switch self {
-            case .uniform: return "Usura uniforme su tutta la superficie"
-            case .centerWear: return "Usura concentrata al centro del battistrada"
-            case .edgeWear: return "Usura sui bordi del battistrada"
-            case .innerEdgeWear: return "Usura sul bordo interno"
-            case .outerEdgeWear: return "Usura sul bordo esterno"
-            case .patchyWear: return "Usura irregolare a chiazze"
-            case .cuppingWear: return "Usura a coppa (ondulata)"
-            case .feathering: return "Usura a piuma (dentellatura)"
-            }
-        }
-    }
-
-    enum WearSeverity: String, Codable {
-        case minimal = "Minimal"
-        case moderate = "Moderate"
-        case significant = "Significant"
-        case severe = "Severe"
-        case critical = "Critical"
-
-        var color: Color {
-            switch self {
-            case .minimal: return .green
-            case .moderate: return .blue
-            case .significant: return .yellow
-            case .severe: return .orange
-            case .critical: return .red
-            }
-        }
-
-        var percentage: Double {
-            switch self {
-            case .minimal: return 0.2
-            case .moderate: return 0.4
-            case .significant: return 0.6
-            case .severe: return 0.8
-            case .critical: return 1.0
-            }
-        }
-    }
-
-    struct ZoneWearInfo: Codable {
-        let zone: DepthMeasurementPoint.TyreZone
-        let averageDepth: Double
-        let wearPercentage: Double
-        let status: String
     }
 }
 
@@ -382,35 +256,52 @@ struct RemainingLifeEstimate: Codable {
             }
         }
     }
-}
 
-struct LifeFactor: Codable, Identifiable {
-    let id: UUID
-    let name: String
-    let impact: Double  // -1 to 1, negative reduces life
-    let description: String
-
-    init(id: UUID = UUID(), name: String, impact: Double, description: String) {
-        self.id = id
-        self.name = name
-        self.impact = impact
-        self.description = description
+    // Custom Codable to avoid requiring non-Codable element types for factors and projectedDepthCurve
+    private enum CodingKeys: String, CodingKey {
+        case estimatedKilometers
+        case estimatedMonths
+        case confidence
+        case calculationMethod
+        // Intentionally omit: factors, projectedDepthCurve
     }
-}
 
-struct DepthProjection: Codable, Identifiable {
-    let id: UUID
-    let kilometersFromNow: Double
-    let projectedDepth: Double
-    let confidence: Double
-
-    init(id: UUID = UUID(), kilometersFromNow: Double, projectedDepth: Double, confidence: Double) {
-        self.id = id
-        self.kilometersFromNow = kilometersFromNow
-        self.projectedDepth = projectedDepth
+    init(estimatedKilometers: Double,
+         estimatedMonths: Int,
+         confidence: Double,
+         calculationMethod: CalculationMethod,
+         factors: [LifeFactor],
+         projectedDepthCurve: [DepthProjection]) {
+        self.estimatedKilometers = estimatedKilometers
+        self.estimatedMonths = estimatedMonths
         self.confidence = confidence
+        self.calculationMethod = calculationMethod
+        self.factors = factors
+        self.projectedDepthCurve = projectedDepthCurve
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.estimatedKilometers = try container.decode(Double.self, forKey: .estimatedKilometers)
+        self.estimatedMonths = try container.decode(Int.self, forKey: .estimatedMonths)
+        self.confidence = try container.decode(Double.self, forKey: .confidence)
+        self.calculationMethod = try container.decode(CalculationMethod.self, forKey: .calculationMethod)
+        // Default to empty arrays when decoding since we intentionally do not decode these fields
+        self.factors = []
+        self.projectedDepthCurve = []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(estimatedKilometers, forKey: .estimatedKilometers)
+        try container.encode(estimatedMonths, forKey: .estimatedMonths)
+        try container.encode(confidence, forKey: .confidence)
+        try container.encode(calculationMethod, forKey: .calculationMethod)
+        // Intentionally do not encode factors or projectedDepthCurve to avoid requiring their element types to conform to Codable
     }
 }
+
+
 
 // MARK: - Recommendations
 struct Recommendation: Codable, Identifiable {
@@ -473,95 +364,6 @@ struct Recommendation: Codable, Identifiable {
     }
 }
 
-// MARK: - Safety Score
-struct SafetyScore: Codable {
-    let overall: Double  // 0-100
-    let components: ScoreComponents
-    let rating: Rating
-
-    struct ScoreComponents: Codable {
-        let depthScore: Double
-        let wearPatternScore: Double
-        let uniformityScore: Double
-        let legalComplianceScore: Double
-        let conditionScore: Double
-    }
-
-    enum Rating: String, Codable {
-        case excellent = "Excellent"
-        case good = "Good"
-        case fair = "Fair"
-        case poor = "Poor"
-        case critical = "Critical"
-
-        var color: Color {
-            switch self {
-            case .excellent: return .green
-            case .good: return .blue
-            case .fair: return .yellow
-            case .poor: return .orange
-            case .critical: return .red
-            }
-        }
-
-        var description: String {
-            switch self {
-            case .excellent: return "Pneumatico in condizioni eccellenti"
-            case .good: return "Pneumatico in buone condizioni"
-            case .fair: return "Pneumatico in condizioni accettabili"
-            case .poor: return "Pneumatico da monitorare attentamente"
-            case .critical: return "Sostituzione urgente necessaria"
-            }
-        }
-    }
-
-    static func fromScore(_ score: Double) -> Rating {
-        switch score {
-        case 90...100: return .excellent
-        case 75..<90: return .good
-        case 60..<75: return .fair
-        case 40..<60: return .poor
-        default: return .critical
-        }
-    }
-}
-
-// MARK: - Comparison Data
-struct ComparisonData: Codable {
-    let previousReport: String?  // Report ID
-    let changes: [ChangeMetric]
-    let trend: Trend
-
-    struct ChangeMetric: Codable {
-        let parameter: String
-        let previousValue: Double
-        let currentValue: Double
-        let percentageChange: Double
-        let direction: ChangeDirection
-    }
-
-    enum ChangeDirection: String, Codable {
-        case improved = "Improved"
-        case worsened = "Worsened"
-        case stable = "Stable"
-
-        var color: Color {
-            switch self {
-            case .improved: return .green
-            case .worsened: return .red
-            case .stable: return .gray
-            }
-        }
-    }
-
-    enum Trend: String, Codable {
-        case improving = "Improving"
-        case stable = "Stable"
-        case declining = "Declining"
-        case critical = "Critical Decline"
-    }
-}
-
 // MARK: - Export Format
 enum ReportExportFormat {
     case pdf
@@ -587,3 +389,4 @@ enum ReportExportFormat {
         }
     }
 }
+

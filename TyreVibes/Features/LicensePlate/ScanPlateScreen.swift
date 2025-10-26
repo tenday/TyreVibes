@@ -205,24 +205,29 @@ struct CameraPreview: UIViewControllerRepresentable {
                     if index < 2 || index >= 5 { // Deve essere lettera
                         if char.isNumber, let letter = digitToLetter[char] {
                             result.append(letter)
-                        } else if char == "G" || char == "C" {
-                            // Logica specifica: nelle targhe italiane, G è molto più comune di C nelle posizioni lettere
-                            // Tuttavia, lasciamo invariato per non introdurre bias
-                            result.append(char)
+                        } else if char == "C" {
+                            // 🔧 CORREZIONE: C viene spesso confusa con G
+                            // Nelle targhe italiane G è molto più frequente di C
+                            // Converti C -> G nelle posizioni delle lettere
+                            result.append("G")
                         } else if char.isLetter {
                             result.append(char)
                         } else {
                             result.append(char) // Mantieni carattere originale
                         }
                     } else { // index 2,3,4 - Deve essere numero
-                        if char.isLetter, let digit = letterToDigit[char] {
+                        if char == "S" {
+                            // 🔧 CORREZIONE S->5: S viene spesso confusa con 5 nelle posizioni numeriche
+                            result.append("5")
+                        } else if char.isLetter, let digit = letterToDigit[char] {
                             result.append(digit)
                         } else if char == "G" {
                             // G nella posizione numerica è probabilmente un 6
                             result.append("6")
                         } else if char == "C" {
                             // C nella posizione numerica potrebbe essere 0 o 6
-                            result.append("0")
+                            // Dato che G->6 è più comune, proviamo anche C->6
+                            result.append("6")
                         } else {
                             result.append(char)
                         }
@@ -235,6 +240,31 @@ struct CameraPreview: UIViewControllerRepresentable {
                         // Se circondato da numeri, G è probabilmente 6
                         if prev.isNumber && next.isNumber {
                             result.append("6")
+                            continue
+                        }
+                    }
+                    // 🔧 Stessa logica per C circondato da numeri
+                    if char == "C" && index > 0 && index < chars.count - 1 {
+                        let prev = chars[index - 1]
+                        let next = chars[index + 1]
+                        // Se circondato da numeri, C è probabilmente 6 (o 0)
+                        if prev.isNumber && next.isNumber {
+                            result.append("6")
+                            continue
+                        }
+                        // Se in posizione lettera, preferisci G
+                        if prev.isLetter || next.isLetter {
+                            result.append("G")
+                            continue
+                        }
+                    }
+                    // 🔧 S circondato da numeri è probabilmente 5
+                    if char == "S" && index > 0 && index < chars.count - 1 {
+                        let prev = chars[index - 1]
+                        let next = chars[index + 1]
+                        // Se circondato da numeri, S è probabilmente 5
+                        if prev.isNumber && next.isNumber {
+                            result.append("5")
                             continue
                         }
                     }

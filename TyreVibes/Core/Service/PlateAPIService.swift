@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Supabase
 
 struct PlateAPIRequest: Codable {
     let plate: String
@@ -95,7 +96,7 @@ private func imageHasAlpha(_ image: UIImage) -> Bool {
 }
 
 class PlateAPIService {
-    
+
     static let apiConfig: NSDictionary = {
         if let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
            let dict = NSDictionary(contentsOfFile: path) {
@@ -103,9 +104,32 @@ class PlateAPIService {
         }
         return [:]
     }()
-    
+
     private let savePlateURL = URL(string: (PlateAPIService.apiConfig["SavePlateURL"] as? String) ?? "")
     private let checkPlateBaseURL = (PlateAPIService.apiConfig["CheckPlateBaseURL"] as? String) ?? ""
+    private let manualPlateURL = URL(string: (PlateAPIService.apiConfig["ManualPlateURL"] as? String) ?? "")
+
+    // MARK: - Get Supabase JWT Token
+    private func getAuthToken() async -> String? {
+        do {
+            let session = try await SupabaseManager.client.auth.session
+            return session.accessToken
+        } catch {
+            print("⚠️ [PlateAPIService] Failed to get auth token: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    static var currentUserToken: String? {
+        get async {
+            do {
+                let session = try await SupabaseManager.client.auth.session
+                return session.accessToken
+            } catch {
+                return nil
+            }
+        }
+    }
     
     private func convertRegistrationDate(_ dateStr: String?) -> String {
         guard let dateStr = dateStr else { return "-" }
@@ -148,12 +172,20 @@ class PlateAPIService {
             throw PlateAPIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "plate", value: plateNumber)]
-        
+
         guard let url = components.url else {
             throw PlateAPIError.invalidURL
         }
-        
-        let (data, response) = try await URLSession.shared.data(from: url)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        // Add JWT token
+        if let token = await getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
@@ -180,7 +212,7 @@ class PlateAPIService {
         guard let url = savePlateURL else {
             throw PlateAPIError.invalidURL
         }
-        
+
         var imagesBase64: [String] = []
         var imagesMime: [String] = []
         for image in images {
@@ -194,7 +226,14 @@ class PlateAPIService {
                 }
             }
         }
-        
+
+        let angles: [Int]
+        if imagesBase64.count == 2 {
+            angles = Array([23, 12])
+        } else {
+            angles = Array([23,23,12,12])
+        }
+
         let requestBody = PlateAPIRequest(
             plate: plateData.plate.uppercased(),
             make: plateData.make ?? "-",
@@ -212,7 +251,7 @@ class PlateAPIService {
             userId: userId,
             imagesBase64: imagesBase64,
             imagesMime: imagesMime,
-            imagesAngle: [23,23,12,12],
+            imagesAngle: angles,
             imagesColor: imagesColor,
             insuranceCompany: plateData.insuranceCompany,
             insurancePolicyNumber: plateData.insurancePolicyNumber,
@@ -240,7 +279,12 @@ class PlateAPIService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
+        // Add JWT token
+        if let token = await getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
@@ -265,35 +309,183 @@ class PlateAPIService {
         }
     }
     
-    func associateVehicle2User(vehicleId: Int, userId: String) async throws -> (imageBase64: String?, mimeType: String?) {
+    func savePlateManually(
+        plate: String,
+        make: String = "",
+        model: String = "",
+        registrationDate: String = "",
+        fuelType: String = "",
+        powerKW: String = "",
+        powerCV: String = "",
+        displacementCC: String = "",
+        emissionClass: String = "",
+        gearbox: String = "",
+        maxSpeed: String = "",
+        bodyType: String = "",
+        doors: String = "",
+        seats: String = "",
+        consumption: String = "",
+        traction: String = "",
+        saleStart: String = "",
+        saleEnd: String = "",
+        color: String = "",
+        vin: String = "",
+        modelDetails: String = "",
+        insuranceCompany: String? = nil,
+        insurancePolicyNumber: String? = nil,
+        insuranceExpiry: Date? = nil,
+        insurancePresent: Bool? = nil,
+        userId: String
+    ) async throws -> (vehicleId: Int, plateId: Int) {
+        guard let url = manualPlateURL else {
+            throw PlateAPIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add JWT token
+        if let token = await getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let requestBody: [String: Any] = [
+            "plate": plate.uppercased(),
+            "make": make.isEmpty ? "" : make,
+            "model": model.isEmpty ? "" : model,
+            "modelDetails": modelDetails.isEmpty ? "" : modelDetails,
+            "registrationDate": registrationDate.isEmpty ? "" : registrationDate,
+            "fuelType": fuelType.isEmpty ? "" : fuelType,
+            "powerKW": powerKW.isEmpty ? "" : powerKW,
+            "powerCV": powerCV.isEmpty ? "" : powerCV,
+            "displacementCC": displacementCC.isEmpty ? "" : displacementCC,
+            "emissionClass": emissionClass.isEmpty ? "" : emissionClass,
+            "gearbox": gearbox.isEmpty ? "" : gearbox,
+            "maxSpeed": maxSpeed.isEmpty ? "" : maxSpeed,
+            "bodyType": bodyType.isEmpty ? "" : bodyType,
+            "doors": doors.isEmpty ? "" : doors,
+            "seats": seats.isEmpty ? "" : seats,
+            "consumption": consumption.isEmpty ? "" : consumption,
+            "traction": traction.isEmpty ? "" : traction,
+            "saleStart": saleStart.isEmpty ? "" : saleStart,
+            "saleEnd": saleEnd.isEmpty ? "" : saleEnd,
+            "color": color.isEmpty ? "" : color,
+            "vin": vin.isEmpty ? "" : vin,
+            "insuranceCompany": insuranceCompany ?? NSNull(),
+            "insurancePolicyNumber": insurancePolicyNumber ?? NSNull(),
+            "insuranceExpiry": insuranceExpiry ?? NSNull(),
+            "insurancePresent": insurancePresent ?? NSNull(),
+            "userId": userId
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody, options: [])
+        } catch {
+            throw PlateAPIError.requestFailed(error)
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw PlateAPIError.invalidResponse
+        }
+
+        if (200...299).contains(httpResponse.statusCode) {
+            struct ManualPlateResponse: Codable {
+                let vehicle_id: Int
+                let plate_id: Int
+                let message: String
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(ManualPlateResponse.self, from: data)
+                return (decoded.vehicle_id, decoded.plate_id)
+            } catch {
+                throw PlateAPIError.requestFailed(error)
+            }
+        } else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
+            throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)
+        }
+    }
+
+    func associateVehicle2User(vehicleId: Int, userId: String, color: String = "", images: [UIImage]? = nil) async throws -> (message: String, imageBase64: String?) {
         guard let baseURLString = PlateAPIService.apiConfig["BASE_URL"] as? String else {
             throw PlateAPIError.invalidURL
         }
         // Remove trailing slash if present
         let urlString = "\(baseURLString)/v1/vehicles/\(vehicleId)/user/\(userId)"
-        
+
         guard let url = URL(string: urlString) else {
             throw PlateAPIError.invalidURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
+        // Add JWT token
+        if let token = await getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Prepara il body della richiesta
+        struct RequestBody: Encodable {
+            let color: String
+            let imagesBase64: [String]?
+            let imagesMime: [String]?
+            let imagesAngle: [Int]?
+        }
+
+        var imagesBase64: [String]? = nil
+        var imagesMime: [String]? = nil
+        var imagesAngle: [Int]? = nil
+
+        // Se ci sono immagini, convertile in base64
+        if let images = images {
+            var base64Images: [String] = []
+            var mimeTypes: [String] = []
+
+            for image in images {
+                if imageHasAlpha(image), let data = image.pngData() {
+                    base64Images.append(data.base64EncodedString())
+                    mimeTypes.append("image/png")
+                } else if let data = image.jpegData(compressionQuality: 0.9) {
+                    base64Images.append(data.base64EncodedString())
+                    mimeTypes.append("image/jpeg")
+                }
+            }
+
+            imagesBase64 = base64Images
+            imagesMime = mimeTypes
+            imagesAngle = [23, 23, 12, 12] // angoli fissi per le 4 immagini
+        }
+
+        let body = RequestBody(
+            color: color,
+            imagesBase64: imagesBase64,
+            imagesMime: imagesMime,
+            imagesAngle: imagesAngle
+        )
+
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        request.httpBody = try encoder.encode(body)
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
         }
-        
+
         if (200...299).contains(httpResponse.statusCode) {
             struct AssociationResponse: Codable {
                 let message: String
                 let image_base64: String?
-                let mime_type: String?
             }
             let decoded = try JSONDecoder().decode(AssociationResponse.self, from: data)
-            return (decoded.image_base64, "image/png")
+            return (decoded.message, decoded.image_base64)
         } else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
             throw PlateAPIError.serverError(httpResponse.statusCode, errorMessage)

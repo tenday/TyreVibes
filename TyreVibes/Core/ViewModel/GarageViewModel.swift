@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Supabase
 
 struct VehicleResponse: Codable, Hashable {
     let vehicle: Vehicle
@@ -19,7 +20,18 @@ class GarageViewModel: ObservableObject {
 
     private let authService = AuthService()
     static let apiConfig = PlateAPIService.apiConfig
-    
+
+    // MARK: - Get Supabase JWT Token
+    private func getAuthToken() async -> String? {
+        do {
+            let session = try await SupabaseManager.client.auth.session
+            return session.accessToken
+        } catch {
+            print("⚠️ [GarageViewModel] Failed to get auth token: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
 
     func fetchCars() async {
         // Show cached vehicles first if available, but only if not loading
@@ -40,7 +52,16 @@ class GarageViewModel: ObservableObject {
                 print("Invalid URL")
                 return
             }
-            let (data, _) = try await URLSession.shared.data(from: url)
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+
+            // Add JWT token
+            if let token = await getAuthToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            let (data, _) = try await URLSession.shared.data(for: request)
             // Save raw data to UserDefaults before decoding
             UserDefaults.standard.set(data, forKey: "cachedVehicles")
             let decodedResponse = try JSONDecoder().decode([VehicleResponse].self, from: data)
@@ -81,6 +102,11 @@ class GarageViewModel: ObservableObject {
 
                 var request = URLRequest(url: url)
                 request.httpMethod = "DELETE"
+
+                // Add JWT token
+                if let token = await getAuthToken() {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
 
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {

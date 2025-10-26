@@ -12,7 +12,10 @@
       "Bash(ln -sf ../@anthropic-ai/claude-code/cli.js claude)",
       "Bash(ln -s ../@anthropic-ai/.claude-code-yVCMXhVl/cli.js claude)",
       "Bash(curl --version)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(swift build:*)",
+      "Bash(node -c:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

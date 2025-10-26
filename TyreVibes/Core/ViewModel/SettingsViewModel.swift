@@ -406,12 +406,13 @@ final class SettingsViewModel: NSObject, ObservableObject {
     }
 }
 
-@MainActor
 extension SettingsViewModel: CLLocationManagerDelegate {
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        isSyncingFromStore = true
-        locationPermission = isLocationAuthorized
-        isSyncingFromStore = false
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            isSyncingFromStore = true
+            locationPermission = isLocationAuthorized
+            isSyncingFromStore = false
+        }
     }
 }
 

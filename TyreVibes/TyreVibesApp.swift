@@ -13,6 +13,7 @@ import Supabase
 struct TyreVibesApp: App {
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
     @StateObject private var languageManager = LanguageManager.shared
+    @StateObject private var notificationStore = NotificationStore()
     @State private var showResetPasswordScreen = false
     @State private var authStateChangeTask: Any? = nil
     
@@ -43,6 +44,7 @@ struct TyreVibesApp: App {
             }
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
+            .environmentObject(notificationStore)
             .onAppear {
                 Task { @MainActor in
                     let token = await SupabaseManager.client.auth.onAuthStateChange { event, session in
@@ -62,3 +64,4 @@ struct TyreVibesApp: App {
         }
     }
 }
+

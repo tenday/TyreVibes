@@ -134,7 +134,7 @@ struct CheckDetailsView: View {
                 }
                 
                 Spacer()
-                
+
                 if consultOnly {
                     Button(action: {
                         navigationDismiss()
@@ -150,7 +150,7 @@ struct CheckDetailsView: View {
                     .padding(.horizontal, 24)
                 } else {
                     Button(action: {
-                        // Se ho una closure per chiudere la fullScreenCover (Scan/Enter), usala per tornare al Garage con animazione dall’alto al basso.
+                        // Se ho una closure per chiudere la fullScreenCover (Scan/Enter), usala per tornare al Garage con animazione dall'alto al basso.
                         if let closeFullScreen = onFullScreenDismiss {
                             closeFullScreen()
                         } else {

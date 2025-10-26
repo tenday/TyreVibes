@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 // MARK: - Network Errors
 enum NetworkError: LocalizedError {
@@ -79,6 +80,17 @@ class NetworkManager {
         }
     }
 
+    // MARK: - Get Supabase JWT Token
+    private func getAuthToken() async -> String? {
+        do {
+            let session = try await SupabaseManager.client.auth.session
+            return session.accessToken
+        } catch {
+            print("⚠️ [NetworkManager] Failed to get auth token: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     // MARK: - Generic Request Method
     func request<T: Decodable>(
         endpoint: String,
@@ -109,7 +121,12 @@ class NetworkManager {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        // Add custom headers
+        // Add Supabase JWT token automatically
+        if let token = await getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Add custom headers (can override Authorization if needed)
         headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
@@ -186,6 +203,11 @@ class NetworkManager {
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add Supabase JWT token automatically
+        if let token = await getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)

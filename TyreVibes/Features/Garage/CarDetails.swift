@@ -1052,6 +1052,64 @@ struct GlassCardStyle: ViewModifier {
     }
 }
 
+fileprivate struct RegisteredTyreCardView: View {
+    let tyre: TyreRegistered
+    var onDelete: (() -> Void)? = nil
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.customFieldColor)
+                .frame(width: 188, height: 231)
+
+            VStack {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 172, height: 122)
+                        .cornerRadius(12)
+
+                    Image("tyreSample")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 95, height: 100)
+                        .clipped()
+                }
+
+                Text(tyre.brand)
+                    .font(.customFont(size: 16, weight: .semibold))
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                Spacer().frame(height: 6)
+                Text(tyre.season)
+                    .multilineTextAlignment(.center)
+                    .font(.customFont(size: 16, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+                Spacer().frame(height: 11)
+                let radius: String = {
+                    let parts = tyre.size.components(separatedBy: "R")
+                    return parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : "-"
+                }()
+                Text("R\(radius)")
+                    .font(.customFont(size: 16, weight: .semibold))
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.white)
+                    .padding(.bottom, 10)
+
+            }
+
+        }
+        .contextMenu {
+            Button(role: .destructive) {
+                onDelete?()
+            } label: {
+                Label(String(localized: "Delete"), systemImage: "trash")
+            }
+        }
+    }
+}
+
 struct CarDetailsView: View {
     let vehicle: VehicleResponse
     @Environment(\.dismiss) private var dismiss
@@ -1074,6 +1132,15 @@ struct CarDetailsView: View {
     @State private var showAddTyreSetSheet: Bool = false
     @State private var hasNewRevisioni: Bool = false
     @State private var isLoadingRevisioni: Bool = false
+    @State private var tyreToDelete: TyreRegistered? = nil
+    @State private var showDeleteAlert: Bool = false
+
+    private var tyreSets: [[TyreRegistered]] {
+        let grouped = Dictionary(grouping: tyreViewModel.registeredTyres) { tyre in
+            "\(tyre.brand)-\(tyre.model)-\(tyre.size)-\(tyre.season)"
+        }
+        return grouped.values.sorted { ($0.first?.id ?? 0) < ($1.first?.id ?? 0) }
+    }
 
 
 
@@ -1195,10 +1262,9 @@ struct CarDetailsView: View {
                             .padding(.horizontal, 5)
 
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 20) {
+                            HStack(spacing: 30) {
                                 // Add Button (sempre visibile)
                                 Button(action: {
-                                    // Verifica se l'utente può aggiungere altri pneumatici
                                     let tireCount = tyreViewModel.tyres.count
                                     if paywallManager.canAddTire(currentCount: tireCount) {
                                         showAddTyreSetSheet = true
@@ -1230,62 +1296,31 @@ struct CarDetailsView: View {
                                     }
                                 }
 
-                                // Registered Tyres
-                                ForEach(tyreViewModel.registeredTyres) { tyre in
+                                // Registered Tyre Sets
+                                ForEach(tyreSets, id: \.first!.id) { tyreSet in
                                     Button(action: {
-                                        selectedTyre = tyre
+                                        selectedTyre = tyreSet.first
                                         showTyreDetails = true
                                     }) {
                                         ZStack {
+                                            // Base for the stack to make it look like a pile
                                             RoundedRectangle(cornerRadius: 16)
-                                                .fill(Color.customFieldColor)
-                                                .frame(width: 188, height: 231)
+                                                .fill(Color.white.opacity(0.05))
+                                                .frame(width: 192, height: 235)
+                                                .shadow(color: .black.opacity(0.3), radius: 8, x: 8, y: 8)
 
-                                            VStack {
-                                                ZStack {
-                                                    RoundedRectangle(cornerRadius: 12)
-                                                        .fill(Color.white.opacity(0.2))
-                                                        .frame(width: 172, height: 122)
-                                                        .cornerRadius(12)
-
-                                                    Image("tyreSample")
-                                                        .resizable()
-                                                        .aspectRatio(contentMode: .fill)
-                                                        .frame(width: 95, height: 100)
-                                                        .clipped()
+                                            ForEach(Array(tyreSet.enumerated().prefix(3)), id: \.element.id) { index, tyre in
+                                                RegisteredTyreCardView(tyre: tyre) {
+                                                    tyreToDelete = tyre
+                                                    showDeleteAlert = true
                                                 }
-
-                                                Text(tyre.brand)
-                                                    .font(.customFont(size: 16, weight: .semibold))
-                                                    .multilineTextAlignment(.center)
-                                                    .foregroundColor(.white)
-                                                    .lineLimit(1)
-                                                Spacer().frame(height: 6)
-                                                Text(tyre.season)
-                                                    .multilineTextAlignment(.center)
-                                                    .font(.customFont(size: 16, weight: .semibold))
-                                                    .foregroundColor(.white.opacity(0.6))
-                                                Spacer().frame(height: 11)
-                                                let radius: String = {
-                                                    let parts = tyre.size.components(separatedBy: "R")
-                                                    return parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : "-"
-                                                }()
-                                                Text("R\(radius)")
-                                                    .font(.customFont(size: 16, weight: .semibold))
-                                                    .multilineTextAlignment(.center)
-                                                    .foregroundColor(.white)
-                                                    .padding(.bottom, 10)
-
+                                                    .offset(x: CGFloat(index) * 12, y: CGFloat(index) * 12)
                                             }
-
                                         }
                                     }
                                 }
-
-                                // Card per aggiungere doppia misura pneumatico
-                                
                             }
-                            .padding(.vertical, 9)
+                            .padding(.vertical, 20)
                             .padding(.horizontal, 8)
                         }
 
@@ -1489,12 +1524,28 @@ struct CarDetailsView: View {
         } message: {
             Text("Qui trovi due funzioni utili: il pulsante AR mostra la vista 360° della tua auto, mentre il pulsante info ti dà dettagli avanzati sul veicolo.")
         }
+        .alert(String(localized: "Delete Tire"), isPresented: $showDeleteAlert) {
+            Button(String(localized: "Cancel"), role: .cancel) { }
+            Button(String(localized: "Delete"), role: .destructive) {
+                handleDeleteTyre()
+            }
+        } message: {
+            Text(String(localized: "Are you sure you want to delete this tire?"))
+        }
         }
     }
-    
-    
-    
-    
+
+    // MARK: - Helpers
+
+    private func handleDeleteTyre() {
+        guard let tyreToDelete = tyreToDelete else { return }
+        tyreViewModel.deleteTyre(tyreId: tyreToDelete.id, vehicleId: vehicle.vehicle.id) { success in
+            if success {
+                // Refresh list
+                tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id, forceRefresh: true)
+            }
+        }
+    }
 }
 
 
@@ -2059,7 +2110,7 @@ struct AdvancedInfoSheet: View {
         case 0:
             return "info.circle.fill"
         case 1: return "wrench.and.screwdriver"
-        case 2: return "circle.dashed"
+        case 2: return "tyreIcon"
         case 3: return "shield.lefthalf.filled"
         case 4:
             return "eurosign.circle.fill"
@@ -2939,12 +2990,12 @@ struct AdvancedTyresTable: View {
                     }()
 
                     if tyres.isEmpty {
-                        EmptyStateView(
-                            icon: "circle.dashed",
-                            title: "Nessun Pneumatico",
-                            subtitle: "Non ci sono pneumatici disponibili"
-                        )
-                    } else if filteredAndSortedTyres.isEmpty {
+                                            EmptyStateView(
+                                                icon: "tyreIcon",
+                                                isCustomIcon: true,
+                                                title: "Nessun Pneumatico",
+                                                subtitle: "Non ci sono pneumatici disponibili"
+                                            )                    } else if filteredAndSortedTyres.isEmpty {
                         EmptyStateView(
                             icon: "magnifyingglass",
                             title: "Nessun Risultato",
@@ -3177,8 +3228,11 @@ struct TyreRow: View {
                             .fill(Color.blue.opacity(0.2))
                             .frame(width: 50, height: 50)
                         
-                        Image(systemName: "circle.dashed")
-                            .font(.system(size: 24, weight: .medium))
+                        Image("tyreIcon")
+                            .renderingMode(.template)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 28, height: 28)
                             .foregroundColor(.blue)
                     }
                     
@@ -3393,14 +3447,31 @@ struct DetailRowItem: View {
 
 struct EmptyStateView: View {
     let icon: String
+    let isCustomIcon: Bool
     let title: String
     let subtitle: String
     
+    init(icon: String, isCustomIcon: Bool = false, title: String, subtitle: String) {
+        self.icon = icon
+        self.isCustomIcon = isCustomIcon
+        self.title = title
+        self.subtitle = subtitle
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 50, weight: .light))
-                .foregroundColor(.white.opacity(0.3))
+            if isCustomIcon {
+                Image(icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 50, height: 50)
+                    .foregroundColor(.white.opacity(0.3))
+            } else {
+                Image(systemName: icon)
+                    .font(.system(size: 50, weight: .light))
+                    .foregroundColor(.white.opacity(0.3))
+            }
             
             VStack(spacing: 4) {
                 Text(title)

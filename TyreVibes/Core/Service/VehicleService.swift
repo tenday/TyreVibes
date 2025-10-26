@@ -66,29 +66,57 @@ class VehicleService {
     }
 
     // MARK: - Associate Vehicle to User
-    /// Associa un veicolo a un utente
+    /// Associa un veicolo a un utente, specificando un colore ed eventualmente una nuova immagine per quel colore.
     /// - Parameters:
     ///   - vehicleId: ID del veicolo
     ///   - userId: ID dell'utente
+    ///   - color: Il colore da associare
+    ///   - imageData: I dati dell'immagine (opzionale, solo se è un nuovo colore)
     /// - Returns: Tupla con immagine base64 e MIME type
-    func associateVehicleToUser(vehicleId: Int, userId: String) async throws -> (imageBase64: String?, mimeType: String?) {
-        struct AssociationResponse: Codable {
-            let message: String
-            let imageBase64: String?
-            let mimeType: String?
-
-            enum CodingKeys: String, CodingKey {
-                case message
-                case imageBase64 = "image_base64"
-                case mimeType = "mime_type"
-            }
+    func associateVehicleToUser(
+        vehicleId: Int,
+        userId: String,
+        color: String,
+        imageData: Data?
+    ) async throws -> (imageBase64: String?, mimeType: String?) {
+        
+        // Corpo della richiesta
+        struct RequestBody: Encodable {
+            let color: String
+            let imagesBase64: [String]?
+            let imagesMime: [String]?
+            let imagesAngle: [String]? // Attualmente non usato, ma previsto dal backend
         }
 
+        // Risposta attesa
+        struct ResponseBody: Decodable {
+            let message: String
+            let imageBase64: String?
+            let mimeType: String? // Opzionale, per compatibilità
+        }
+
+        var imagesBase64: [String]?
+        var imagesMime: [String]?
+
+        if let imageData = imageData {
+            imagesBase64 = [imageData.base64EncodedString()]
+            // NOTA: Assumiamo JPEG. Una implementazione migliore deriverebbe il MimeType dall'UIImage.
+            imagesMime = ["image/jpeg"]
+        }
+
+        let requestBody = RequestBody(
+            color: color,
+            imagesBase64: imagesBase64,
+            imagesMime: imagesMime,
+            imagesAngle: nil
+        )
+
         do {
-            let response: AssociationResponse = try await networkManager.post(
-                endpoint: "/v1/vehicles/\(vehicleId)/user/\(userId)"
+            let response: ResponseBody = try await networkManager.post(
+                endpoint: "/v1/vehicles/\(vehicleId)/user/\(userId)",
+                body: requestBody
             )
-            print("✅ [VehicleService] Associated vehicle \(vehicleId) to user \(userId)")
+            print("✅ [VehicleService] Associated vehicle \(vehicleId) to user \(userId) with color \(color)")
             return (response.imageBase64, response.mimeType)
         } catch {
             print("❌ [VehicleService] Failed to associate vehicle: \(error.localizedDescription)")

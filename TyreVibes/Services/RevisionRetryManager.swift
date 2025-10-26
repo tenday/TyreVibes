@@ -21,14 +21,22 @@ class RevisionRetryManager: ObservableObject {
     ///   - tipoVeicolo: Tipo veicolo (default "A")
     ///   - maxAttempts: Numero massimo di tentativi (default 10)
     ///   - initialDelay: Ritardo iniziale in secondi (default 2)
+    ///   - plateExists: Se false, non schedula il retry (targa non trovata)
     ///   - onSuccess: Callback chiamato quando le revisioni vengono fetchate con successo
     func scheduleBackgroundRetry(
         for plate: String,
         tipoVeicolo: String = "A",
         maxAttempts: Int = 10,
         initialDelay: TimeInterval = 2.0,
+        plateExists: Bool = true,
         onSuccess: ((RevisioniResult) -> Void)? = nil
     ) {
+        // Se la targa non esiste, non schedula il retry
+        guard plateExists else {
+            print("🛑 [RevisionRetry] Non è possibile schedulare retry per targa inesistente: \(plate)")
+            return
+        }
+
         // Cancella eventuali retry precedenti per questa targa
         cancelRetry(for: plate)
 

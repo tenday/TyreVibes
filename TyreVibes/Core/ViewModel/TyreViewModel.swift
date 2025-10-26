@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 struct TyreRegistrationPayload {
     let brand: String
@@ -163,6 +164,17 @@ class TyreViewModel: ObservableObject {
         return registeredTyres
     }
 
+    // MARK: - Get Supabase JWT Token
+    private func getAuthToken() async -> String? {
+        do {
+            let session = try await SupabaseManager.client.auth.session
+            return session.accessToken
+        } catch {
+            print("⚠️ [TyreViewModel] Failed to get auth token: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     func insertTyre(vehicleId: Int) {
         let payload = TyreRegistrationPayload(
             brand: brand,
@@ -204,7 +216,13 @@ class TyreViewModel: ObservableObject {
 
         print("🌐 Fetch da server per veicolo \(vehicleId)")
 
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        // Get auth token and execute request
+        Task {
+            if let token = await getAuthToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isLoading = false
 
@@ -232,7 +250,8 @@ class TyreViewModel: ObservableObject {
                     self?.errorMessage = "Errore nella decodifica: \(error.localizedDescription)"
                 }
             }
-        }.resume()
+            }.resume()
+        }
     }
 
     func deleteTyre(tyreId: Int, vehicleId: Int, completion: @escaping (Bool) -> Void) {
@@ -254,7 +273,13 @@ class TyreViewModel: ObservableObject {
 
         print("🗑️ Eliminazione pneumatico ID: \(tyreId)")
 
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        // Get auth token and execute request
+        Task {
+            if let token = await getAuthToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
                     print("❌ Errore network: \(error.localizedDescription)")
@@ -281,7 +306,8 @@ class TyreViewModel: ObservableObject {
                     }
                 }
             }
-        }.resume()
+            }.resume()
+        }
     }
 
     func registerTyres(
@@ -367,7 +393,13 @@ class TyreViewModel: ObservableObject {
             return
         }
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        // Get auth token and execute request
+        Task {
+            if let token = await getAuthToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
                     print("❌ Errore network: \(error.localizedDescription)")
@@ -395,6 +427,7 @@ class TyreViewModel: ObservableObject {
                 print("✅ Registrazione pneumatico completata")
                 completion(.success(()))
             }
-        }.resume()
+            }.resume()
+        }
     }
 }

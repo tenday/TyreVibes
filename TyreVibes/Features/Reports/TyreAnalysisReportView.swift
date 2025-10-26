@@ -444,11 +444,11 @@ struct TyreAnalysisReportView_Previews: PreviewProvider {
                 analysisType: .comprehensive
             ),
             depthAnalysis: DepthAnalysis(
-                measurements: [],
                 average: 5.5,
                 minimum: 4.2,
                 maximum: 6.8,
                 standardDeviation: 0.8,
+                measurements: [],
                 legalStatus: .legal,
                 depthDistribution: DepthAnalysis.DepthDistribution(
                     excellent: 10,
@@ -461,9 +461,9 @@ struct TyreAnalysisReportView_Previews: PreviewProvider {
             wearAnalysis: WearAnalysis(
                 pattern: .uniform,
                 severity: .moderate,
-                causes: [],
+                unevenWearIndex: 0.15,
                 zoneAnalysis: [],
-                unevenWearIndex: 0.15
+                causes: []
             ),
             heatMap: DepthHeatMap(
                 gridSize: DepthHeatMap.GridSize(rows: 20, columns: 20),
@@ -482,14 +482,14 @@ struct TyreAnalysisReportView_Previews: PreviewProvider {
             recommendations: [],
             safetyScore: SafetyScore(
                 overall: 82,
+                rating: .good,
                 components: SafetyScore.ScoreComponents(
                     depthScore: 0.85,
                     wearPatternScore: 0.90,
                     uniformityScore: 0.88,
                     legalComplianceScore: 1.0,
                     conditionScore: 0.75
-                ),
-                rating: .good
+                )
             )
         )
     }
