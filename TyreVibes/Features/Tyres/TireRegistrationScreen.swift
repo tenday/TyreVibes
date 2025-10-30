@@ -55,6 +55,105 @@ class TireOCRManager: NSObject, ObservableObject {
         "BFG": "BF GOODRICH", "FIRE": "FIRESTONE"
     ]
 
+    private static let knownModelsByBrand: [String: [String]] = [
+        "MICHELIN": [
+            "PILOT SPORT", "PILOT SPORT 4", "PILOT SUPER SPORT", "PILOT SPORT CUP",
+            "PRIMACY", "PRIMACY 4", "CROSSCLIMATE", "CROSSCLIMATE 2", "LATITUDE",
+            "ENERGY SAVER", "DEFENDER", "X-ICE", "ALPIN", "AGILIS", "LTX"
+        ],
+        "PIRELLI": [
+            "CINTURATO", "CINTURATO P7", "CINTURATO ALL SEASON", "P ZERO", "PZERO",
+            "P ZERO CORSA", "SCORPION", "SCORPION VERDE", "SCORPION WINTER",
+            "SCORPION ZERO", "WINTER SOTTOZERO", "POWERGY", "CARRIER", "P6000"
+        ],
+        "CONTINENTAL": [
+            "CONTISPORTCONTACT", "CONTISPORTCONTACT 5", "CONTISPORTCONTACT 6",
+            "CONTIPREMIUMCONTACT", "PREMIUMCONTACT 6", "CONTIPROCONTACT",
+            "EXTREMECONTACT", "CONTIWINTERCONTACT", "ALLSEASONCONTACT",
+            "CROSSCONTACT", "ECOCONTACT", "VIKINGCONTACT", "VANCONTACT", "ICECONTACT"
+        ],
+        "BRIDGESTONE": [
+            "POTENZA", "POTENZA S001", "POTENZA SPORT", "TURANZA", "TURANZA T005",
+            "DUELER", "DUELER H/P", "BLIZZAK", "ECOPIA", "ALENZA", "WEATHERPEAK",
+            "DRIVEGUARD", "RE050"
+        ],
+        "GOODYEAR": [
+            "EAGLE", "EAGLE F1", "EFFICIENTGRIP", "EFFICIENTGRIP PERFORMANCE",
+            "VECTOR", "VECTOR 4SEASONS", "ULTRAGRIP", "WRANGLER", "ASSURANCE",
+            "DURAGRIP", "EXCELLENCE"
+        ],
+        "DUNLOP": [
+            "SPORT MAXX", "SPORT MAXX RT", "SPORT BLURESPONSE", "WINTER SPORT",
+            "SP WINTER", "GRANDTREK", "STREETRESPONSE"
+        ],
+        "YOKOHAMA": [
+            "ADVAN", "ADVAN SPORT", "ADVAN FLEVA", "BLUEARTH", "BLUEARTH AE",
+            "GEOLANDAR", "ICEGUARD", "PARADA", "S.DRIVE"
+        ],
+        "HANKOOK": [
+            "VENTUS", "VENTUS S1 EVO", "VENTUS PRIME", "KINERGY", "KINERGY 4S",
+            "DYNAPRO", "WINTER ICEPT", "I PIKE"
+        ],
+        "KUMHO": [
+            "ECSTA", "ECSTA PS", "SOLUS", "SOLUS 4S", "CRUGEN", "WINTERCRAFT",
+            "ROAD VENTURE", "PORTRAN"
+        ],
+        "NOKIAN": [
+            "HAKKAPELIITTA", "NORDMAN", "POWERPROOF", "SEASONPROOF", "WEATHERPROOF",
+            "WR SUV", "SNOWPROOF"
+        ],
+        "FALKEN": [
+            "AZENIS", "ZIEX", "EUROWINTER", "WILDPEAK", "SN832"
+        ],
+        "TOYO": [
+            "PROXES", "PROXES SPORT", "OPEN COUNTRY", "OBSERVE", "NANOENERGY", "CELSIUS"
+        ],
+        "NEXEN": [
+            "N'FERA", "NFERA", "ROADIAN", "WINGUARD", "NBLUE"
+        ],
+        "GENERAL": [
+            "GRABBER", "ALTIMAX"
+        ],
+        "BF GOODRICH": [
+            "ALL TERRAIN", "ADVANTAGE", "G-FORCE", "TRAIL-TERRAIN", "KO2"
+        ],
+        "FIRESTONE": [
+            "DESTINATION", "ROADHAWK", "MULTISEASON", "WINTERHAWK", "TZ300"
+        ],
+        "COOPER": [
+            "ZEON", "DISCOVERER", "WEATHERMASTER", "EVOLUTION"
+        ],
+        "MAXXIS": [
+            "PREMITRA", "BRAVO", "VICTRA", "MA-Z1", "MAZ1"
+        ],
+        "UNIROYAL": [
+            "RAINSPORT", "RAINEXPERT", "ALLSEASONEXPERT", "WINTEREXPERT"
+        ],
+        "VREDESTEIN": [
+            "QUATRAC", "SPORTRAC", "ULTRAC", "WINTRAC"
+        ]
+    ]
+
+    private static let modelSearchIndex: [(pattern: String, model: String, brand: String)] = {
+        var entries: [(String, String, String)] = []
+        for (brand, models) in TireOCRManager.knownModelsByBrand {
+            for model in models {
+                let upperModel = model.uppercased()
+                entries.append((upperModel, model, brand))
+
+                let compact = upperModel
+                    .replacingOccurrences(of: " ", with: "")
+                    .replacingOccurrences(of: "-", with: "")
+                    .replacingOccurrences(of: "'", with: "")
+                    .replacingOccurrences(of: ".", with: "")
+                if compact != upperModel {
+                    entries.append((compact, model, brand))
+                }
+            }
+        }
+        return entries
+    }()
+
     // Metodo per resettare i dati catturati
     func resetExtractedData() {
         extractedData = TireData()
@@ -359,10 +458,22 @@ class TireOCRManager: NSObject, ObservableObject {
         }
         
         // Extract model with confidence
-        if data.model.isEmpty && !data.brand.isEmpty {
-            if let modelMatch = try? extractModel(from: upperText, brand: data.brand) {
-                let modelConfidence = calculateModelConfidence(modelMatch, brand: data.brand) * weightedConfidence
-                extractionCandidates["model"] = (modelMatch, modelConfidence)
+        if data.model.isEmpty {
+            if let modelResult = extractModel(from: upperText, brand: data.brand) {
+                let modelBrand = modelResult.inferredBrand ?? data.brand
+                let modelConfidence = calculateModelConfidence(modelResult.model, brand: modelBrand) * weightedConfidence
+                extractionCandidates["model"] = (modelResult.model, modelConfidence)
+
+                if data.brand.isEmpty, let inferredBrand = modelResult.inferredBrand {
+                    let brandConfidence = calculateBrandConfidence(inferredBrand, in: upperText) * weightedConfidence
+                    if let existing = extractionCandidates["brand"] {
+                        if brandConfidence > existing.confidence {
+                            extractionCandidates["brand"] = (inferredBrand, brandConfidence)
+                        }
+                    } else {
+                        extractionCandidates["brand"] = (inferredBrand, brandConfidence)
+                    }
+                }
             }
         }
         
@@ -435,18 +546,21 @@ class TireOCRManager: NSObject, ObservableObject {
     
     /// Calculate model confidence
     private func calculateModelConfidence(_ model: String, brand: String) -> Double {
-        // Model confidence is higher when it's a known model for the brand
-        let knownModels: [String: [String]] = [
-            "MICHELIN": ["PILOT SPORT", "ENERGY SAVER", "PRIMACY", "CROSSCLIMATE", "LATITUDE", "DEFENDER"],
-            "PIRELLI": ["CINTURATO", "P ZERO", "SCORPION", "WINTER SOTTOZERO", "CARRIER"],
-            "CONTINENTAL": ["CONTISPORTCONTACT", "CONTIPROCONTACT", "EXTREMECONTACT", "CONTIWINTERCONTACT"],
-        ]
-        
-        if let models = knownModels[brand.uppercased()],
-           models.contains(where: { model.uppercased().contains($0) }) {
+        let upperModel = model.uppercased()
+        let upperBrand = brand.uppercased()
+
+        if let models = Self.knownModelsByBrand[upperBrand],
+           models.contains(where: { upperModel.contains($0) || $0.contains(upperModel) }) {
             return 1.0
         }
-        
+
+        // If brand is unknown, see if the model matches any catalog to boost confidence
+        for (_, models) in Self.knownModelsByBrand {
+            if models.contains(where: { upperModel.contains($0) || $0.contains(upperModel) }) {
+                return 0.85
+            }
+        }
+
         return 0.7
     }
     
@@ -556,10 +670,12 @@ class TireOCRManager: NSObject, ObservableObject {
             }
         }
 
-        // Fixed: Extract model if brand exists but size check was wrong
-        if data.model.isEmpty && !data.brand.isEmpty {
-            if let modelMatch = try? extractModel(from: upperText, brand: data.brand) {
-                data.model = modelMatch
+        if data.model.isEmpty {
+            if let modelResult = extractModel(from: upperText, brand: data.brand) {
+                data.model = modelResult.model
+                if data.brand.isEmpty, let inferredBrand = modelResult.inferredBrand {
+                    data.brand = inferredBrand
+                }
             }
         }
 
@@ -1097,50 +1213,50 @@ class TireOCRManager: NSObject, ObservableObject {
         return nil
     }
 
-    private func extractModel(from text: String, brand: String) -> String? {
+    private func extractModel(from text: String, brand: String) -> (model: String, inferredBrand: String?)? {
         let upperText = text.uppercased()
-        let upperBrand = brand.uppercased()
+        let requestedBrand = brand.uppercased()
 
-        // Modelli comuni per marca
-        let knownModels: [String: [String]] = [
-            "MICHELIN": ["PILOT SPORT", "ENERGY SAVER", "PRIMACY", "CROSSCLIMATE", "LATITUDE", "DEFENDER", "X-ICE", "ALPIN", "AGILIS"],
-            "PIRELLI": ["CINTURATO", "P ZERO", "SCORPION", "WINTER SOTTOZERO", "CARRIER", "WEATHERACTIVE", "POWERGY", "P4"],
-            "CONTINENTAL": ["CONTISPORTCONTACT", "CONTIPROCONTACT", "EXTREMECONTACT", "CONTIWINTERCONTACT", "TRUECONTACT", "CROSSCONTACT", "PURECONTACT", "VANCONTACT", "VIKINGCONTACT", "TERRAINCONTACT"],
-            "BRIDGESTONE": ["POTENZA", "TURANZA", "DUELER", "BLIZZAK", "ECOPIA", "ALENZA", "WEATHERPEAK", "DRIVEGUARD"],
-            "GOODYEAR": ["EAGLE", "EFFICIENTGRIP", "VECTOR", "ULTRAGRIP", "WRANGLER", "ASSURANCE", "FORTITUDE", "COMFORTDRIVE"],
-            "DUNLOP": ["SPORT MAXX", "BLURESPONSE", "WINTER SPORT", "GRANDTREK"],
-            "YOKOHAMA": ["ADVAN", "BLUEARTH", "GEOLANDAR", "ICEGUARD"],
-            "HANKOOK": ["VENTUS", "KINERGY", "DYNAPRO", "WINTER"],
-            "KUMHO": ["ECSTA", "SOLUS", "CRUGEN", "WINTERCRAFT"],
-            "NOKIAN": ["HAKKAPELIITTA", "NORDMAN", "POWERPROOF", "SEASONPROOF"]
-        ]
-
-        // Cerca modelli specifici per il brand rilevato
-        if let modelsForBrand = knownModels[upperBrand] {
+        if let modelsForBrand = Self.knownModelsByBrand[requestedBrand] {
             for model in modelsForBrand {
-                if upperText.contains(model) {
-                    return model.capitalized
+                let compactModel = model.replacingOccurrences(of: " ", with: "")
+                if upperText.contains(model) || upperText.contains(compactModel) {
+                    return (model.capitalized, requestedBrand)
                 }
             }
         }
 
-        // Estrazione generica: cerca parole dopo il brand che potrebbero essere il modello
+        for entry in Self.modelSearchIndex {
+            if upperText.contains(entry.pattern) {
+                return (entry.model.capitalized, entry.brand)
+            }
+        }
+
+        var contextBrand = requestedBrand
+        if contextBrand.isEmpty {
+            for candidate in Self.primaryBrands {
+                if upperText.contains(candidate) {
+                    contextBrand = candidate
+                    break
+                }
+            }
+        }
+
+        guard !contextBrand.isEmpty else { return nil }
+
         let lines = upperText.components(separatedBy: CharacterSet.newlines)
         for line in lines {
-            if line.contains(upperBrand) {
+            if line.contains(contextBrand) {
                 let words = line.components(separatedBy: CharacterSet.whitespaces)
-                if let brandIndex = words.firstIndex(where: { $0.contains(upperBrand) }) {
-                    // Controlla che ci siano parole dopo il brand
+                if let brandIndex = words.firstIndex(where: { $0.contains(contextBrand) }) {
                     let nextIndex = brandIndex + 1
                     guard nextIndex < words.count else { continue }
-                    
-                    // Prendi le parole successive al brand come possibile modello
-                    let endIndex = min(nextIndex + 2, words.count)  // Max 2 parole dopo il brand
+
+                    let endIndex = min(nextIndex + 2, words.count)
                     let remainingWords = Array(words[nextIndex..<endIndex])
                     let candidateModel = remainingWords.joined(separator: " ").trimmingCharacters(in: .punctuationCharacters)
 
-                    // Filtra parole che non sono probabilmente modelli
-                    let excludeWords = ["TIRE", "TYRE", "PNEUMATIC", "RADIAL", "STEEL", "BELT", "DOT", upperBrand]
+                    let excludeWords = ["TIRE", "TYRE", "PNEUMATIC", "PNEUMATICO", "RADIAL", "STEEL", "BELT", "DOT", contextBrand]
                     let cleanModel = candidateModel.components(separatedBy: " ")
                         .filter { word in
                             !excludeWords.contains(word) &&
@@ -1150,8 +1266,8 @@ class TireOCRManager: NSObject, ObservableObject {
                         }
                         .joined(separator: " ")
 
-                    if !cleanModel.isEmpty && cleanModel.count > 2 {
-                        return cleanModel.capitalized
+                    if !cleanModel.isEmpty {
+                        return (cleanModel.capitalized, contextBrand)
                     }
                 }
             }
@@ -2120,3 +2236,4 @@ extension OCRCameraView: AVCaptureVideoDataOutputSampleBufferDelegate {
         return image.cropping(to: cropRect)
     }
 }
+

@@ -2680,7 +2680,11 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
                        let insuredProperty = customerData["insuredProperty"] as? [String: Any],
                        let details = insuredProperty["details"] as? [String: Any],
                        let firstRegistrationDate = details["firstRegistrationDate"] as? String {
-
+                        if let model = details["model"] as? String {
+                            let cleanModel = model.components(separatedBy: "(").first?.trimmingCharacters(in: .whitespaces) ?? model
+                            let normalized = cleanModel.folding(options: .diacriticInsensitive, locale: .current)
+                            let finalModel = normalized
+                        }
                         let parts = firstRegistrationDate.split(separator: "-")
                         if parts.count == 3 {
                             completion(.success("\(parts[1])/\(parts[0])"))
