@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "628808645845",
+    "project_id": "tyrevibes-f4fff",
+    "storage_bucket": "tyrevibes-f4fff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:628808645845:android:d5a63591f9ea8ec4d9765c",
+        "android_client_info": {
+          "package_name": "it.tyrevibes.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "628808645845-etj5cdmni8703nd5jie361luir9mmmme.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuG-oDcP3fw5T504yWGSs3pbF35woaMME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "628808645845-etj5cdmni8703nd5jie361luir9mmmme.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
