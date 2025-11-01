@@ -6,10 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
+import it.tyrevibes.app.navigation.NavGraph
+import it.tyrevibes.app.navigation.Screen
+import it.tyrevibes.app.ui.theme.TyreVibesTheme
 
 /**
  * MainActivity - Entry point dell'applicazione Android
@@ -23,30 +24,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TyreVibesApp()
+                    val navController = rememberNavController()
+                    NavGraph(
+                        navController = navController,
+                        startDestination = Screen.Login.route
+                    )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun TyreVibesTheme(content: @Composable () -> Unit) {
-    MaterialTheme {
-        content()
-    }
-}
-
-@Composable
-fun TyreVibesApp() {
-    // TODO: Implementare la navigazione e le schermate
-    Text(text = "TyreVibes - Android")
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    TyreVibesTheme {
-        TyreVibesApp()
     }
 }
