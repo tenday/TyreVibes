@@ -5,6 +5,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import it.tyrevibes.app.features.auth.LoginScreen
+import it.tyrevibes.app.features.auth.SignUpScreen
+import it.tyrevibes.app.features.garage.GarageScreen
+import it.tyrevibes.app.features.licenseplate.LicensePlateScannerScreen
+import it.tyrevibes.app.features.map.MapScreen
+import it.tyrevibes.app.features.notifications.NotificationsScreen
+import it.tyrevibes.app.features.onboarding.OnBoardingScreen
+import it.tyrevibes.app.features.onboarding.SplashScreen
+import it.tyrevibes.app.features.profile.ProfileScreen
+import it.tyrevibes.app.features.settings.SettingsScreen
+import it.tyrevibes.app.features.tyre.TyreAnalysisScreen
 
 /**
  * Navigation Routes
@@ -45,34 +56,87 @@ fun NavGraph(
     ) {
         // Splash Screen
         composable(Screen.Splash.route) {
-            // TODO: SplashScreen()
+            SplashScreen(
+                onNavigateToOnBoarding = {
+                    navController.navigate(Screen.OnBoarding.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Garage.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // OnBoarding
         composable(Screen.OnBoarding.route) {
-            // TODO: OnBoardingScreen()
+            OnBoardingScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.OnBoarding.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // Authentication
         composable(Screen.Login.route) {
-            // TODO: LoginScreen()
+            LoginScreen(
+                onNavigateToSignUp = {
+                    navController.navigate(Screen.SignUp.route)
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Garage.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Screen.SignUp.route) {
-            // TODO: SignUpScreen()
+            SignUpScreen(
+                onNavigateToLogin = {
+                    navController.popBackStack()
+                },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Garage.route) {
+                        popUpTo(Screen.SignUp.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Screen.ForgotPassword.route) {
-            // TODO: ForgotPasswordScreen()
+            // TODO: ForgotPasswordScreen - Simple implementation
         }
 
         // Main App
         composable(Screen.Home.route) {
-            // TODO: HomeScreen()
+            // Redirect to Garage for now
+            GarageScreen(
+                onNavigateToAddVehicle = {
+                    navController.navigate(Screen.LicensePlateScanner.route)
+                },
+                onNavigateToVehicleDetails = { vehicleId ->
+                    navController.navigate(Screen.VehicleDetails.createRoute(vehicleId))
+                }
+            )
         }
 
         composable(Screen.Garage.route) {
-            // TODO: GarageScreen()
+            GarageScreen(
+                onNavigateToAddVehicle = {
+                    navController.navigate(Screen.LicensePlateScanner.route)
+                },
+                onNavigateToVehicleDetails = { vehicleId ->
+                    navController.navigate(Screen.VehicleDetails.createRoute(vehicleId))
+                }
+            )
         }
 
         composable(Screen.VehicleDetails.route) { backStackEntry ->
@@ -81,39 +145,73 @@ fun NavGraph(
         }
 
         composable(Screen.AddVehicle.route) {
-            // TODO: AddVehicleScreen()
+            // Redirect to License Plate Scanner
+            LicensePlateScannerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onPlateDetected = { plate ->
+                    // TODO: Navigate to vehicle details with plate
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(Screen.LicensePlateScanner.route) {
-            // TODO: LicensePlateScannerScreen()
+            LicensePlateScannerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onPlateDetected = { plate ->
+                    // TODO: Navigate to vehicle details with plate
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(Screen.TyreAnalysis.route) {
-            // TODO: TyreAnalysisScreen()
+            TyreAnalysisScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onStartAnalysis = {
+                    // TODO: Navigate to camera/analysis
+                }
+            )
         }
 
         composable(Screen.TreadAnalysis.route) {
-            // TODO: TreadAnalysisScreen()
+            TyreAnalysisScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onStartAnalysis = {
+                    // TODO: Navigate to camera/analysis
+                }
+            )
         }
 
         composable(Screen.Map.route) {
-            // TODO: MapScreen()
+            MapScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Settings.route) {
-            // TODO: SettingsScreen()
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToProfile = {
+                    navController.navigate(Screen.Profile.route)
+                }
+            )
         }
 
         composable(Screen.Profile.route) {
-            // TODO: ProfileScreen()
+            ProfileScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Notifications.route) {
-            // TODO: NotificationsScreen()
+            NotificationsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Reports.route) {
-            // TODO: ReportsScreen()
+            // TODO: ReportsScreen - Simple implementation
         }
     }
 }
