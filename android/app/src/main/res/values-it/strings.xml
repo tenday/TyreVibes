@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">TyreVibes</string>
+
+    <!-- Authentication -->
+    <string name="login_title">Accedi</string>
+    <string name="signup_title">Registrati</string>
+    <string name="welcome_back">Bentornato!</string>
+    <string name="create_account">Crea il tuo account</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Conferma Password</string>
+    <string name="full_name">Nome Completo</string>
+    <string name="username">Username</string>
+    <string name="phone_number">Numero di Telefono</string>
+    <string name="remember_me">Ricordami</string>
+    <string name="forgot_password">Password dimenticata?</string>
+    <string name="sign_in">Accedi</string>
+    <string name="sign_up">Registrati</string>
+    <string name="already_have_account">Hai già un account?</string>
+    <string name="dont_have_account">Non hai un account?</string>
+    <string name="agree_terms">Accetto i Termini e Condizioni</string>
+
+    <!-- OnBoarding -->
+    <string name="onboarding_title_1">Gestisci i tuoi Pneumatici</string>
+    <string name="onboarding_desc_1">Monitora lo stato dei tuoi pneumatici e ricevi promemoria per la manutenzione</string>
+    <string name="onboarding_title_2">Analisi Avanzata</string>
+    <string name="onboarding_desc_2">Scansiona e analizza la profondità del battistrada con la fotocamera</string>
+    <string name="onboarding_title_3">Trova Officine</string>
+    <string name="onboarding_desc_3">Trova le officine più vicine e confronta i prezzi dei pneumatici</string>
+    <string name="onboarding_title_4">Sicurezza Prima di Tutto</string>
+    <string name="onboarding_desc_4">Ricevi avvisi quando è il momento di cambiare i pneumatici</string>
+    <string name="skip">Salta</string>
+    <string name="next">Avanti</string>
+    <string name="get_started">Inizia</string>
+
+    <!-- Garage -->
+    <string name="my_vehicles">I Miei Veicoli</string>
+    <string name="add_vehicle">Aggiungi Veicolo</string>
+    <string name="no_vehicles">Nessun Veicolo</string>
+    <string name="add_first_vehicle">Aggiungi il tuo primo veicolo per iniziare</string>
+    <string name="vehicle_details">Dettagli Veicolo</string>
+
+    <!-- License Plate -->
+    <string name="scan_plate">Scansiona Targa</string>
+    <string name="frame_plate">Inquadra la targa del veicolo</string>
+    <string name="plate_detected">Targa Rilevata:</string>
+    <string name="confirm">Conferma</string>
+    <string name="retry">Riprova</string>
+    <string name="no_plate_detected">Nessuna targa rilevata. Riprova.</string>
+
+    <!-- Map -->
+    <string name="find_shops">Trova Officine</string>
+    <string name="your_location">La tua posizione</string>
+    <string name="open">Aperto</string>
+    <string name="closed">Chiuso</string>
+    <string name="address">Indirizzo</string>
+    <string name="phone">Telefono</string>
+    <string name="directions">Indicazioni</string>
+    <string name="call">Chiama</string>
+    <string name="rating">Valutazione</string>
+
+    <!-- Tyre Analysis -->
+    <string name="tyre_analysis">Analisi Pneumatici</string>
+    <string name="tread_depth_analysis">Analisi Profondità Battistrada</string>
+    <string name="start_analysis">Inizia Analisi</string>
+    <string name="analysis_instructions">Scatta una foto del battistrada del pneumatico per analizzarne lo stato</string>
+    <string name="instructions">Istruzioni:</string>
+    <string name="good_lighting">Assicurati di avere una buona illuminazione</string>
+    <string name="frame_tread">Inquadra il battistrada da vicino</string>
+    <string name="keep_parallel">Mantieni la fotocamera parallela al pneumatico</string>
+    <string name="clean_tread">Pulisci il battistrada prima dell\'analisi</string>
+
+    <!-- Profile -->
+    <string name="profile">Profilo</string>
+    <string name="edit">Modifica</string>
+    <string name="save">Salva</string>
+    <string name="statistics">Statistiche</string>
+    <string name="vehicles">Veicoli</string>
+    <string name="analyses">Analisi</string>
+    <string name="reports">Report</string>
+    <string name="account_info">Informazioni Account</string>
+    <string name="member_since">Membro dal</string>
+    <string name="plan">Piano</string>
+    <string name="change_photo">Cambia Foto</string>
+
+    <!-- Settings -->
+    <string name="settings">Impostazioni</string>
+    <string name="notifications">Notifiche</string>
+    <string name="push_notifications">Notifiche Push</string>
+    <string name="receive_important_notifications">Ricevi notifiche importanti</string>
+    <string name="security">Sicurezza</string>
+    <string name="biometric_auth">Autenticazione Biometrica</string>
+    <string name="use_fingerprint_face">Usa impronta digitale o Face ID</string>
+    <string name="appearance">Aspetto</string>
+    <string name="dark_mode">Modalità Scura</string>
+    <string name="dark_theme">Tema scuro per l\'app</string>
+    <string name="account">Account</string>
+    <string name="logout">Esci</string>
+    <string name="logout_desc">Disconnettiti dall\'app</string>
+    <string name="delete_account">Elimina Account</string>
+    <string name="delete_account_desc">Elimina permanentemente il tuo account</string>
+    <string name="confirm_logout">Conferma Logout</string>
+    <string name="confirm_logout_message">Sei sicuro di voler uscire?</string>
+    <string name="confirm_delete">Elimina Account</string>
+    <string name="confirm_delete_message">Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile.</string>
+    <string name="cancel">Annulla</string>
+
+    <!-- Notifications Screen -->
+    <string name="no_notifications">Nessuna notifica</string>
+    <string name="mark_all_read">Segna tutte come lette</string>
+
+    <!-- General -->
+    <string name="loading">Caricamento…</string>
+    <string name="error">Errore</string>
+    <string name="ok">OK</string>
+    <string name="back">Indietro</string>
+    <string name="close">Chiudi</string>
+
+    <!-- Password Requirements -->
+    <string name="password_req_uppercase">Almeno una lettera maiuscola</string>
+    <string name="password_req_number">Almeno un numero (0-9)</string>
+    <string name="password_req_length">Minimo 6 caratteri</string>
+    <string name="password_req_special">Almeno un simbolo speciale (!@#...)</string>
+
+    <!-- Errors -->
+    <string name="error_invalid_email">Email non valida</string>
+    <string name="error_passwords_dont_match">Le password non corrispondono</string>
+    <string name="error_network">Errore di connessione. Controlla la rete.</string>
+    <string name="error_unknown">Si è verificato un errore sconosciuto</string>
+</resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors -->
+    <color name="primary_blue">#FF007AFF</color>
+    <color name="primary_blue_light">#FF5AC8FA</color>
+    <color name="primary_blue_dark">#FF0051D5</color>
+
+    <!-- Secondary Colors -->
+    <color name="secondary_orange">#FFFF9500</color>
+    <color name="secondary_orange_light">#FFFFB84D</color>
+    <color name="secondary_orange_dark">#FFCC7700</color>
+
+    <!-- Accent Colors -->
+    <color name="accent_green">#FF34C759</color>
+    <color name="accent_red">#FFFF3B30</color>
+    <color name="accent_yellow">#FFFFCC00</color>
+    <color name="accent_purple">#FF5856D6</color>
+    <color name="accent_teal">#FF00C7BE</color>
+
+    <!-- Status Colors -->
+    <color name="status_success">#FF34C759</color>
+    <color name="status_warning">#FFFFCC00</color>
+    <color name="status_error">#FFFF3B30</color>
+    <color name="status_info">#FF007AFF</color>
+
+    <!-- Neutral Colors -->
+    <color name="gray_100">#FFF5F5F5</color>
+    <color name="gray_200">#FFEEEEEE</color>
+    <color name="gray_300">#FFE0E0E0</color>
+    <color name="gray_400">#FFBDBDBD</color>
+    <color name="gray_500">#FF9E9E9E</color>
+    <color name="gray_600">#FF757575</color>
+    <color name="gray_700">#FF616161</color>
+    <color name="gray_800">#FF424242</color>
+    <color name="gray_900">#FF212121</color>
+
+    <!-- Background -->
+    <color name="background_light">#FFFFFFFF</color>
+    <color name="background_dark">#FF121212</color>
+    <color name="surface_light">#FFF8F9FA</color>
+    <color name="surface_dark">#FF1E1E1E</color>
+
+    <!-- Tyre Depth Status -->
+    <color name="depth_good">#FF34C759</color>
+    <color name="depth_fair">#FFFFCC00</color>
+    <color name="depth_warning">#FFFF9500</color>
+    <color name="depth_critical">#FFFF3B30</color>
+</resources>
