@@ -701,17 +701,17 @@ class TireOCRManager: NSObject, ObservableObject {
     
     private func extractTireSize(from text: String) -> String? {
         guard text.count <= 200 else { return nil }
-        
+
         // Advanced tire size pattern recognition using mathematical precision
         let advancedPatterns = [
             // Standard patterns with mathematical validation
-            #"(\d{3}\/\d{2}R\d{2})"#,     // 225/55R17
-            #"(\d{3}\/\d{2}-\d{2})"#,      // 225/55-17  
-            #"(\d{3} \d{2} R\d{2})"#,      // 225 55 R17
-            #"(\d{3}\/\d{2}ZR\d{2})"#,     // 225/55ZR17
-            #"(\d{3}\/\d{2}\/R\d{2})"#,    // Alternative format
-            #"(\d{2,3}x\d{2}R?\d{2})"#,    // Metric format
-            #"(P\d{3}\/\d{2}R\d{2})"#      // P-metric
+            #"(\d{3}\/\d{2}\s?R\s?\d{2})"#,     // 225/55R17 o 225/55 R 17
+            #"(\d{3}\/\d{2}-\d{2})"#,            // 225/55-17
+            #"(\d{3}\s\d{2}\s?R\s?\d{2})"#,     // 225 55 R17 o 225 55R17
+            #"(\d{3}\/\d{2}ZR\s?\d{2})"#,       // 225/55ZR17 o 225/55ZR 17
+            #"(\d{3}\/\d{2}\/R\s?\d{2})"#,      // Alternative format
+            #"(\d{2,3}x\d{2}R?\s?\d{2})"#,      // Metric format
+            #"(P\d{3}\/\d{2}R\s?\d{2})"#        // P-metric
         ]
         
         var bestMatch: (size: String, confidence: Double) = ("", 0.0)
@@ -723,9 +723,12 @@ class TireOCRManager: NSObject, ObservableObject {
                 
                 for match in matches {
                     if let range = Range(match.range(at: 1), in: text) {
-                        let candidate = String(text[range]).replacingOccurrences(of: " ", with: "")
+                        var candidate = String(text[range])
+                        // Normalizza il formato rimuovendo spazi multipli e formattando correttamente
+                        candidate = candidate.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+                        // Formatta in modo standard: 255/35R19
                         let confidence = validateTireSize(candidate)
-                        
+
                         if confidence > bestMatch.confidence {
                             bestMatch = (candidate, confidence)
                         }
@@ -736,8 +739,8 @@ class TireOCRManager: NSObject, ObservableObject {
             }
         }
         
-        // Return match only if confidence is high enough
-        return bestMatch.confidence >= 0.8 ? bestMatch.size : nil
+        // Return match only if confidence is high enough (abbassata da 0.8 a 0.6)
+        return bestMatch.confidence >= 0.6 ? bestMatch.size : nil
     }
     
     /// Mathematical validation of tire size using industry standards
@@ -815,9 +818,10 @@ class TireOCRManager: NSObject, ObservableObject {
         // Common combinations boost confidence
         let commonCombinations: [(width: ClosedRange<Int>, profile: ClosedRange<Int>, diameter: ClosedRange<Int>)] = [
             (width: 175...225, profile: 50...70, diameter: 14...18),  // Compact/Mid-size cars
-            (width: 215...275, profile: 35...55, diameter: 17...20),  // Sports/Luxury cars  
+            (width: 215...275, profile: 35...55, diameter: 17...20),  // Sports/Luxury cars
             (width: 225...285, profile: 40...70, diameter: 16...20),  // SUVs/Crossovers
-            (width: 155...195, profile: 60...80, diameter: 13...16)   // Economy cars
+            (width: 155...195, profile: 60...80, diameter: 13...16),  // Economy cars
+            (width: 235...295, profile: 30...45, diameter: 18...22)   // High-performance/Sports cars (255/35R19, 265/40R20, etc.)
         ]
         
         for combo in commonCombinations {

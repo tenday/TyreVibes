@@ -12,10 +12,13 @@ import SwiftUI
 struct TireAnalysisView: View {
     let vehicle: VehicleResponse
     let tyre: TyreRegistered
+    @State private var selectedTires: Set<TirePosition> = []
     @State private var selectedTire: TirePosition? = .frontLeft
     @State private var navigateToResult = false
+    @State private var vehicleImage: UIImage?
+    @State private var isLoadingImage = true
     @Environment(\.presentationMode) var presentationMode
-    
+
     var body: some View {
         ZStack {
             Color.customBackgroundColor
@@ -39,46 +42,69 @@ struct TireAnalysisView: View {
                 }
                 .padding(.top, 16)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
-                        .font(.customFont(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-
-                    Text("\(tyre.brand) \(tyre.model) • \(tyre.size)")
-                        .font(.customFont(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-                        .lineLimit(2)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
                 
                 Spacer()
-                
+
                 // Car with Tire Indicators
-                CarTireVisualization(selectedTire: $selectedTire)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                Spacer()
+                ZStack {
+                    VStack {
+                        Spacer()
 
-                // Start Analysis Button
-                Button(action: {
-                    if selectedTire != nil {
-                        navigateToResult = true
+                        if let image = vehicleImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 500, maxHeight: 500)
+                                .rotationEffect(.degrees(90))
+                        } else {
+                            Image(systemName: "car.fill")
+                                .font(.system(size: 80))
+                                .foregroundColor(.white.opacity(0.3))
+                        }
+
+                        Spacer()
                     }
-                }) {
-                    Text("Start Analysis")
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(selectedTire != nil ? Color(hex: "#FF6B6B") : Color.gray)
-                        .cornerRadius(25)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    
+                    // Tire selection buttons
+                                      // Front Left
+                                      TireButton(position: .frontLeft, isSelected: selectedTires.contains(.frontLeft))
+                                          .offset(x: -160, y: -120)
+                                          .onTapGesture {
+                                              toggleTire(.frontLeft)
+                                          }
+                                      
+                                      // Front Right
+                                      TireButton(position: .frontRight, isSelected: selectedTires.contains(.frontRight))
+                                          .offset(x: 160, y: -120)
+                                          .onTapGesture {
+                                              toggleTire(.frontRight)
+                                          }
+                                      
+                                      // Rear Left
+                                      TireButton(position: .rearLeft, isSelected: selectedTires.contains(.rearLeft))
+                                          .offset(x: -160, y: 120)
+                                          .onTapGesture {
+                                              toggleTire(.rearLeft)
+                                          }
+                                      
+                                      // Rear Right
+                                      TireButton(position: .rearRight, isSelected: selectedTires.contains(.rearRight))
+                                          .offset(x: 160, y: 120)
+                                          .onTapGesture {
+                                              toggleTire(.rearRight)
+                                          }
+                    
+
+                    if isLoadingImage {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.5)
+                    }
                 }
-                .disabled(selectedTire == nil)
-                .padding(.horizontal)
-                .padding(.bottom)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
 
                 NavigationLink(destination: TreadAnalysisResultView(vehicle: vehicle), isActive: $navigateToResult) {
                     EmptyView()
@@ -86,6 +112,81 @@ struct TireAnalysisView: View {
             }
         }
         .navigationBarHidden(true)
+        .task {
+            await loadVehicleImage()
+        }
+    }
+    
+    private func toggleTire(_ position: TirePosition) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if selectedTires.contains(position) {
+                    selectedTires.remove(position)
+                } else {
+                    selectedTires.insert(position)
+                }
+            }
+        }
+    
+    struct TireButton: View {
+        let position: TirePosition
+        let isSelected: Bool
+        
+        var body: some View {
+            ZStack {
+                // Outer circle (border)
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(isSelected ? Color(red: 0.45, green: 0.35, blue: 0.85) : Color.white, lineWidth: 2)
+                    .frame(width: 42, height: 72)
+                
+                // Inner fill when selected
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color(red: 0.45, green: 0.35, blue: 0.85).opacity(0.2))
+                        .frame(width: 56, height: 96)
+                }
+                
+                // Tire tread pattern (3 lines)
+                VStack(spacing: 6) {
+                    ForEach(0..<3) { _ in
+                        Rectangle()
+                            .fill(isSelected ? Color(red: 0.45, green: 0.35, blue: 0.85) : Color.white)
+                            .frame(width: 30, height: 2)
+                            .opacity(0.6)
+                    }
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        }
+    }
+
+    private func loadVehicleImage() async {
+        defer { isLoadingImage = false }
+
+        guard let make = vehicle.vehicle.make,
+              let modelFamily = vehicle.vehicle.model,
+              let year = vehicle.vehicle.saleStart,
+              let color = vehicle.vehicle.color else {
+            return
+        }
+
+        // Angle 1 = top-down view from imagin.studio
+        VehicleImageService.fetchVehicleImage(
+            make: make,
+            modelFamily: modelFamily,
+            year: year,
+            paintId: color,
+            angle: 33,
+            plate: ""
+        ) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let image):
+                    self.vehicleImage =  image.trimmedTransparentPixels(threshold: 5)
+                case .failure(let error):
+                    print("⚠️ Errore nel caricamento dell'immagine: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 }
 
@@ -186,6 +287,34 @@ struct TireIndicators: View {
                     .blur(radius: 2)
                     .opacity(0.6)
             }
+        }
+    }
+}
+
+// MARK: - Tire Indicator Badge
+struct TireIndicatorBadge: View {
+    let position: TirePosition
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(position.icon)
+                .font(.customFont(size: 14, weight: .bold))
+                .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                .frame(width: 50, height: 50)
+                .background(
+                    Circle()
+                        .fill(isSelected ? Color(hex: "FF6B6B") : Color.white.opacity(0.2))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(
+                            isSelected ? Color(hex: "FF8E53") : Color.white.opacity(0.3),
+                            lineWidth: 2
+                        )
+                )
+                .scaleEffect(isSelected ? 1.1 : 1.0)
         }
     }
 }

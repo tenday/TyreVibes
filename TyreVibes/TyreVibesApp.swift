@@ -14,6 +14,7 @@ struct TyreVibesApp: App {
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
     @StateObject private var languageManager = LanguageManager.shared
     @StateObject private var notificationStore = NotificationStore()
+    @StateObject private var bugReportManager = BugReportManager()
     @State private var showResetPasswordScreen = false
     @State private var authStateChangeTask: Any? = nil
     
@@ -45,6 +46,13 @@ struct TyreVibesApp: App {
             .environment(\.locale, languageManager.locale)
             .environmentObject(languageManager)
             .environmentObject(notificationStore)
+            .environmentObject(bugReportManager)
+            .sheet(isPresented: $bugReportManager.showBugReportSheet) {
+                BugReportSheet(manager: bugReportManager)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.hidden)
+                    .scrollIndicators(.hidden)
+            }
             .onAppear {
                 Task { @MainActor in
                     let token = await SupabaseManager.client.auth.onAuthStateChange { event, session in

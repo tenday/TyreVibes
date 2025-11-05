@@ -35,9 +35,9 @@ struct TireAnalysisSelectionView: View {
                         .padding(.top, 20)
 
                         // Vehicle Selection Section
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text(LocalizedStringKey("Select Vehicle"))
-                                .font(.customFont(size: 18, weight: .semibold))
+                                .font(.customFont(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 24)
                                 .padding(.top, 4)
@@ -54,15 +54,15 @@ struct TireAnalysisSelectionView: View {
                                     }
                                 }
                                 .padding(.horizontal, 24)
-                                .padding(.vertical, 5)
+                                .padding(.vertical, 20)
                             }
                         }
 
                         // Tyre Selection Section
                         if let vehicle = selectedVehicle {
-                            VStack(alignment: .leading, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 10) {
                                 Text(LocalizedStringKey("Select Tire"))
-                                    .font(.customFont(size: 18, weight: .semibold))
+                                    .font(.customFont(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 24)
 
@@ -94,9 +94,10 @@ struct TireAnalysisSelectionView: View {
                                     ScrollView(.horizontal, showsIndicators: false) {
                                         HStack(spacing: 18) {
                                             ForEach(tyreViewModel.registeredTyres) { tyre in
+                                                let isSelected = selectedTyre?.id == tyre.id
                                                 RegisteredTyreCard(
                                                     tyre: tyre,
-                                                    isSelected: selectedTyre?.id == tyre.id
+                                                    isSelected: isSelected
                                                 ) {
                                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                                         selectedTyre = tyre
@@ -105,7 +106,7 @@ struct TireAnalysisSelectionView: View {
                                             }
                                         }
                                         .padding(.horizontal, 24)
-                                        .padding(.vertical, 5)
+                                        .padding(.vertical, 20)
                                     }
                                 }
                             }
@@ -118,7 +119,7 @@ struct TireAnalysisSelectionView: View {
 
                 // Start Button (Fixed at bottom)
                 VStack {
-                    Spacer()
+                    Spacer().frame(height: 500)
 
                     Button(action: {
                         if selectedVehicle != nil && selectedTyre != nil {
@@ -128,27 +129,13 @@ struct TireAnalysisSelectionView: View {
                         Text(LocalizedStringKey("Start"))
                             .font(.customFont(size: 18, weight: .semibold))
                             .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 28)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: selectedVehicle != nil && selectedTyre != nil
-                                                ? [Color(hex: "FF6B6B"), Color(hex: "FF8E53")]
-                                                : [Color.gray.opacity(0.5), Color.gray.opacity(0.3)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            )
-                            .shadow(color: (selectedVehicle != nil && selectedTyre != nil
-                                ? Color(hex: "FF6B6B") : Color.clear).opacity(0.4),
-                                    radius: 20, x: 0, y: 10)
+                            .frame(width: 212, height: 62)
+                            .background(Color.customBitterSweet)
                     }
                     .disabled(selectedVehicle == nil || selectedTyre == nil)
+                    .opacity(selectedVehicle == nil || selectedTyre == nil ? 0.5 : 1)
+                    .cornerRadius(100)
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
                 }
             }
             .navigationBarHidden(true)
@@ -162,9 +149,6 @@ struct TireAnalysisSelectionView: View {
         }
         .task {
             await garageViewModel.fetchCars()
-            if selectedVehicle == nil, let firstVehicle = garageViewModel.vehicles.first {
-                selectVehicle(firstVehicle, animated: false)
-            }
         }
         .onChange(of: garageViewModel.vehicles) { _, newVehicles in
             if selectedVehicle == nil, let firstVehicle = newVehicles.first {
@@ -200,50 +184,59 @@ struct VehicleCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 12) {
-                // Vehicle Image
-                ZStack {
+            VStack(spacing: 0) {
+                // Vehicle Image Card
+                ZStack(alignment: .bottom) {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(Color.customFieldColor)
-                        .frame(width: 120, height: 120)
+                        .frame(width: 124, height: 125)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(
+                                    isSelected
+                                        ? LinearGradient(
+                                            colors: [Color(hex: "F36656"), Color(hex: "F36656")],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                        : LinearGradient(
+                                            colors: [Color.clear, Color.clear],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                    lineWidth: isSelected ? 2 : 0
+                                )
+                        )
+                        .scaleEffect(isSelected ? 1.10 : 1.05)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
 
-                    if let imageBase64 = vehicle.image?.imageBase64,
-                       let uiImage = imageBase64.toUIImage() {
-                        Image(uiImage: uiImage.trimmedTransparentPixels(threshold: 5))
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 110, height: 100)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    } else {
-                        Image(systemName: "car.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.5))
+                    VStack(spacing: 8) {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.white.opacity(0.2))
+                            .frame(width: 116, height: 90)
+                            .overlay {
+                                if let imageBase64 = vehicle.image?.imageBase64,
+                                   let uiImage = imageBase64.toUIImage() {
+                                    Image(uiImage: uiImage.trimmedTransparentPixels(threshold: 5))
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 110, height: 100)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                } else {
+                                    Image(systemName: "car.fill")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
+                            }
+
+                        Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
+                            .font(.customFont(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .frame(width: 116)
+                            .padding(.bottom, 8)
                     }
                 }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            isSelected
-                                ? LinearGradient(
-                                    colors: [Color(hex: "FF6B6B"), Color(hex: "FF8E53")],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    colors: [Color.clear, Color.clear],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                            lineWidth: isSelected ? 3 : 0
-                        )
-                )
-
-                // Vehicle Name
-                Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
-                    .font(.customFont(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .frame(width: 120)
             }
         }
         .scaleEffect(isSelected ? 1.05 : 1.0)
@@ -257,93 +250,105 @@ struct RegisteredTyreCard: View {
     let isSelected: Bool
     let action: () -> Void
 
-    private var displaySize: String {
-        tyre.size.isEmpty ? "N/A" : tyre.size
-    }
-
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.customFieldColor)
-                        .frame(width: 140, height: 140)
-
-                    VStack(spacing: 10) {
-                        Image(systemName: "circle.grid.3x3.fill")
-                            .font(.system(size: 40, weight: .regular))
-                            .foregroundColor(.white.opacity(0.75))
-
-                        Text(displaySize)
-                            .font(.customFont(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .frame(maxWidth: 120)
-                    }
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            isSelected
-                                ? LinearGradient(
-                                    colors: [Color(hex: "FF6B6B"), Color(hex: "FF8E53")],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                : LinearGradient(
-                                    colors: [Color.clear, Color.clear],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                            lineWidth: isSelected ? 3 : 0
-                        )
-                )
-
-                VStack(spacing: 4) {
-                    Text(tyre.brand)
-                        .font(.customFont(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-
-                    Text(tyre.model)
-                        .font(.customFont(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.75))
-                        .lineLimit(1)
-
-                    if !tyre.season.isEmpty {
-                        Text(tyre.season.uppercased())
-                            .font(.customFont(size: 11, weight: .bold))
-                            .foregroundColor(.black.opacity(0.8))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(seasonColor(for: tyre.season))
-                            )
-                    }
-                }
-                .frame(width: 140)
-            }
+            cardStack
         }
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 
-    private func seasonColor(for season: String) -> Color {
-        let lower = season.lowercased()
-        if lower.contains("winter") || lower.contains("invern") { return Color.blue.opacity(0.6) }
-        if lower.contains("summer") || lower.contains("estiv") { return Color.orange.opacity(0.7) }
-        if lower.contains("all") || lower.contains("4") { return Color.green.opacity(0.6) }
-        return Color.white.opacity(0.7)
+    private var cardStack: some View {
+        ZStack {
+            cardBackground
+            cardContent
+        }
     }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(Color.customFieldColor)
+            .frame(width: 124, height: 155)
+            .overlay(cardBorder)
+            .scaleEffect(isSelected ? 1.10 : 1.05)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    }
+
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .stroke(strokeGradient, lineWidth: isSelected ? 2 : 0)
+    }
+
+    private var strokeGradient: LinearGradient {
+        isSelected
+            ? LinearGradient(
+                colors: [Color(hex: "F36656"), Color(hex: "F36656")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            : LinearGradient(
+                colors: [Color.clear, Color.clear],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+    }
+
+    private var cardContent: some View {
+        VStack(spacing: 12) {
+            tyreImageView
+            tyreBrand
+            tyreSeason
+        }
+    }
+
+    private var tyreImageView: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.2))
+                .frame(width: 116, height: 90)
+
+            Image("tirePortrait")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 80, height: 80)
+                .clipped()
+        }
+    }
+
+    private var tyreBrand: some View {
+        Text(tyre.brand)
+            .font(.customFont(size: 16, weight: .semibold))
+            .multilineTextAlignment(.center)
+            .foregroundColor(.white)
+            .lineLimit(1)
+    }
+
+    private var tyreSeason: some View {
+        Text(tyre.season.uppercased())
+            .font(.customFont(size: 11, weight: .bold))
+            .foregroundColor(.black.opacity(0.8))
+            .padding(.horizontal, 10)
+            .background(
+                Capsule()
+                .fill(seasonColor(for: tyre.season))
+            )
+    }
+
+    private func extractRadius() -> String {
+        let parts = tyre.size.components(separatedBy: "R")
+        return parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : "-"
+    }
+    
+    
+    private func seasonColor(for season: String) -> Color {
+            let lower = season.lowercased()
+            if lower.contains("winter") || lower.contains("invern") { return Color.blue.opacity(0.6) }
+            if lower.contains("summer") || lower.contains("estiv") { return Color.orange.opacity(0.7) }
+            if lower.contains("all") || lower.contains("4") { return Color.green.opacity(0.6) }
+            return Color.white.opacity(0.7)
+        }
 }
 
 // MARK: - Preview
-struct TireAnalysisSelectionView_Previews: PreviewProvider {
-    static var previews: some View {
-        TireAnalysisSelectionView()
-            .previewDisplayName("Default")
-            .preferredColorScheme(.dark)
-    }
+#Preview {
+    TireAnalysisSelectionView()
+        .preferredColorScheme(.dark)
 }

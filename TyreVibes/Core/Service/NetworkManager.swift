@@ -59,6 +59,16 @@ class NetworkManager {
     private let session: URLSession
     private let baseURL: String
     private let timeout: TimeInterval = 30.0
+    private static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    private static let iso8601WithoutFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -143,7 +153,7 @@ class NetworkManager {
         }
 
         // Log request
-        logRequest(request)
+        //logRequest(request)
 
         // Execute request
         do {
@@ -159,7 +169,32 @@ class NetworkManager {
             do {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
-                decoder.dateDecodingStrategy = .iso8601
+                decoder.dateDecodingStrategy = .custom { decoder in
+                    let container = try decoder.singleValueContainer()
+
+                    if let timeInterval = try? container.decode(Double.self) {
+                        return Date(timeIntervalSince1970: timeInterval)
+                    }
+
+                    let dateString = try container.decode(String.self)
+
+                    if let date = NetworkManager.iso8601WithFractionalSeconds.date(from: dateString) {
+                        return date
+                    }
+
+                    if let date = NetworkManager.iso8601WithoutFractionalSeconds.date(from: dateString) {
+                        return date
+                    }
+
+                    if let milliseconds = Double(dateString) {
+                        return Date(timeIntervalSince1970: milliseconds / 1000.0)
+                    }
+
+                    throw DecodingError.dataCorruptedError(
+                        in: container,
+                        debugDescription: "Impossibile decodificare la data: \(dateString)"
+                    )
+                }
 
                 let decodedData = try decoder.decode(T.self, from: data)
                 return decodedData
