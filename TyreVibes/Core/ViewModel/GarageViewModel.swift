@@ -34,13 +34,15 @@ class GarageViewModel: ObservableObject {
 
 
     func fetchCars() async {
+        let startTime = Date()
+
         // Show cached vehicles first if available, but only if not loading
         if isLoading, let cachedData = UserDefaults.standard.data(forKey: "cachedVehicles") {
             if let cachedVehicles = try? JSONDecoder().decode([VehicleResponse].self, from: cachedData) {
                 vehicles = cachedVehicles
             }
         }
-        
+
         do {
             let userId = await AuthService.currentUserId ?? ""
 
@@ -65,21 +67,39 @@ class GarageViewModel: ObservableObject {
             // Save raw data to UserDefaults before decoding
             UserDefaults.standard.set(data, forKey: "cachedVehicles")
             let decodedResponse = try JSONDecoder().decode([VehicleResponse].self, from: data)
-            
+
             // Force a clean update by creating a new array
             vehicles = decodedResponse
             isLoading = false
+
+            // Track screen loaded
+            let duration = Date().timeIntervalSince(startTime)
+            await AnalyticsManager.shared.track(
+                .screenLoaded(name: "GarageScreen", duration: duration, itemCount: vehicles.count)
+            )
         } catch {
             // Handle the error appropriately, e.g., show an alert to the user
             print("Error fetching cars: \(error)")
             vehicles = []
             isLoading = false
+
+            // Track error
+            await AnalyticsManager.shared.track(
+                .errorOccurred(error: error.localizedDescription, screen: "GarageScreen", context: [:])
+            )
         }
     }
 
     func showDetails(for vehicle: VehicleResponse) {
         selectedVehicle = vehicle
         showCarDetails = true
+
+        // Track vehicle viewed
+        Task {
+            await AnalyticsManager.shared.track(
+                .vehicleViewed(vehicleId: vehicle.vehicle.id)
+            )
+        }
     }
 
     func deleteCar(_ vehicle: Vehicle) {
@@ -116,11 +136,21 @@ class GarageViewModel: ObservableObject {
                     if let updatedData = try? JSONEncoder().encode(vehicles) {
                         UserDefaults.standard.set(updatedData, forKey: "cachedVehicles")
                     }
+
+                    // Track vehicle deleted
+                    await AnalyticsManager.shared.track(
+                        .vehicleDeleted(vehicleId: vehicle.id, vehicleAge: 0)
+                    )
                 } else {
                     print("Errore del server durante la rimozione dell'associazione")
                 }
             } catch {
                 print("Error deleting car: \(error)")
+
+                // Track error
+                await AnalyticsManager.shared.track(
+                    .errorOccurred(error: error.localizedDescription, screen: "GarageScreen", context: ["action": "delete_vehicle"])
+                )
             }
         }
     }

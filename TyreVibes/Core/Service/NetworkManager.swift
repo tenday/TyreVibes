@@ -155,9 +155,20 @@ class NetworkManager {
         // Log request
         //logRequest(request)
 
+        // Track API call start time
+        let startTime = Date()
+        var success = false
+        var statusCode: Int?
+        var errorType: String?
+
         // Execute request
         do {
             let (data, response) = try await session.data(for: request)
+
+            // Get status code for tracking
+            if let httpResponse = response as? HTTPURLResponse {
+                statusCode = httpResponse.statusCode
+            }
 
             // Validate response
             try validateResponse(response, data: data)
@@ -197,17 +208,90 @@ class NetworkManager {
                 }
 
                 let decodedData = try decoder.decode(T.self, from: data)
+                success = true
+
+                // Track successful API call
+                let duration = Date().timeIntervalSince(startTime)
+                let latency = duration * 1000 // ms
+
+                Task {
+                    await AnalyticsManager.shared.track(
+                        .apiRequestCompleted(
+                            endpoint: endpoint,
+                            duration: duration,
+                            success: true,
+                            statusCode: statusCode,
+                            errorType: nil
+                        )
+                    )
+
+                    if let code = statusCode {
+                        await AnalyticsManager.shared.track(
+                            .apiLatency(endpoint: endpoint, latency: latency, statusCode: code)
+                        )
+                    }
+                }
+
                 return decodedData
             } catch {
                 // Try to print the response for debugging
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("❌ [NetworkManager] Decoding failed. Response: \(jsonString)")
                 }
+
+                errorType = "decoding_error"
+
+                // Track decoding error
+                let duration = Date().timeIntervalSince(startTime)
+                Task {
+                    await AnalyticsManager.shared.track(
+                        .apiRequestCompleted(
+                            endpoint: endpoint,
+                            duration: duration,
+                            success: false,
+                            statusCode: statusCode,
+                            errorType: errorType
+                        )
+                    )
+                }
+
                 throw NetworkError.decodingError(error)
             }
         } catch let error as NetworkError {
+            errorType = getErrorType(error)
+
+            // Track network error
+            let duration = Date().timeIntervalSince(startTime)
+            Task {
+                await AnalyticsManager.shared.track(
+                    .apiRequestCompleted(
+                        endpoint: endpoint,
+                        duration: duration,
+                        success: false,
+                        statusCode: statusCode,
+                        errorType: errorType
+                    )
+                )
+            }
+
             throw error
         } catch {
+            errorType = "network_error"
+
+            // Track general error
+            let duration = Date().timeIntervalSince(startTime)
+            Task {
+                await AnalyticsManager.shared.track(
+                    .apiRequestCompleted(
+                        endpoint: endpoint,
+                        duration: duration,
+                        success: false,
+                        statusCode: statusCode,
+                        errorType: errorType
+                    )
+                )
+            }
+
             throw NetworkError.networkError(error)
         }
     }
@@ -351,5 +435,34 @@ class NetworkManager {
         headers: [String: String]? = nil
     ) async throws {
         try await requestWithoutResponse(endpoint: endpoint, method: .delete, parameters: parameters, headers: headers)
+    }
+
+    // MARK: - Helper Methods
+
+    private func getErrorType(_ error: NetworkError) -> String {
+        switch error {
+        case .invalidURL:
+            return "invalid_url"
+        case .invalidResponse:
+            return "invalid_response"
+        case .httpError:
+            return "http_error"
+        case .decodingError:
+            return "decoding_error"
+        case .encodingError:
+            return "encoding_error"
+        case .networkError:
+            return "network_error"
+        case .unauthorized:
+            return "unauthorized"
+        case .forbidden:
+            return "forbidden"
+        case .notFound:
+            return "not_found"
+        case .serverError:
+            return "server_error"
+        case .timeout:
+            return "timeout"
+        }
     }
 }

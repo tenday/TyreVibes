@@ -110,6 +110,11 @@ class AuthService {
                 .from("users")
                 .insert(newProfile)
                 .execute()
+
+            // Track user signed up
+            await AnalyticsManager.shared.track(
+                .userSignedUp(method: .email, source: nil)
+            )
         } catch {
             // Se la creazione del profilo fallisce, è buona norma tentare di eliminare l'utente appena creato
             // per non lasciare dati "orfani". (Logica opzionale ma raccomandata)
@@ -128,15 +133,28 @@ class AuthService {
             token: otpCode,
             type: .sms
         )
+
+        // Track OTP login
+        await AnalyticsManager.shared.track(
+            .userLoggedIn(method: .otp)
+        )
     }
     
     func signIn(email: String, password: String) async throws {
             try await SupabaseManager.client.auth.signIn(email: email, password: password)
+
+            // Track email login
+            await AnalyticsManager.shared.track(
+                .userLoggedIn(method: .email)
+            )
         }
     
     func logout() async throws {
         do {
             try await SupabaseManager.client.auth.signOut()
+
+            // Track logout
+            await AnalyticsManager.shared.track(.userLoggedOut)
         } catch {
             throw AuthServiceError.signUpFailed("Logout fallito: \(error.localizedDescription)")
         }
@@ -184,6 +202,11 @@ class AuthService {
         try await SupabaseManager.client.auth.signInWithIdToken(
             credentials: .init(provider: .apple, idToken: tokenString, nonce: nil)
         )
+
+        // Track Apple login
+        await AnalyticsManager.shared.track(
+            .userLoggedIn(method: .apple)
+        )
     }
 
     @MainActor
@@ -216,6 +239,11 @@ class AuthService {
 
         try await SupabaseManager.client.auth.signInWithIdToken(
             credentials: .init(provider: .google, idToken: idToken, nonce: nil)
+        )
+
+        // Track Google login
+        await AnalyticsManager.shared.track(
+            .userLoggedIn(method: .google)
         )
     }
 

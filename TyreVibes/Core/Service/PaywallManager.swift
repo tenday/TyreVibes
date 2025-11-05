@@ -49,6 +49,13 @@ public final class PaywallManager: ObservableObject {
 
         paywallFeature = feature
         showPaywall = true
+
+        // Track paywall presented
+        Task {
+            await AnalyticsManager.shared.track(
+                .paywallPresented(trigger: .featureGate, plan: feature.rawValue)
+            )
+        }
     }
 
     /// Verifica se l'utente può aggiungere un altro veicolo
