@@ -17,6 +17,7 @@ struct TireAnalysisView: View {
     @State private var navigateToResult = false
     @State private var vehicleImage: UIImage?
     @State private var isLoadingImage = true
+    @State private var pulseScale: CGFloat = 1.0
     @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
@@ -32,7 +33,6 @@ struct TireAnalysisView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(width: 24, height: 24)
                     }
@@ -43,7 +43,6 @@ struct TireAnalysisView: View {
                 .padding(.top, 16)
 
                 
-                Spacer()
 
                 // Car with Tire Indicators
                 ZStack {
@@ -56,10 +55,6 @@ struct TireAnalysisView: View {
                                 .scaledToFit()
                                 .frame(maxWidth: 500, maxHeight: 500)
                                 .rotationEffect(.degrees(90))
-                        } else {
-                            Image(systemName: "car.fill")
-                                .font(.system(size: 80))
-                                .foregroundColor(.white.opacity(0.3))
                         }
 
                         Spacer()
@@ -97,6 +92,25 @@ struct TireAnalysisView: View {
                                           }
                     
 
+                    // Freccia indicatrice del primo step
+                    if selectedTires.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
+                                .scaleEffect(pulseScale)
+
+                        }
+                        .offset(x: -160, y: -200)
+                        .shadow(color: Color.white.opacity(0.6), radius: 10)
+                        .transition(.opacity.combined(with: .scale))
+                        .onAppear {
+                            withAnimation(.bouncy(duration: 0.6).repeatForever(autoreverses: true)) {
+                                pulseScale = 1.3
+                            }
+                        }
+                    }
+
                     if isLoadingImage {
                         ProgressView()
                             .tint(.white)
@@ -106,9 +120,6 @@ struct TireAnalysisView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
 
-                NavigationLink(destination: TreadAnalysisResultView(vehicle: vehicle), isActive: $navigateToResult) {
-                    EmptyView()
-                }
             }
         }
         .navigationBarHidden(true)
@@ -146,12 +157,13 @@ struct TireAnalysisView: View {
                 }
                 
                 // Tire tread pattern (3 lines)
-                VStack(spacing: 6) {
-                    ForEach(0..<3) { _ in
+                VStack(spacing: 15) {
+                    ForEach(0..<4) { _ in
                         Rectangle()
-                            .fill(isSelected ? Color(red: 0.45, green: 0.35, blue: 0.85) : Color.white)
-                            .frame(width: 30, height: 2)
-                            .opacity(0.6)
+                            .fill(Color.white)
+                            .frame(maxWidth: 42 * 0.85, maxHeight: 2)
+                            .opacity(0.1)
+                            .rotationEffect(.degrees(-20))
                     }
                 }
             }
