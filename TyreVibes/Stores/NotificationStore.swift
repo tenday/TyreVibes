@@ -11,10 +11,14 @@ import Combine
 
 @MainActor
 class NotificationStore: ObservableObject {
+    static let shared = NotificationStore()
+
     @Published var notifications: [AppNotification] = []
     @Published var unreadCount: Int = 0
     @Published var predictiveNotifications: [AppNotification] = []
     @Published var upcomingCount: Int = 0
+    @Published var isSyncing: Bool = false
+    @Published var lastSyncDate: Date?
 
     private let storageKey = "AppNotifications"
     private let scheduler = NotificationScheduler.shared
@@ -38,6 +42,11 @@ class NotificationStore: ObservableObject {
             notifications[index].isRead = true
             saveNotifications()
             updateUnreadCount()
+
+            // Sincronizza con il backend
+            Task {
+                await syncMarkAsReadToBackend(notificationId: notificationId)
+            }
         }
     }
 
@@ -60,6 +69,11 @@ class NotificationStore: ObservableObject {
             // It's a regular notification, remove from the main list
             notifications.removeAll { $0.id == notification.id }
             saveNotifications()
+
+            // Sincronizza eliminazione con il backend
+            Task {
+                await syncDeleteToBackend(notificationId: notification.id)
+            }
         }
         updateUnreadCount()
     }
@@ -147,6 +161,77 @@ class NotificationStore: ObservableObject {
     private func loadPredictiveNotifications() {
         predictiveNotifications = scheduler.upcomingNotifications
         upcomingCount = scheduler.scheduledCount
+    }
+
+    // MARK: - Remote Sync
+
+    /// Sincronizza le notifiche dal backend Supabase
+    func syncNotificationsFromBackend() async {
+        guard !isSyncing else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            guard let session = try? await SupabaseManager.client.auth.session else {
+                print("⚠️ Impossibile sincronizzare: utente non autenticato")
+                return
+            }
+
+            let userId = session.user.id.uuidString
+
+            let remoteNotifications = try await NotificationAPIService.shared.fetchNotifications(
+                userId: userId,
+                jwtToken: session.accessToken,
+                limit: 100
+            )
+
+            // Merge con le notifiche locali (evita duplicati)
+            let localIds = Set(notifications.map { $0.id })
+            let newNotifications = remoteNotifications.filter { !localIds.contains($0.id) }
+
+            notifications = (newNotifications + notifications).sorted { $0.timestamp > $1.timestamp }
+            saveNotifications()
+            updateUnreadCount()
+
+            lastSyncDate = Date()
+            print("✅ Sincronizzate \(newNotifications.count) nuove notifiche dal backend")
+
+        } catch {
+            print("❌ Errore sincronizzazione notifiche: \(error.localizedDescription)")
+        }
+    }
+
+    /// Sincronizza lo stato "letto" al backend
+    private func syncMarkAsReadToBackend(notificationId: String) async {
+        do {
+            guard let session = try? await SupabaseManager.client.auth.session else {
+                return
+            }
+
+            try await NotificationAPIService.shared.markNotificationAsRead(
+                notificationId: notificationId,
+                jwtToken: session.accessToken
+            )
+        } catch {
+            print("❌ Errore sincronizzazione mark as read: \(error.localizedDescription)")
+        }
+    }
+
+    /// Sincronizza l'eliminazione al backend
+    private func syncDeleteToBackend(notificationId: String) async {
+        do {
+            guard let session = try? await SupabaseManager.client.auth.session else {
+                return
+            }
+
+            try await NotificationAPIService.shared.deleteNotification(
+                notificationId: notificationId,
+                jwtToken: session.accessToken
+            )
+        } catch {
+            print("❌ Errore sincronizzazione delete: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Sample Notifications Generator

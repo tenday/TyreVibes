@@ -32,6 +32,14 @@ struct TermsAndConditionsView: View {
                                 value: geo.size.height
                             )
                         })
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: ScrollOffsetPreferenceKey.self,
+                                    value: geo.frame(in: .named("termsScroll")).maxY
+                                )
+                            }
+                        )
                     }
                     .background(GeometryReader { geo in
                         Color.clear.preference(
@@ -47,8 +55,11 @@ struct TermsAndConditionsView: View {
                         scrollViewHeight = height
                         checkIfScrolledToBottom()
                     }
+                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { maxY in
+                        updateScrollProgress(maxYVisible: maxY)
+                    }
                 }
-                .coordinateSpace(name: "scroll")
+                .coordinateSpace(name: "termsScroll")
 
                 // Bottom Button
                 VStack(spacing: 12) {
@@ -117,6 +128,18 @@ struct TermsAndConditionsView: View {
     private func checkIfScrolledToBottom() {
         // Se il contenuto è più piccolo dello scroll view, considera già letto
         if contentHeight <= scrollViewHeight {
+            hasScrolledToBottom = true
+        }
+    }
+
+    private func updateScrollProgress(maxYVisible: CGFloat) {
+        guard contentHeight > scrollViewHeight else {
+            hasScrolledToBottom = true
+            return
+        }
+
+        let threshold = scrollViewHeight + 8
+        if maxYVisible <= threshold {
             hasScrolledToBottom = true
         }
     }

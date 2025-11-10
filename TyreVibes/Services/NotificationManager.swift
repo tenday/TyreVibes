@@ -135,6 +135,8 @@ class NotificationManager: NSObject {
 
             if granted {
                 await registerCategories()
+                // Registra anche per le push notifications (APNs)
+                try? await PushNotificationManager.shared.registerForPushNotifications()
             }
 
             return granted
