@@ -510,21 +510,8 @@ struct TermsAndConditionsToggle: View {
                     }
                 }
                 .toggleStyle(CheckboxToggleStyle())
-                .disabled(!hasReadTerms || !hasReadPrivacy)
             }
 
-            if !hasReadTerms || !hasReadPrivacy {
-                HStack(spacing: 4) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color.customBitterSweet)
-
-                    Text("Please read the Terms & Conditions and Privacy Policy first")
-                        .font(.customFont(size: 11, weight: .regular))
-                        .foregroundColor(Color.customBitterSweet)
-                }
-                .padding(.leading, 32)
-            }
         }
         .padding(.top, 13)
         .frame(maxWidth: .infinity, alignment: .leading)

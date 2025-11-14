@@ -320,7 +320,7 @@ struct DetailRow: View {
             Spacer().frame(width: 20)
 
         }
-        .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40)
+        .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 100)
         .padding(.vertical, 8)
         .background(Color.customFieldColor)
         .cornerRadius(12)

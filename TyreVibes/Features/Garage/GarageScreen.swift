@@ -24,7 +24,7 @@ private func extractCleanEngine(from engine: String) -> String? {
     // Lista di parole chiave valide che identificano motori / alimentazioni
         let validEngineTokens: Set<String> = [
             "BZ", "BENZINA", "TSI", "TFSI", "MPI", "GDI", "VTEC",
-            "DIESEL", "TDI", "CDTI", "DCI", "JTD", "MULTIJET", "CRDI", "HDI", "BLUEHDI",
+            "DIESEL", "TDI", "TD", "CDTI", "DCI", "JTD", "MULTIJET", "CRDI", "HDI", "BLUEHDI",
             "HYBRID", "MHEV", "PHEV", "HEV", "EHYBRID",
             "GPL", "CNG", "METANO", "ECOFUEL",
             "EV", "ELETTRICO", "BEV",
