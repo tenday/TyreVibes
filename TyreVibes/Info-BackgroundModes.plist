@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+    AGGIUNGI QUESTE KEYS AL TUO Info.plist PRINCIPALE
+    Per abilitare i Background Tasks per TyreVibes
+    -->
+
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>remote-notification</string>
+        <string>processing</string>
+    </array>
+
+    <!-- Background Task Identifiers -->
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.tyrevibes.backgroundrefresh</string>
+    </array>
+
+    <!-- Privacy - Background Task Explanation -->
+    <key>NSBackgroundTasksExplanation</key>
+    <string>TyreVibes necessita di eseguire aggiornamenti in background per controllare le scadenze di assicurazioni, bollo auto e revisioni, mantenendo le tue notifiche sempre aggiornate.</string>
+</dict>
+</plist>

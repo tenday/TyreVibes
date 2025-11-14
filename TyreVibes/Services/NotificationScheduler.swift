@@ -422,4 +422,63 @@ class NotificationScheduler: ObservableObject {
             scheduledCount = upcomingNotifications.count
         }
     }
+
+    // MARK: - Background Sync Integration
+
+    /// Sincronizza con le notifiche ricevute dal server (assicurazioni, bollo, revisioni)
+    /// Chiamato dal BackgroundTaskManager dopo il refresh
+    func syncWithServerNotifications(_ serverNotifications: [AppNotification]) {
+        // Rimuovi notifiche duplicate (già presenti localmente)
+        let existingIds = Set(upcomingNotifications.map { $0.id })
+        let newNotifications = serverNotifications.filter { !existingIds.contains($0.id) }
+
+        if !newNotifications.isEmpty {
+            // Aggiungi le nuove notifiche
+            upcomingNotifications.append(contentsOf: newNotifications)
+
+            // Ordina per data schedulata e priorità
+            upcomingNotifications.sort { notification1, notification2 in
+                if let date1 = notification1.scheduledDate,
+                   let date2 = notification2.scheduledDate {
+                    if date1 != date2 {
+                        return date1 < date2
+                    }
+                }
+                return notification1.priority.sortOrder < notification2.priority.sortOrder
+            }
+
+            // Salva le notifiche aggiornate
+            saveScheduledNotifications()
+            scheduledCount = upcomingNotifications.count
+
+            // Mostra badge notification per nuove notifiche critiche/high priority
+            let criticalCount = newNotifications.filter { $0.priority == .critical || $0.priority == .high }.count
+            if criticalCount > 0 {
+                // Aggiorna il badge dell'app
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("NewCriticalNotifications"),
+                    object: nil,
+                    userInfo: ["count": criticalCount]
+                )
+            }
+        }
+    }
+
+    /// Marca una notifica come letta
+    func markNotificationAsRead(notificationId: String) {
+        if let index = upcomingNotifications.firstIndex(where: { $0.id == notificationId }) {
+            upcomingNotifications[index].isRead = true
+            saveScheduledNotifications()
+        }
+    }
+
+    /// Ottieni notifiche non lette
+    func getUnreadNotifications() -> [AppNotification] {
+        return upcomingNotifications.filter { !$0.isRead }
+    }
+
+    /// Ottieni conteggio notifiche critiche
+    func getCriticalNotificationsCount() -> Int {
+        return upcomingNotifications.filter { $0.priority == .critical && !$0.isRead }.count
+    }
 }
