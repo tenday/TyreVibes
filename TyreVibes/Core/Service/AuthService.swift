@@ -253,13 +253,21 @@ class AuthService {
             let session = try await SupabaseManager.client.auth.session
             let userId = session.user.id
 
-            let activityData: [String: Any] = [
-                "user_id": userId.uuidString,
-                "activity_type": "login",
-                "title": "Accesso all'account",
-                "subtitle": "Accesso effettuato da iOS con \(provider)",
-                "icon": "arrow.right.circle.fill"
-            ]
+            struct LoginActivityData: Encodable {
+                let user_id: String
+                let activity_type: String
+                let title: String
+                let subtitle: String
+                let icon: String
+            }
+
+            let activityData = LoginActivityData(
+                user_id: userId.uuidString,
+                activity_type: "login",
+                title: "Accesso all'account",
+                subtitle: "Accesso effettuato da iOS con \(provider)",
+                icon: "arrow.right.circle.fill"
+            )
 
             try await SupabaseManager.client
                 .from("user_activities")
@@ -276,13 +284,21 @@ class AuthService {
             let session = try await SupabaseManager.client.auth.session
             let userId = session.user.id
 
-            let activityData: [String: Any] = [
-                "user_id": userId.uuidString,
-                "activity_type": "password_changed",
-                "title": "Password modificata",
-                "subtitle": "Hai aggiornato con successo la tua password",
-                "icon": "lock.fill"
-            ]
+            struct PasswordChangeActivityData: Encodable {
+                let user_id: String
+                let activity_type: String
+                let title: String
+                let subtitle: String
+                let icon: String
+            }
+
+            let activityData = PasswordChangeActivityData(
+                user_id: userId.uuidString,
+                activity_type: "password_changed",
+                title: "Password modificata",
+                subtitle: "Hai aggiornato con successo la tua password",
+                icon: "lock.fill"
+            )
 
             try await SupabaseManager.client
                 .from("user_activities")

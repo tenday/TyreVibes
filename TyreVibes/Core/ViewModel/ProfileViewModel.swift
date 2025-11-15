@@ -157,10 +157,11 @@ class ProfileViewModel: ObservableObject {
             let userId = session.user.id
 
             // Prepara i dati per l'aggiornamento
-            // Nota: l'email viene gestita da Supabase Auth, quindi aggiorniamo solo full_name e phone_number
-            let updateData: [String: Any] = [
-                "full_name": name
-            ]
+            struct UpdateProfileData: Encodable {
+                let full_name: String
+            }
+
+            let updateData = UpdateProfileData(full_name: name)
 
             // Aggiorna il profilo su Supabase
             try await SupabaseManager.client
@@ -204,17 +205,29 @@ class ProfileViewModel: ObservableObject {
             let userId = session.user.id
 
             // Prepara i dati per il salvataggio
-            let preferencesData: [String: Any] = [
-                "user_id": userId.uuidString,
-                "email_notifications": preferences.emailNotifications,
-                "product_updates": preferences.productUpdates,
-                "sms_notifications": preferences.smsNotifications,
-                "security_alerts": preferences.securityAlerts,
-                "marketing_emails": preferences.marketingEmails,
-                "profile_visible": preferences.profileVisible,
-                "data_collection": preferences.dataCollection,
-                "activity_history": preferences.activityHistory
-            ]
+            struct UpsertPreferencesData: Encodable {
+                let user_id: String
+                let email_notifications: Bool
+                let product_updates: Bool
+                let sms_notifications: Bool
+                let security_alerts: Bool
+                let marketing_emails: Bool
+                let profile_visible: Bool
+                let data_collection: Bool
+                let activity_history: Bool
+            }
+
+            let preferencesData = UpsertPreferencesData(
+                user_id: userId.uuidString,
+                email_notifications: preferences.emailNotifications,
+                product_updates: preferences.productUpdates,
+                sms_notifications: preferences.smsNotifications,
+                security_alerts: preferences.securityAlerts,
+                marketing_emails: preferences.marketingEmails,
+                profile_visible: preferences.profileVisible,
+                data_collection: preferences.dataCollection,
+                activity_history: preferences.activityHistory
+            )
 
             // Usa upsert per inserire o aggiornare
             try await SupabaseManager.client
@@ -310,8 +323,8 @@ class ProfileViewModel: ObservableObject {
             try await SupabaseManager.client.storage
                 .from("profile-images")
                 .upload(
-                    path: fileName,
-                    file: imageData,
+                    fileName,
+                    data: imageData,
                     options: .init(
                         cacheControl: "3600",
                         contentType: "image/jpeg",
@@ -325,9 +338,11 @@ class ProfileViewModel: ObservableObject {
                 .getPublicURL(path: fileName)
 
             // Aggiorna il profilo utente con l'URL dell'immagine
-            let updateData: [String: Any] = [
-                "profile_image_url": publicURL.absoluteString
-            ]
+            struct UpdateImageData: Encodable {
+                let profile_image_url: String
+            }
+
+            let updateData = UpdateImageData(profile_image_url: publicURL.absoluteString)
 
             try await SupabaseManager.client
                 .from("users")
@@ -426,13 +441,21 @@ class ProfileViewModel: ObservableObject {
             let session = try await SupabaseManager.client.auth.session
             let userId = session.user.id
 
-            let activityData: [String: Any] = [
-                "user_id": userId.uuidString,
-                "activity_type": type,
-                "title": title,
-                "subtitle": subtitle,
-                "icon": icon
-            ]
+            struct InsertActivityData: Encodable {
+                let user_id: String
+                let activity_type: String
+                let title: String
+                let subtitle: String
+                let icon: String
+            }
+
+            let activityData = InsertActivityData(
+                user_id: userId.uuidString,
+                activity_type: type,
+                title: title,
+                subtitle: subtitle,
+                icon: icon
+            )
 
             try await SupabaseManager.client
                 .from("user_activities")
