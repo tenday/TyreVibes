@@ -132,6 +132,9 @@ class AuthService {
     
     func signIn(email: String, password: String) async throws {
             try await SupabaseManager.client.auth.signIn(email: email, password: password)
+
+            // Registra l'attività di login
+            await logLoginActivity(provider: "email")
         }
     
     func logout() async throws {
@@ -184,6 +187,9 @@ class AuthService {
         try await SupabaseManager.client.auth.signInWithIdToken(
             credentials: .init(provider: .apple, idToken: tokenString, nonce: nil)
         )
+
+        // Registra l'attività di login
+        await logLoginActivity(provider: "Apple")
     }
 
     @MainActor
@@ -217,6 +223,9 @@ class AuthService {
         try await SupabaseManager.client.auth.signInWithIdToken(
             credentials: .init(provider: .google, idToken: idToken, nonce: nil)
         )
+
+        // Registra l'attività di login
+        await logLoginActivity(provider: "Google")
     }
 
     func sendPasswordReset(email: String) async throws {
@@ -232,5 +241,55 @@ class AuthService {
                 password: password
             )
         )
+
+        // Registra l'attività di cambio password
+        await logPasswordChangeActivity()
+    }
+
+    // MARK: - Activity Logging
+
+    private func logLoginActivity(provider: String) async {
+        do {
+            let session = try await SupabaseManager.client.auth.session
+            let userId = session.user.id
+
+            let activityData: [String: Any] = [
+                "user_id": userId.uuidString,
+                "activity_type": "login",
+                "title": "Accesso all'account",
+                "subtitle": "Accesso effettuato da iOS con \(provider)",
+                "icon": "arrow.right.circle.fill"
+            ]
+
+            try await SupabaseManager.client
+                .from("user_activities")
+                .insert(activityData)
+                .execute()
+        } catch {
+            // Non bloccare il login se la registrazione dell'attività fallisce
+            print("Errore durante la registrazione dell'attività di login: \(error.localizedDescription)")
+        }
+    }
+
+    private func logPasswordChangeActivity() async {
+        do {
+            let session = try await SupabaseManager.client.auth.session
+            let userId = session.user.id
+
+            let activityData: [String: Any] = [
+                "user_id": userId.uuidString,
+                "activity_type": "password_changed",
+                "title": "Password modificata",
+                "subtitle": "Hai aggiornato con successo la tua password",
+                "icon": "lock.fill"
+            ]
+
+            try await SupabaseManager.client
+                .from("user_activities")
+                .insert(activityData)
+                .execute()
+        } catch {
+            print("Errore durante la registrazione del cambio password: \(error.localizedDescription)")
+        }
     }
 }
