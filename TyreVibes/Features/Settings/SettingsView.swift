@@ -1,17 +1,11 @@
 import SwiftUI
 import UIKit
+import StoreKit
 
 struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @EnvironmentObject private var notificationStore: NotificationStore
     @State private var showNotifications = false
-
-    // MARK: - Additional Settings State
-    @State private var notificationsEnabled = true
-    @State private var promotionNotifications = true
-    @State private var updateNotifications = false
-    @State private var analysisNotifications = true
-    @State private var selectedTheme: AppTheme = .system
 
     var body: some View {
         NavigationStack {
@@ -38,6 +32,16 @@ struct SettingsView: View {
                         )
                         .padding(.top, 21)
 
+                        CacheManagementSection(
+                            stats: viewModel.stats,
+                            onClearImageCache: { viewModel.clearImageCache() },
+                            onClearVehicleCache: { viewModel.clearVehicleCache() },
+                            onClearTyreCache: { viewModel.clearTyreCache() },
+                            onClearTempFiles: { viewModel.clearTempFiles() },
+                            onClearAllCaches: { viewModel.clearCaches() }
+                        )
+                        .padding(.top, 24)
+
                         SecuritySection(
                             biometricAuth: $viewModel.biometricAuth,
                             locationPermission: $viewModel.locationPermission,
@@ -52,16 +56,23 @@ struct SettingsView: View {
                             .padding(.top, 24)
 
                         NotificationsSection(
-                            notificationsEnabled: $notificationsEnabled,
-                            promotionNotifications: $promotionNotifications,
-                            updateNotifications: $updateNotifications,
-                            analysisNotifications: $analysisNotifications
+                            notificationsEnabled: $viewModel.notificationsEnabled,
+                            promotionNotifications: $viewModel.promotionNotifications,
+                            updateNotifications: $viewModel.updateNotifications,
+                            analysisNotifications: $viewModel.analysisNotifications
                         )
                         .padding(.top, 24)
 
-                        AppearanceSection(selectedTheme: $selectedTheme)
+                        AppearanceSection(selectedTheme: $viewModel.selectedTheme)
                             .padding(.top, 24)
-                        
+
+                        AccountSection(
+                            onLogout: { viewModel.isPresentingLogoutConfirmation = true },
+                            onExportData: { viewModel.exportMyData() },
+                            onDeleteAccount: { viewModel.requestDataDeletion() }
+                        )
+                        .padding(.top, 24)
+
                         AboutSection()
                             .padding(.top, 24)
 
@@ -102,6 +113,18 @@ struct SettingsView: View {
                     )
                 }
             }
+            .confirmationDialog(
+                "Conferma Logout",
+                isPresented: $viewModel.isPresentingLogoutConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Logout", role: .destructive) {
+                    viewModel.logout()
+                }
+                Button("Annulla", role: .cancel) {}
+            } message: {
+                Text("Sei sicuro di voler effettuare il logout? Dovrai accedere nuovamente per utilizzare l'app.")
+            }
             .task {
                 viewModel.onAppear()
             }
@@ -114,6 +137,11 @@ struct SettingsView: View {
             .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in viewModel.handleLanguageChange() }
             .onChange(of: viewModel.locationPermission) { oldValue, newValue in viewModel.handleLocationChange() }
             .onChange(of: viewModel.cameraPermission) { oldValue, newValue in viewModel.handleCameraChange() }
+            .onChange(of: viewModel.notificationsEnabled) { oldValue, newValue in viewModel.handleNotificationsEnabledChange() }
+            .onChange(of: viewModel.promotionNotifications) { oldValue, newValue in viewModel.handlePromotionNotificationsChange() }
+            .onChange(of: viewModel.updateNotifications) { oldValue, newValue in viewModel.handleUpdateNotificationsChange() }
+            .onChange(of: viewModel.analysisNotifications) { oldValue, newValue in viewModel.handleAnalysisNotificationsChange() }
+            .onChange(of: viewModel.selectedTheme) { oldValue, newValue in viewModel.handleThemeChange() }
         }
     }
 }
@@ -251,6 +279,156 @@ struct PerformanceSection: View {
                 StatCard(value: stats.appSize, label: "App Size")
                 StatCard(value: stats.cacheSize, label: "Cache Size")
                 StatCard(value: stats.batteryUsage, label: "Battery")
+            }
+        }
+    }
+}
+
+// MARK: - Cache Management Section
+struct CacheManagementSection: View {
+    let stats: SettingsViewModel.SettingsStats
+    let onClearImageCache: () -> Void
+    let onClearVehicleCache: () -> Void
+    let onClearTyreCache: () -> Void
+    let onClearTempFiles: () -> Void
+    let onClearAllCaches: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Gestione Cache")
+                .font(.custom("Sora-SemiBold", size: 22))
+                .foregroundColor(.white)
+
+            // Cache Statistics
+            VStack(spacing: 12) {
+                CacheStatRow(label: "Cache Immagini", size: stats.imageCacheSize, icon: "photo.fill")
+                CacheStatRow(label: "Cache Veicoli", size: stats.vehicleCacheSize, icon: "car.fill")
+                CacheStatRow(label: "File Temporanei", size: stats.tempFilesSize, icon: "doc.fill")
+            }
+
+            // Individual Clear Buttons
+            VStack(spacing: 12) {
+                CacheButton(
+                    title: "Pulisci Cache Immagini",
+                    icon: "photo.on.rectangle.angled",
+                    size: stats.imageCacheSize,
+                    action: onClearImageCache
+                )
+
+                CacheButton(
+                    title: "Pulisci Cache Veicoli",
+                    icon: "car.2",
+                    size: stats.vehicleCacheSize,
+                    action: onClearVehicleCache
+                )
+
+                CacheButton(
+                    title: "Pulisci Cache Pneumatici",
+                    icon: "circle.hexagongrid.fill",
+                    size: "—",
+                    action: onClearTyreCache
+                )
+
+                CacheButton(
+                    title: "Pulisci File Temporanei",
+                    icon: "doc.badge.gearshape",
+                    size: stats.tempFilesSize,
+                    action: onClearTempFiles
+                )
+            }
+
+            // Clear All Button
+            Button(action: onClearAllCaches) {
+                GlassCard(height: 62, borderColor: Color.red.opacity(0.5)) {
+                    HStack {
+                        Image(systemName: "trash.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 20))
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pulisci Tutta la Cache")
+                                .font(.custom("Sora-Bold", size: 16))
+                                .foregroundColor(.white)
+
+                            Text("Dimensione totale: \(stats.cacheSize)")
+                                .font(.custom("Sora-Regular", size: 12))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+        }
+    }
+}
+
+struct CacheStatRow: View {
+    let label: String
+    let size: String
+    let icon: String
+
+    var body: some View {
+        GlassCard(height: 56) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(Color(hex: "5CEBFF"))
+                    .font(.system(size: 18))
+                    .frame(width: 24)
+
+                Text(label)
+                    .font(.custom("Sora-SemiBold", size: 14))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text(size)
+                    .font(.custom("Sora-Bold", size: 14))
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 18)
+        }
+    }
+}
+
+struct CacheButton: View {
+    let title: String
+    let icon: String
+    let size: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCard(height: 62) {
+                HStack {
+                    Image(systemName: icon)
+                        .foregroundColor(Color(hex: "5CEBFF"))
+                        .font(.system(size: 18))
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.custom("Sora-SemiBold", size: 15))
+                            .foregroundColor(.white)
+
+                        if size != "—" {
+                            Text(size)
+                                .font(.custom("Sora-Regular", size: 12))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "arrow.clockwise")
+                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 14))
+                }
+                .padding(.horizontal, 18)
             }
         }
     }
@@ -576,9 +754,77 @@ struct ThemeButton: View {
     }
 }
 
+// MARK: - Account Section
+struct AccountSection: View {
+    let onLogout: () -> Void
+    let onExportData: () -> Void
+    let onDeleteAccount: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Account")
+                .font(.custom("Sora-SemiBold", size: 22))
+                .foregroundColor(.white)
+
+            Button(action: onExportData) {
+                GlassCard(height: 62) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(Color(hex: "5CEBFF"))
+                            .font(.system(size: 20))
+                        Text("Esporta i Miei Dati")
+                            .font(.custom("Sora-SemiBold", size: 16))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+
+            Button(action: onLogout) {
+                GlassCard(height: 62, borderColor: Color.orange.opacity(0.4)) {
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .foregroundColor(.orange)
+                            .font(.system(size: 20))
+                        Text("Logout")
+                            .font(.custom("Sora-SemiBold", size: 16))
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+
+            Button(action: onDeleteAccount) {
+                GlassCard(height: 62, borderColor: Color.red.opacity(0.4)) {
+                    HStack {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                            .font(.system(size: 20))
+                        Text("Elimina Account")
+                            .font(.custom("Sora-SemiBold", size: 16))
+                            .foregroundColor(.red)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+        }
+    }
+}
+
 struct AboutSection: View {
+    @State private var showHelpSheet = false
+
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "N/A"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "N/A"
     }
 
     var body: some View {
@@ -587,41 +833,115 @@ struct AboutSection: View {
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
-            AboutButton(title: "Help Center") { /* TODO: Action */ }
-            AboutButton(title: "Terms of Service") { /* TODO: Action */ }
-            AboutButton(title: "Privacy Policy") { /* TODO: Action */ }
-            AboutButton(title: "Rate This App") {
-                // TODO: Logic to open App Store
+            AboutButton(title: "Centro Assistenza", icon: "questionmark.circle") {
+                showHelpSheet = true
             }
 
-            HStack {
-                Text("App Version")
-                    .font(.custom("Sora-Regular", size: 14))
-                    .foregroundColor(.white.opacity(0.6))
-                Spacer()
-                Text(appVersion)
-                    .font(.custom("Sora-SemiBold", size: 14))
-                    .foregroundColor(.white)
+            AboutButton(title: "Termini di Servizio", icon: "doc.text") {
+                openURL("https://tyrevibes.app/terms")
+            }
+
+            AboutButton(title: "Privacy Policy", icon: "hand.raised") {
+                openURL("https://tyrevibes.app/privacy")
+            }
+
+            AboutButton(title: "Valuta Quest'App", icon: "star") {
+                rateApp()
+            }
+
+            AboutButton(title: "Contattaci", icon: "envelope") {
+                openEmail()
+            }
+
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Versione App")
+                        .font(.custom("Sora-Regular", size: 14))
+                        .foregroundColor(.white.opacity(0.6))
+                    Spacer()
+                    Text(appVersion)
+                        .font(.custom("Sora-SemiBold", size: 14))
+                        .foregroundColor(.white)
+                }
+
+                HStack {
+                    Text("Build Number")
+                        .font(.custom("Sora-Regular", size: 14))
+                        .foregroundColor(.white.opacity(0.6))
+                    Spacer()
+                    Text(buildNumber)
+                        .font(.custom("Sora-Regular", size: 14))
+                        .foregroundColor(.white.opacity(0.8))
+                }
             }
             .padding(.top, 10)
+        }
+        .sheet(isPresented: $showHelpSheet) {
+            HelpCenterSheet()
+        }
+    }
+
+    private func openURL(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    private func rateApp() {
+        // Try the new SKStoreReviewController first
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            if #available(iOS 14.0, *) {
+                SKStoreReviewController.requestReview(in: windowScene)
+            } else {
+                // Fallback for older iOS versions
+                if let appID = Bundle.main.infoDictionary?["APP_STORE_ID"] as? String,
+                   let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
+                    UIApplication.shared.open(url)
+                }
+            }
+        }
+    }
+
+    private func openEmail() {
+        let email = "support@tyrevibes.app"
+        let subject = "TyreVibes Support Request"
+        let body = "Versione App: \(appVersion) (Build \(buildNumber))\n\nDescrivi il tuo problema o richiesta:\n\n"
+
+        let urlString = "mailto:\(email)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&body=\(body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+
+        if let url = URL(string: urlString) {
+            UIApplication.shared.open(url)
         }
     }
 }
 
 struct AboutButton: View {
     let title: String
+    let icon: String?
     let action: () -> Void
+
+    init(title: String, icon: String? = nil, action: @escaping () -> Void) {
+        self.title = title
+        self.icon = icon
+        self.action = action
+    }
 
     var body: some View {
         Button(action: action) {
             GlassCard(height: 62) {
-                HStack {
+                HStack(spacing: 12) {
+                    if let icon = icon {
+                        Image(systemName: icon)
+                            .foregroundColor(Color(hex: "5CEBFF"))
+                            .font(.system(size: 20))
+                            .frame(width: 24)
+                    }
                     Text(title)
                         .font(.custom("Sora-SemiBold", size: 16))
                         .foregroundColor(.white)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 14))
                 }
                 .padding(.horizontal, 18)
             }
@@ -641,6 +961,145 @@ enum PrivacyLevel: String, CaseIterable {
     case basic = "Basic"
     case balanced = "Balanced"
     case strict = "Strict"
+}
+
+// MARK: - Help Center Sheet
+
+struct HelpCenterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let faqs: [(question: String, answer: String)] = [
+        (
+            "Come funziona l'analisi AR dei pneumatici?",
+            "L'app utilizza la realtà aumentata per scansionare i tuoi pneumatici e misurare automaticamente la profondità del battistrada. Basta puntare la fotocamera sul pneumatico e seguire le istruzioni a schermo."
+        ),
+        (
+            "Posso aggiungere più veicoli?",
+            "Sì! Puoi aggiungere tutti i veicoli che desideri. Vai nella sezione Garage e clicca sul pulsante '+' per aggiungere un nuovo veicolo."
+        ),
+        (
+            "Come vengono calcolate le notifiche di manutenzione?",
+            "Le notifiche sono basate su algoritmi predittivi che considerano il chilometraggio, l'usura dei pneumatici, la stagione e le tue abitudini di guida per suggerirti il momento migliore per la manutenzione."
+        ),
+        (
+            "I miei dati sono al sicuro?",
+            "Assolutamente sì. Tutti i dati sono criptati e salvati in modo sicuro. Puoi gestire le tue preferenze sulla privacy nelle impostazioni e richiedere l'esportazione o l'eliminazione dei tuoi dati in qualsiasi momento."
+        ),
+        (
+            "Come posso sincronizzare i dati tra dispositivi?",
+            "Abilita la sincronizzazione cloud nelle impostazioni. I tuoi dati verranno automaticamente sincronizzati tra tutti i tuoi dispositivi collegati allo stesso account."
+        ),
+        (
+            "Cosa significa il livello di privacy 'Strict'?",
+            "Il livello 'Strict' disabilita completamente la raccolta di dati analitici e limita le funzionalità di tracciamento, garantendo la massima privacy. Solo i dati essenziali per il funzionamento dell'app vengono conservati."
+        ),
+        (
+            "Come posso ottimizzare il consumo della batteria?",
+            "Abilita l'opzione 'Battery Optimization' nelle impostazioni. Questo ridurrà le attività in background e la sincronizzazione automatica quando la batteria è scarica."
+        ),
+        (
+            "Non riesco a scansionare il pneumatico",
+            "Assicurati di avere una buona illuminazione e che il pneumatico sia pulito. Mantieni la fotocamera stabile a circa 30-40 cm dal pneumatico. Se il problema persiste, contattaci."
+        )
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.customBackgroundColor.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(Array(faqs.enumerated()), id: \.offset) { index, faq in
+                            FAQItem(question: faq.question, answer: faq.answer)
+                        }
+
+                        // Contact Support Button
+                        VStack(spacing: 12) {
+                            Text("Non hai trovato quello che cercavi?")
+                                .font(.custom("Sora-Regular", size: 14))
+                                .foregroundColor(.white.opacity(0.7))
+                                .padding(.top, 24)
+
+                            Button(action: {
+                                if let url = URL(string: "mailto:support@tyrevibes.app") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }) {
+                                GlassCard(height: 56, borderColor: Color(hex: "2FB8FF")) {
+                                    HStack {
+                                        Image(systemName: "envelope.fill")
+                                            .foregroundColor(Color(hex: "5CEBFF"))
+                                        Text("Contatta il Supporto")
+                                            .font(.custom("Sora-SemiBold", size: 16))
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.bottom, 32)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .navigationTitle("Centro Assistenza")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Chiudi") {
+                        dismiss()
+                    }
+                    .foregroundColor(Color(hex: "5CEBFF"))
+                }
+            }
+        }
+    }
+}
+
+struct FAQItem: View {
+    let question: String
+    let answer: String
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                GlassCard(height: isExpanded ? .infinity : 70) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(question)
+                                .font(.custom("Sora-SemiBold", size: 16))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+
+                            Spacer()
+
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .foregroundColor(Color(hex: "5CEBFF"))
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+
+                        if isExpanded {
+                            Text(answer)
+                                .font(.custom("Sora-Regular", size: 14))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
 }
 
 // MARK: - Preview

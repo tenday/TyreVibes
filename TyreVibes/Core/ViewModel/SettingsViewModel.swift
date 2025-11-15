@@ -10,8 +10,18 @@ final class SettingsViewModel: NSObject, ObservableObject {
         var appSize: String
         var cacheSize: String
         var batteryUsage: String
+        var imageCacheSize: String
+        var vehicleCacheSize: String
+        var tempFilesSize: String
 
-        static let placeholder = SettingsStats(appSize: "—", cacheSize: "—", batteryUsage: "—")
+        static let placeholder = SettingsStats(
+            appSize: "—",
+            cacheSize: "—",
+            batteryUsage: "—",
+            imageCacheSize: "—",
+            vehicleCacheSize: "—",
+            tempFilesSize: "—"
+        )
     }
 
     struct SettingsAlert: Identifiable {
@@ -40,12 +50,25 @@ final class SettingsViewModel: NSObject, ObservableObject {
     @Published var alert: SettingsAlert?
     @Published var isPresentingShareSheet = false
 
+    // Notification Settings
+    @Published var notificationsEnabled: Bool
+    @Published var promotionNotifications: Bool
+    @Published var updateNotifications: Bool
+    @Published var analysisNotifications: Bool
+
+    // Appearance Settings
+    @Published var selectedTheme: AppTheme
+
+    // Account Settings
+    @Published var isPresentingLogoutConfirmation = false
+
     private(set) var shareItems: [Any] = []
 
     private let featureFlags = FeatureFlags.shared
     private let defaults = UserDefaults.standard
     private let locationManager = CLLocationManager()
     private let languageManager = LanguageManager.shared
+    private let notificationManager = NotificationManager.shared
     private var isSyncingFromStore = false
 
     private struct ExportPayload: Codable {
@@ -66,6 +89,11 @@ final class SettingsViewModel: NSObject, ObservableObject {
         static let imageQuality = "settings_image_quality"
         static let cacheManagement = "settings_cache_management"
         static let privacyLevel = "settings_privacy_level"
+        static let notificationsEnabled = "settings_notifications_enabled"
+        static let promotionNotifications = "settings_promotion_notifications"
+        static let updateNotifications = "settings_update_notifications"
+        static let analysisNotifications = "settings_analysis_notifications"
+        static let selectedTheme = "settings_selected_theme"
     }
 
     override init() {
@@ -80,6 +108,16 @@ final class SettingsViewModel: NSObject, ObservableObject {
         locationPermission = false
         cameraPermission = false
 
+        // Load notification settings
+        notificationsEnabled = UserDefaults.standard.object(forKey: Keys.notificationsEnabled) as? Bool ?? true
+        promotionNotifications = UserDefaults.standard.object(forKey: Keys.promotionNotifications) as? Bool ?? true
+        updateNotifications = UserDefaults.standard.object(forKey: Keys.updateNotifications) as? Bool ?? false
+        analysisNotifications = UserDefaults.standard.object(forKey: Keys.analysisNotifications) as? Bool ?? true
+
+        // Load theme settings
+        let themeRawValue = UserDefaults.standard.string(forKey: Keys.selectedTheme) ?? AppTheme.system.rawValue
+        selectedTheme = AppTheme(rawValue: themeRawValue) ?? .system
+
         super.init()
 
         locationManager.delegate = self
@@ -93,6 +131,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     func onAppear() {
         refreshPermissionStates()
         refreshStats()
+        loadSettingsFromCloud()
     }
 
     func refreshStats() {
@@ -101,9 +140,19 @@ final class SettingsViewModel: NSObject, ObservableObject {
             let appSize = await self.computeAppSizeString()
             let cacheSize = await self.computeCacheSizeString()
             let batteryUsage = self.currentBatteryUsageString()
+            let imageCacheSize = await self.computeImageCacheSizeString()
+            let vehicleCacheSize = await self.computeVehicleCacheSizeString()
+            let tempFilesSize = await self.computeTempFilesSizeString()
 
             await MainActor.run {
-                stats = SettingsStats(appSize: appSize, cacheSize: cacheSize, batteryUsage: batteryUsage)
+                stats = SettingsStats(
+                    appSize: appSize,
+                    cacheSize: cacheSize,
+                    batteryUsage: batteryUsage,
+                    imageCacheSize: imageCacheSize,
+                    vehicleCacheSize: vehicleCacheSize,
+                    tempFilesSize: tempFilesSize
+                )
             }
         }
     }
@@ -115,7 +164,41 @@ final class SettingsViewModel: NSObject, ObservableObject {
         URLCache.shared.removeAllCachedResponses()
         defaults.removeObject(forKey: "cachedVehicles")
         refreshStats()
-        alert = SettingsAlert(title: "Cache Cleared", message: "Temporary files have been removed.", style: .info)
+        alert = SettingsAlert(title: "Cache Cancellata", message: "Tutti i file temporanei sono stati rimossi.", style: .info)
+    }
+
+    func clearImageCache() {
+        VehicleImageService.clearCache()
+        URLCache.shared.removeAllCachedResponses()
+        refreshStats()
+        alert = SettingsAlert(title: "Cache Immagini Cancellata", message: "Le immagini in cache sono state rimosse.", style: .info)
+    }
+
+    func clearVehicleCache() {
+        defaults.removeObject(forKey: "cachedVehicles")
+        PlateDataCache.clear()
+        refreshStats()
+        alert = SettingsAlert(title: "Cache Veicoli Cancellata", message: "I dati dei veicoli in cache sono stati rimossi.", style: .info)
+    }
+
+    func clearTyreCache() {
+        TyreCacheManager.shared.clearAllCache()
+        refreshStats()
+        alert = SettingsAlert(title: "Cache Pneumatici Cancellata", message: "I dati dei pneumatici in cache sono stati rimossi.", style: .info)
+    }
+
+    func clearTempFiles() {
+        let tempDirectory = FileManager.default.temporaryDirectory
+        do {
+            let tempFiles = try FileManager.default.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: nil)
+            for file in tempFiles {
+                try? FileManager.default.removeItem(at: file)
+            }
+            refreshStats()
+            alert = SettingsAlert(title: "File Temporanei Cancellati", message: "I file temporanei sono stati rimossi.", style: .info)
+        } catch {
+            alert = SettingsAlert(title: "Errore", message: "Impossibile cancellare i file temporanei.", style: .info)
+        }
     }
 
     func requestDataDeletion() {
@@ -175,14 +258,17 @@ final class SettingsViewModel: NSObject, ObservableObject {
 
     private func applyBackgroundSync() {
         featureFlags.isCloudSyncEnabled = backgroundSync
+        syncSettingsToCloud()
     }
 
     private func applyBatteryOptimization() {
         defaults.set(batteryOptimization, forKey: Keys.batteryOptimization)
+        syncSettingsToCloud()
     }
 
     private func applyImageQuality() {
         defaults.set(imageQuality, forKey: Keys.imageQuality)
+        syncSettingsToCloud()
     }
 
     private func applyCacheManagement() {
@@ -190,6 +276,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
         if cacheManagement {
             clearCaches()
         }
+        syncSettingsToCloud()
     }
 
     private func applyBiometricPreference() {
@@ -216,6 +303,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     private func applyPrivacyLevel() {
         defaults.set(privacyLevel.rawValue, forKey: Keys.privacyLevel)
         featureFlags.isAnalyticsEnabled = privacyLevel != .strict
+        syncSettingsToCloud()
     }
 
     private func applyLanguageChange() {
@@ -225,6 +313,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
             message: "The interface language has been updated.",
             style: .info
         )
+        syncSettingsToCloud()
     }
 
     private func applyLocationPreference() {
@@ -333,6 +422,37 @@ final class SettingsViewModel: NSObject, ObservableObject {
         let cacheSize = await directorySize(at: cacheURL)
         let tempSize = await directorySize(at: tempURL)
         return formattedSize(bytes: cacheSize + tempSize)
+    }
+
+    private func computeImageCacheSizeString() async -> String {
+        let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        var size: UInt64 = 0
+
+        if let cacheURL = cacheURL {
+            // Calculate URLCache size (images and network responses)
+            let urlCacheSize = URLCache.shared.currentDiskUsage
+            size += UInt64(urlCacheSize)
+
+            // Also check for any image-specific cache directories
+            let imageCacheURL = cacheURL.appendingPathComponent("Images")
+            size += await directorySize(at: imageCacheURL)
+        }
+
+        return formattedSize(bytes: size)
+    }
+
+    private func computeVehicleCacheSizeString() async -> String {
+        // Calculate size of cached vehicles data
+        if let data = defaults.data(forKey: "cachedVehicles") {
+            return formattedSize(bytes: UInt64(data.count))
+        }
+        return formattedSize(bytes: 0)
+    }
+
+    private func computeTempFilesSizeString() async -> String {
+        let tempURL = FileManager.default.temporaryDirectory
+        let size = await directorySize(at: tempURL)
+        return formattedSize(bytes: size)
     }
 
     private func directorySize(at url: URL?) async -> UInt64 {
@@ -451,5 +571,247 @@ extension SettingsViewModel {
 
     func handleCameraChange() {
         applyCameraPreference()
+    }
+
+    func handleNotificationsEnabledChange() {
+        applyNotificationsEnabled()
+    }
+
+    func handlePromotionNotificationsChange() {
+        applyPromotionNotifications()
+    }
+
+    func handleUpdateNotificationsChange() {
+        applyUpdateNotifications()
+    }
+
+    func handleAnalysisNotificationsChange() {
+        applyAnalysisNotifications()
+    }
+
+    func handleThemeChange() {
+        applyTheme()
+    }
+}
+
+// MARK: - Notification & Theme Handlers
+
+extension SettingsViewModel {
+    private func applyNotificationsEnabled() {
+        defaults.set(notificationsEnabled, forKey: Keys.notificationsEnabled)
+
+        if notificationsEnabled {
+            // Request notification authorization
+            Task {
+                do {
+                    let granted = try await notificationManager.requestAuthorization()
+                    if !granted {
+                        await MainActor.run {
+                            isSyncingFromStore = true
+                            notificationsEnabled = false
+                            isSyncingFromStore = false
+                            alert = SettingsAlert(
+                                title: "Notifications Disabled",
+                                message: "Please enable notifications in Settings to receive alerts.",
+                                style: .openSettings
+                            )
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        alert = SettingsAlert(
+                            title: "Error",
+                            message: "Failed to request notification permissions.",
+                            style: .info
+                        )
+                    }
+                }
+            }
+        } else {
+            // Disable all notification types
+            promotionNotifications = false
+            updateNotifications = false
+            analysisNotifications = false
+        }
+    }
+
+    private func applyPromotionNotifications() {
+        defaults.set(promotionNotifications, forKey: Keys.promotionNotifications)
+        featureFlags.isNotificationsEnabled = promotionNotifications || updateNotifications || analysisNotifications
+        syncSettingsToCloud()
+    }
+
+    private func applyUpdateNotifications() {
+        defaults.set(updateNotifications, forKey: Keys.updateNotifications)
+        featureFlags.isNotificationsEnabled = promotionNotifications || updateNotifications || analysisNotifications
+        syncSettingsToCloud()
+    }
+
+    private func applyAnalysisNotifications() {
+        defaults.set(analysisNotifications, forKey: Keys.analysisNotifications)
+        featureFlags.isNotificationsEnabled = promotionNotifications || updateNotifications || analysisNotifications
+        syncSettingsToCloud()
+    }
+
+    private func applyTheme() {
+        defaults.set(selectedTheme.rawValue, forKey: Keys.selectedTheme)
+
+        // Apply theme to the entire app
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        windowScene?.windows.forEach { window in
+            switch selectedTheme {
+            case .system:
+                window.overrideUserInterfaceStyle = .unspecified
+            case .light:
+                window.overrideUserInterfaceStyle = .light
+            case .dark:
+                window.overrideUserInterfaceStyle = .dark
+            }
+        }
+
+        syncSettingsToCloud()
+    }
+}
+
+// MARK: - Cloud Sync
+
+extension SettingsViewModel {
+    private struct UserSettings: Codable {
+        let userId: String
+        let backgroundSync: Bool
+        let batteryOptimization: Bool
+        let imageQuality: Double
+        let cacheManagement: Bool
+        let biometricAuth: Bool
+        let privacyLevel: String
+        let language: String
+        let notificationsEnabled: Bool
+        let promotionNotifications: Bool
+        let updateNotifications: Bool
+        let analysisNotifications: Bool
+        let selectedTheme: String
+        let updatedAt: String
+    }
+
+    func syncSettingsToCloud() {
+        guard featureFlags.isCloudSyncEnabled else { return }
+
+        Task {
+            do {
+                let session = try await SupabaseManager.client.auth.session
+                let userId = session.user.id.uuidString
+
+                let settings = UserSettings(
+                    userId: userId,
+                    backgroundSync: backgroundSync,
+                    batteryOptimization: batteryOptimization,
+                    imageQuality: imageQuality,
+                    cacheManagement: cacheManagement,
+                    biometricAuth: biometricAuth,
+                    privacyLevel: privacyLevel.rawValue,
+                    language: selectedLanguage.rawValue,
+                    notificationsEnabled: notificationsEnabled,
+                    promotionNotifications: promotionNotifications,
+                    updateNotifications: updateNotifications,
+                    analysisNotifications: analysisNotifications,
+                    selectedTheme: selectedTheme.rawValue,
+                    updatedAt: ISO8601DateFormatter().string(from: Date())
+                )
+
+                // Upsert settings to Supabase
+                try await SupabaseManager.client
+                    .from("user_settings")
+                    .upsert(settings)
+                    .execute()
+
+            } catch {
+                print("Failed to sync settings to cloud: \(error)")
+            }
+        }
+    }
+
+    func loadSettingsFromCloud() {
+        guard featureFlags.isCloudSyncEnabled else { return }
+
+        Task {
+            do {
+                let session = try await SupabaseManager.client.auth.session
+                let userId = session.user.id.uuidString
+
+                let response: UserSettings = try await SupabaseManager.client
+                    .from("user_settings")
+                    .select("*")
+                    .eq("userId", value: userId)
+                    .single()
+                    .execute()
+                    .value
+
+                // Update local settings with cloud data
+                await MainActor.run {
+                    isSyncingFromStore = true
+
+                    backgroundSync = response.backgroundSync
+                    batteryOptimization = response.batteryOptimization
+                    imageQuality = response.imageQuality
+                    cacheManagement = response.cacheManagement
+                    biometricAuth = response.biometricAuth
+                    privacyLevel = PrivacyLevel(rawValue: response.privacyLevel) ?? .strict
+                    selectedLanguage = Language(rawValue: response.language) ?? .italian
+                    notificationsEnabled = response.notificationsEnabled
+                    promotionNotifications = response.promotionNotifications
+                    updateNotifications = response.updateNotifications
+                    analysisNotifications = response.analysisNotifications
+                    selectedTheme = AppTheme(rawValue: response.selectedTheme) ?? .system
+
+                    // Save to UserDefaults
+                    defaults.set(batteryOptimization, forKey: Keys.batteryOptimization)
+                    defaults.set(imageQuality, forKey: Keys.imageQuality)
+                    defaults.set(cacheManagement, forKey: Keys.cacheManagement)
+                    defaults.set(privacyLevel.rawValue, forKey: Keys.privacyLevel)
+                    defaults.set(notificationsEnabled, forKey: Keys.notificationsEnabled)
+                    defaults.set(promotionNotifications, forKey: Keys.promotionNotifications)
+                    defaults.set(updateNotifications, forKey: Keys.updateNotifications)
+                    defaults.set(analysisNotifications, forKey: Keys.analysisNotifications)
+                    defaults.set(selectedTheme.rawValue, forKey: Keys.selectedTheme)
+
+                    isSyncingFromStore = false
+                }
+
+            } catch {
+                print("Failed to load settings from cloud: \(error)")
+            }
+        }
+    }
+}
+
+// MARK: - Account Management
+
+extension SettingsViewModel {
+    func logout() {
+        Task {
+            do {
+                // Clear caches and user data
+                clearCaches()
+                UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+                UserDefaults.standard.synchronize()
+
+                // Logout from Supabase
+                let authService = AuthService()
+                try await authService.logout()
+
+                // Post logout notification
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .didRequestLogout, object: nil)
+                }
+            } catch {
+                await MainActor.run {
+                    alert = SettingsAlert(
+                        title: "Logout Failed",
+                        message: "Unable to logout. Please try again.",
+                        style: .info
+                    )
+                }
+            }
+        }
     }
 }
