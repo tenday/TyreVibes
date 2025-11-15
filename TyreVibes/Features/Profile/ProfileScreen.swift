@@ -61,9 +61,9 @@ struct ProfileView: View {
                 viewModel.loadPreferences()
             }
             .scrollIndicators(.hidden)
-          //  .onChange(of: viewModel.preferences) { _, _ in
-          //      Task { await viewModel.savePreferences() }
-          //  }
+            .onChange(of: viewModel.preferences) { _, _ in
+                Task { await viewModel.savePreferences() }
+            }
             .sheet(isPresented: $showEditSheet) {
                 EditProfileSheet(viewModel: viewModel)
             }
