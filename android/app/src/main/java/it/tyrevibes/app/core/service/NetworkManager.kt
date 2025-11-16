@@ -22,7 +22,7 @@ import kotlinx.serialization.json.Json
 sealed class NetworkError : Exception() {
     object InvalidURL : NetworkError()
     object InvalidResponse : NetworkError()
-    data class HttpError(val statusCode: Int, val message: String?) : NetworkError()
+    data class HttpError(val statusCode: Int, override val message: String?) : NetworkError()
     data class DecodingError(val error: Throwable) : NetworkError()
     data class EncodingError(val error: Throwable) : NetworkError()
     data class NetworkException(val error: Throwable) : NetworkError()

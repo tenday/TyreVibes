@@ -155,7 +155,7 @@ sealed class PlateAPIError : Exception() {
     object InvalidURL : PlateAPIError()
     data class RequestFailed(val error: Throwable) : PlateAPIError()
     object InvalidResponse : PlateAPIError()
-    data class ServerError(val statusCode: Int, val message: String) : PlateAPIError()
+    data class ServerError(val statusCode: Int, override val message: String) : PlateAPIError()
     object PlateNotFound : PlateAPIError()
     object AlreadyInGarage : PlateAPIError()
 }

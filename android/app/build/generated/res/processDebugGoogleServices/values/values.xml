@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="default_web_client_id" translatable="false">628808645845-etj5cdmni8703nd5jie361luir9mmmme.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">628808645845</string>
+    <string name="google_api_key" translatable="false">AIzaSyCuG-oDcP3fw5T504yWGSs3pbF35woaMME</string>
+    <string name="google_app_id" translatable="false">1:628808645845:android:d5a63591f9ea8ec4d9765c</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyCuG-oDcP3fw5T504yWGSs3pbF35woaMME</string>
+    <string name="google_storage_bucket" translatable="false">tyrevibes-f4fff.firebasestorage.app</string>
+    <string name="project_id" translatable="false">tyrevibes-f4fff</string>
+</resources>

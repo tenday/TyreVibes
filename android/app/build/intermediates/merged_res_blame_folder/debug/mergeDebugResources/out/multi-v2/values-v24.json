@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "it.tyrevibes.app-mergeDebugResources-70:/values-v24/values-v24.xml",
+            "map": [
+                {
+                    "source": "/Users/matteolamannna/.gradle/caches/8.9/transforms/0d22f26e9920ad550b3ed4b36538b94b/transformed/appcompat-1.6.1/res/values-v24/values-v24.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,212",
+                        "endColumns": "156,134",
+                        "endOffsets": "207,342"
+                    }
+                }
+            ]
+        }
+    ]
+}

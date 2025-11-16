@@ -162,7 +162,7 @@ class ProfileViewModel(
     fun logout() {
         viewModelScope.launch {
             try {
-                authService.signOut()
+                authService.logout()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = e.message ?: "Failed to logout"
@@ -178,9 +178,9 @@ class ProfileViewModel(
             try {
                 val userId = supabaseManager.getCurrentUserId() ?: throw Exception("Not authenticated")
 
-                // TODO: Delete account from Supabase
-                // userService.deleteAccount(userId)
-                authService.signOut()
+                // Delete account from Supabase
+                authService.deleteCurrentUser()
+                authService.logout()
 
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {

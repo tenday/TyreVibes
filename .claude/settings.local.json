@@ -15,7 +15,19 @@
       "Bash(cat:*)",
       "Bash(swift build:*)",
       "Bash(node -c:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(gradle wrapper:*)",
+      "Bash(gradle --version:*)",
+      "Bash(java --version:*)",
+      "Bash(curl:*)",
+      "Bash(unzip:*)",
+      "Bash(chmod:*)",
+      "Bash(./gradlew:*)",
+      "Bash(wget:*)",
+      "Bash(../gradle-8.2/bin/gradle wrapper:*)",
+      "Bash(/Users/matteolamannna/StudioProjects/TyreVibes/gradle-8.2/bin/gradle wrapper:*)",
+      "Bash(/Users/matteolamannna/StudioProjects/TyreVibes/android/gradle-8.2/bin/gradle wrapper:*)"
     ],
     "deny": [],
     "ask": []

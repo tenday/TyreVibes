@@ -3,6 +3,7 @@ package it.tyrevibes.app.core.service
 import android.content.Context
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
@@ -43,7 +44,7 @@ object SupabaseManager {
      */
     suspend fun getCurrentUserId(): String? {
         return try {
-            client.auth.currentSessionOrNull()?.user?.id
+            client.auth.currentUserOrNull()?.id
         } catch (e: Exception) {
             null
         }
@@ -54,7 +55,7 @@ object SupabaseManager {
      */
     suspend fun getAccessToken(): String? {
         return try {
-            client.auth.currentSessionOrNull()?.accessToken
+            client.auth.currentAccessTokenOrNull()
         } catch (e: Exception) {
             null
         }

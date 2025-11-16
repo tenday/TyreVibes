@@ -166,11 +166,11 @@ object BolloCalculator {
      * Convenience for PlateData
      */
     fun calculateBollo(
-        from plateData: PlateData,
+        plateData: PlateData,
         referenceDate: Date = Date(),
         isHistoricVehicle: Boolean = false
     ): BolloCalculationResult? {
-        val powerKW = extractPowerKW(from = plateData) ?: return null
+        val powerKW = extractPowerKW(plateData = plateData) ?: return null
 
         val emission = plateData.emissionClass
         val firstRegistrationDate = plateData.registrationDate?.toDate()
