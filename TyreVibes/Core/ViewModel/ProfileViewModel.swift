@@ -28,6 +28,64 @@ struct ActivityItem: Identifiable {
     let icon: String
 }
 
+// MARK: - Encodable Data Structures for Supabase
+
+struct UpdateProfileData: Encodable {
+    let fullName: String
+
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+    }
+}
+
+struct UserPreferencesData: Encodable {
+    let userId: String
+    let emailNotifications: Bool
+    let productUpdates: Bool
+    let smsNotifications: Bool
+    let securityAlerts: Bool
+    let marketingEmails: Bool
+    let profileVisible: Bool
+    let dataCollection: Bool
+    let activityHistory: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case emailNotifications = "email_notifications"
+        case productUpdates = "product_updates"
+        case smsNotifications = "sms_notifications"
+        case securityAlerts = "security_alerts"
+        case marketingEmails = "marketing_emails"
+        case profileVisible = "profile_visible"
+        case dataCollection = "data_collection"
+        case activityHistory = "activity_history"
+    }
+}
+
+struct ProfileImageUpdateData: Encodable {
+    let profileImageUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case profileImageUrl = "profile_image_url"
+    }
+}
+
+struct UserActivityData: Encodable {
+    let userId: String
+    let activityType: String
+    let title: String
+    let subtitle: String
+    let icon: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case activityType = "activity_type"
+        case title
+        case subtitle
+        case icon
+    }
+}
+
 @MainActor
 class ProfileViewModel: ObservableObject {
     @Published var userProfile: UserProfile?
@@ -158,9 +216,7 @@ class ProfileViewModel: ObservableObject {
 
             // Prepara i dati per l'aggiornamento
             // Nota: l'email viene gestita da Supabase Auth, quindi aggiorniamo solo full_name e phone_number
-            let updateData: [String: Any] = [
-                "full_name": name
-            ]
+            let updateData = UpdateProfileData(fullName: name)
 
             // Aggiorna il profilo su Supabase
             try await SupabaseManager.client
@@ -204,17 +260,17 @@ class ProfileViewModel: ObservableObject {
             let userId = session.user.id
 
             // Prepara i dati per il salvataggio
-            let preferencesData: [String: Any] = [
-                "user_id": userId.uuidString,
-                "email_notifications": preferences.emailNotifications,
-                "product_updates": preferences.productUpdates,
-                "sms_notifications": preferences.smsNotifications,
-                "security_alerts": preferences.securityAlerts,
-                "marketing_emails": preferences.marketingEmails,
-                "profile_visible": preferences.profileVisible,
-                "data_collection": preferences.dataCollection,
-                "activity_history": preferences.activityHistory
-            ]
+            let preferencesData = UserPreferencesData(
+                userId: userId.uuidString,
+                emailNotifications: preferences.emailNotifications,
+                productUpdates: preferences.productUpdates,
+                smsNotifications: preferences.smsNotifications,
+                securityAlerts: preferences.securityAlerts,
+                marketingEmails: preferences.marketingEmails,
+                profileVisible: preferences.profileVisible,
+                dataCollection: preferences.dataCollection,
+                activityHistory: preferences.activityHistory
+            )
 
             // Usa upsert per inserire o aggiornare
             try await SupabaseManager.client
@@ -325,9 +381,7 @@ class ProfileViewModel: ObservableObject {
                 .getPublicURL(path: fileName)
 
             // Aggiorna il profilo utente con l'URL dell'immagine
-            let updateData: [String: Any] = [
-                "profile_image_url": publicURL.absoluteString
-            ]
+            let updateData = ProfileImageUpdateData(profileImageUrl: publicURL.absoluteString)
 
             try await SupabaseManager.client
                 .from("users")
@@ -426,13 +480,13 @@ class ProfileViewModel: ObservableObject {
             let session = try await SupabaseManager.client.auth.session
             let userId = session.user.id
 
-            let activityData: [String: Any] = [
-                "user_id": userId.uuidString,
-                "activity_type": type,
-                "title": title,
-                "subtitle": subtitle,
-                "icon": icon
-            ]
+            let activityData = UserActivityData(
+                userId: userId.uuidString,
+                activityType: type,
+                title: title,
+                subtitle: subtitle,
+                icon: icon
+            )
 
             try await SupabaseManager.client
                 .from("user_activities")
