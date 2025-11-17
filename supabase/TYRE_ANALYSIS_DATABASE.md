@@ -1,5 +1,9 @@
 # 📊 Database Analisi Pneumatici - TyreVibes
 
+> ⚠️ **NOTA**: Questa documentazione è specifica per **Supabase**.
+>
+> **Per database SQL standard** (MySQL, PostgreSQL, SQLite), consulta: `/database/README_DATABASE.md`
+
 Documentazione completa delle tabelle per memorizzare le analisi dettagliate dei pneumatici.
 
 ## 📋 Indice
