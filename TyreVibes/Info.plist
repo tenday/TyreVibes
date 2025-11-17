@@ -51,5 +51,9 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>TyreVibes ha bisogno della fotocamera per misurare la profondità del battistrada usando il sensore LiDAR e per scansionare le targhe dei veicoli.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>La posizione viene utilizzata per geolocalizzare le misurazioni e trovare gommisti nelle vicinanze.</string>
 </dict>
 </plist>
