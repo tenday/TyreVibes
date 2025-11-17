@@ -13,14 +13,49 @@ struct TyreDetailView: View {
     var onConfirmCompletion: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel: TyreDetailViewModel
     @State private var selectedTyre = "FL"
     @State private var isReady = false
 
-    
+    init(tyre: TyreRegistered?, onConfirmCompletion: (() -> Void)? = nil) {
+        self.tyre = tyre
+        self.onConfirmCompletion = onConfirmCompletion
+
+        // Initialize ViewModel with tyre data or default
+        if let tyre = tyre {
+            _viewModel = StateObject(wrappedValue: TyreDetailViewModel(tyre: tyre))
+        } else {
+            // Default tyre for preview
+            _viewModel = StateObject(wrappedValue: TyreDetailViewModel(tyre: TyreRegistered(
+                id: 1,
+                vehicleId: 1,
+                brand: "Michelin",
+                model: "Pilot Sport 4",
+                size: "225/40R18",
+                dot: "1221",
+                loadIndex: "92",
+                speedRating: "Y",
+                season: "Summer"
+            )))
+        }
+    }
 
     var tyreName: String {
         guard let tyre = tyre else { return "Tyre Name" }
         return "\(tyre.brand) \(tyre.model)"
+    }
+
+    var remainingLifeColor: Color {
+        let percentage = viewModel.remainingLifePercentage
+        if percentage >= 0.7 {
+            return .cyan
+        } else if percentage >= 0.5 {
+            return .green
+        } else if percentage >= 0.3 {
+            return .yellow
+        } else {
+            return .orange
+        }
     }
 
     var body: some View {
@@ -54,46 +89,48 @@ struct TyreDetailView: View {
                         .padding(.bottom, 30)
 
                         // Tread depth measurements
-                        VStack(spacing: 20) {
-                            HStack(spacing: 40) {
-                                TreadDepthCard(
-                                    position: "FL",
-                                    depth: "7.2 mm",
-                                    progress: 0.9,
-                                    color: .green
-                                )
+                        if let treadData = viewModel.treadDepthData {
+                            VStack(spacing: 20) {
+                                HStack(spacing: 40) {
+                                    TreadDepthCard(
+                                        position: treadData.frontLeft.position,
+                                        depth: treadData.frontLeft.formattedDepth,
+                                        progress: treadData.frontLeft.progress,
+                                        color: treadData.frontLeft.color
+                                    )
 
-                                TreadDepthCard(
-                                    position: "FR",
-                                    depth: "7.2 mm",
-                                    progress: 0.9,
-                                    color: .green
-                                )
+                                    TreadDepthCard(
+                                        position: treadData.frontRight.position,
+                                        depth: treadData.frontRight.formattedDepth,
+                                        progress: treadData.frontRight.progress,
+                                        color: treadData.frontRight.color
+                                    )
+                                }
+
+                                HStack(spacing: 40) {
+                                    TreadDepthCard(
+                                        position: treadData.rearLeft.position,
+                                        depth: treadData.rearLeft.formattedDepth,
+                                        progress: treadData.rearLeft.progress,
+                                        color: treadData.rearLeft.color
+                                    )
+
+                                    TreadDepthCard(
+                                        position: treadData.rearRight.position,
+                                        depth: treadData.rearRight.formattedDepth,
+                                        progress: treadData.rearRight.progress,
+                                        color: treadData.rearRight.color
+                                    )
+                                }
                             }
-
-                            HStack(spacing: 40) {
-                                TreadDepthCard(
-                                    position: "RL",
-                                    depth: "4.0 mm",
-                                    progress: 0.5,
-                                    color: .orange
-                                )
-
-                                TreadDepthCard(
-                                    position: "RR",
-                                    depth: "2.5 mm",
-                                    progress: 0.25,
-                                    color: .red
-                                )
-                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 30)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 30)
 
                         // Remaining life
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                
+
                                 Text("Remaining Life")
                                     .font(.customFont(size: 16, weight: .medium))
                                     .foregroundColor(.gray)
@@ -103,15 +140,15 @@ struct TyreDetailView: View {
                             .padding(.top)
 
                             HStack {
-                                Text("80%")
+                                Text("\(Int(viewModel.remainingLifePercentage * 100))%")
                                     .font(.customFont(size: 28, weight: .bold))
                                     .foregroundColor(.white)
                                 Spacer()
                             }
                             .padding(.horizontal)
 
-                            ProgressView(value: 0.8)
-                                .progressViewStyle(CustomProgressViewStyle(color: .cyan))
+                            ProgressView(value: viewModel.remainingLifePercentage)
+                                .progressViewStyle(CustomProgressViewStyle(color: remainingLifeColor))
                                 //.frame(height: 12)
                                 .padding()
                         }
@@ -123,23 +160,29 @@ struct TyreDetailView: View {
                         
 
                         // Tire Lifecycle Chart
-                        VStack(alignment: .leading, spacing: 15) {
-                            HStack {
-                                Text("Tire Lifecycle")
-                                    .font(.customFont(size: 18, weight: .semibold))
-                                    .foregroundColor(.white)
-                                Spacer()
-                            }
-                            .padding(.horizontal)
-                            .padding(.top)
+                        if let lifeEstimate = viewModel.remainingLifeEstimate {
+                            VStack(alignment: .leading, spacing: 15) {
+                                HStack {
+                                    Text("Tire Lifecycle")
+                                        .font(.customFont(size: 18, weight: .semibold))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                                .padding(.top)
 
-                            TireLifecycleChart()
-                                .padding()
+                                TireLifecycleChart(
+                                    projections: lifeEstimate.projectedDepthCurve,
+                                    estimatedKm: lifeEstimate.estimatedKilometers,
+                                    estimatedMonths: lifeEstimate.estimatedMonths
+                                )
+                                    .padding()
+                            }
+                            .background(Color.customFieldColor)
+                            .cornerRadius(14)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 30)
                         }
-                        .background(Color.customFieldColor)
-                        .cornerRadius(14)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 30)
 
                         
 
@@ -156,11 +199,29 @@ struct TyreDetailView: View {
                             HStack(spacing: 20) {
                                 TireConditionIcon()
 
-                                HStack(spacing: 20) {
-                                    TireConditionBar(position: "FL", percentage: 70, color: .green)
-                                    TireConditionBar(position: "FR", percentage: 80, color: .green)
-                                    TireConditionBar(position: "RL", percentage: 50, color: .orange)
-                                    TireConditionBar(position: "RR", percentage: 35, color: .red)
+                                if let conditionData = viewModel.tireConditionData {
+                                    HStack(spacing: 20) {
+                                        TireConditionBar(
+                                            position: "FL",
+                                            percentage: conditionData.frontLeft,
+                                            color: conditionData.color(for: "FL")
+                                        )
+                                        TireConditionBar(
+                                            position: "FR",
+                                            percentage: conditionData.frontRight,
+                                            color: conditionData.color(for: "FR")
+                                        )
+                                        TireConditionBar(
+                                            position: "RL",
+                                            percentage: conditionData.rearLeft,
+                                            color: conditionData.color(for: "RL")
+                                        )
+                                        TireConditionBar(
+                                            position: "RR",
+                                            percentage: conditionData.rearRight,
+                                            color: conditionData.color(for: "RR")
+                                        )
+                                    }
                                 }
 
                             }
@@ -209,6 +270,9 @@ struct TyreDetailView: View {
 
         }
         .task {
+            // Load tyre data
+            await viewModel.loadTyreData()
+
             // Ensure NavigationStack and fonts are properly initialized before showing content
             try? await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
             withAnimation {
@@ -314,22 +378,32 @@ struct CustomProgressViewStyle: ProgressViewStyle {
 
 // MARK: - Tire Lifecycle Chart
 struct TireLifecycleChart: View {
+    let projections: [DepthProjection]
+    let estimatedKm: Double
+    let estimatedMonths: Int
+
     @State private var selectedPoint: ChartDataPoint?
 
-    let historicalData: [ChartDataPoint] = [
-        ChartDataPoint(distance: 0, depth: 10.0, isProjected: false),
-        ChartDataPoint(distance: 5, depth: 8.5, isProjected: false),
-        ChartDataPoint(distance: 10, depth: 7.2, isProjected: false),
-        ChartDataPoint(distance: 15, depth: 5.8, isProjected: false),
-        ChartDataPoint(distance: 20, depth: 4.5, isProjected: false)
-    ]
+    var historicalData: [ChartDataPoint] {
+        projections
+            .filter { $0.kilometersFromNow <= 0 }
+            .map { ChartDataPoint(
+                distance: Int(abs($0.kilometersFromNow / 1000)),
+                depth: $0.projectedDepth,
+                isProjected: false
+            )}
+    }
 
-    let projectedData: [ChartDataPoint] = [
-        ChartDataPoint(distance: 20, depth: 4.5, isProjected: true),
-        ChartDataPoint(distance: 25, depth: 3.0, isProjected: true),
-        ChartDataPoint(distance: 30, depth: 1.8, isProjected: true),
-        ChartDataPoint(distance: 32, depth: 1.6, isProjected: true)
-    ]
+    var projectedData: [ChartDataPoint] {
+        let currentPoint = projections.first { $0.kilometersFromNow == 0 }
+        let futureProjections = projections.filter { $0.kilometersFromNow >= 0 }
+
+        return futureProjections.map { ChartDataPoint(
+            distance: Int($0.kilometersFromNow / 1000),
+            depth: $0.projectedDepth,
+            isProjected: true
+        )}
+    }
 
     let legalMinimum: Double = 1.6
     let warningThreshold: Double = 3.0
@@ -464,8 +538,16 @@ struct TireLifecycleChart: View {
                 ChartLegendItem(color: .red, text: "Replace (<1.6mm)")
             }
             HStack(spacing: 16) {
-                InfoPill(icon: "calendar", text: "~12K km remaining", color: .cyan)
-                InfoPill(icon: "calendar.badge.clock", text: "Replace by Mar 2026", color: .orange)
+                InfoPill(
+                    icon: "calendar",
+                    text: "~\(Int(estimatedKm / 1000))K km remaining",
+                    color: .cyan
+                )
+                InfoPill(
+                    icon: "calendar.badge.clock",
+                    text: "Replace in ~\(estimatedMonths) months",
+                    color: estimatedMonths < 6 ? .orange : .cyan
+                )
             }
         }
         .padding(.top, 8)
