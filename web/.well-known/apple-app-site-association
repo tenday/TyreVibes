@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "RX2N3LRGXU.tyrevibes.TyreVibes",
+        "paths": [
+          "/reset_password",
+          "/reset_password/*"
+        ]
+      }
+    ]
+  }
+}

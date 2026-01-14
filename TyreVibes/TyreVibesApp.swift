@@ -18,7 +18,10 @@ struct TyreVibesApp: App {
     @StateObject private var notificationStore = NotificationStore()
     @StateObject private var bugReportManager = BugReportManager()
     @StateObject private var pushNotificationManager = PushNotificationManager.shared
+    @StateObject private var networkMonitor = NetworkMonitor.shared
+    private let authService = AuthService()
     @State private var showResetPasswordScreen = false
+    @State private var passwordRecoveryAlertItem: AlertItem?
     @State private var authStateChangeTask: Any? = nil
     
     var body: some Scene {
@@ -31,6 +34,12 @@ struct TyreVibesApp: App {
                 }
                 SplashScreen()
             }
+            .overlay(alignment: .top) {
+                NetworkStatusBanner(isVisible: !networkMonitor.isReachable)
+                    .padding(.top, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.2), value: networkMonitor.isReachable)
+            }
             
             .sheet(isPresented: $showResetPasswordScreen) {
                 ResetPasswordScreen()
@@ -39,8 +48,28 @@ struct TyreVibesApp: App {
                 if GIDSignIn.sharedInstance.handle(url) {
                     return
                 }
-                if url.scheme == "it.tyrevibes.app" && url.host == "reset-password" {
-                    showResetPasswordScreen = true
+                if isPasswordResetURL(url) {
+                    if let alertItem = recoveryAlertItem(from: url) {
+                        passwordRecoveryAlertItem = alertItem
+                        return
+                    }
+                    Task {
+                        do {
+                            try await authService.handlePasswordRecovery(url: url)
+                            await MainActor.run {
+                                showResetPasswordScreen = true
+                            }
+                        } catch {
+                            await MainActor.run {
+                                passwordRecoveryAlertItem = recoveryAlertItem(from: error)
+                            }
+                        }
+                    }
+                    return
+                }
+
+                if isSupabaseAuthURL(url) {
+                    SupabaseManager.client.auth.handle(url)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .didRequestLogout)) { _ in
@@ -66,6 +95,18 @@ struct TyreVibesApp: App {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.hidden)
                     .scrollIndicators(.hidden)
+            }
+            .confirmationDialog("Cosa vuoi fare?", isPresented: $bugReportManager.showFeedbackOptions, titleVisibility: .visible) {
+                Button("Segnala un Bug") {
+                    bugReportManager.selectReportType(.bug)
+                }
+                Button("Invia Feedback") {
+                    bugReportManager.selectReportType(.feedback)
+                }
+                Button("Annulla", role: .cancel) { }
+            }
+            .alert(item: $passwordRecoveryAlertItem) { alertItem in
+                Alert(title: Text(alertItem.title), message: Text(alertItem.message), dismissButton: .default(Text("OK")))
             }
             .onAppear {
                 Task { @MainActor in
@@ -117,5 +158,110 @@ struct TyreVibesApp: App {
             // TODO: Implementare navigazione
         }
     }
-}
 
+    private func isPasswordResetURL(_ url: URL) -> Bool {
+        if url.scheme == "it.tyrevibes.app" {
+            return url.host == "reset-password"
+        }
+
+        if url.scheme == "https" {
+            guard let host = url.host else { return false }
+            guard host == "tyrevibes.com" || host == "www.tyrevibes.com" else { return false }
+            return url.path == "/reset_password" || url.path == "/reset_password/"
+        }
+
+        return false
+    }
+
+    private func isSupabaseAuthURL(_ url: URL) -> Bool {
+        if url.scheme == "it.tyrevibes.app" {
+            return true
+        }
+
+        if url.scheme == "https" {
+            guard let host = url.host else { return false }
+            return host == "tyrevibes.com" || host == "www.tyrevibes.com"
+        }
+
+        return false
+    }
+
+    private func recoveryAlertItem(from url: URL) -> AlertItem? {
+        let params = urlParameters(from: url)
+        let errorCode = params["error_code"]?.lowercased()
+        let error = params["error"]?.lowercased()
+        let errorDescription = params["error_description"]?.replacingOccurrences(of: "+", with: " ")
+
+        if errorCode == "otp_expired" || errorCode == "flow_state_expired" || errorCode == "session_expired" {
+            return AlertItem(
+                title: "Link scaduto",
+                message: "Il link di recupero è scaduto. Richiedi un nuovo link per reimpostare la password."
+            )
+        }
+
+        if error == "access_denied" || errorCode == "access_denied" {
+            return AlertItem(
+                title: "Link non valido",
+                message: "Non è stato possibile aprire il link di reset. Richiedi un nuovo link."
+            )
+        }
+
+        if let description = errorDescription, !description.isEmpty {
+            return AlertItem(title: "Link non valido", message: description)
+        }
+
+        return nil
+    }
+
+    private func recoveryAlertItem(from error: Error) -> AlertItem {
+        if let authError = error as? AuthError {
+            switch authError {
+            case .api(_, let errorCode, _, _):
+                if errorCode == .otpExpired || errorCode == .flowStateExpired || errorCode == .sessionExpired {
+                    return AlertItem(
+                        title: "Link scaduto",
+                        message: "Il link di recupero è scaduto. Richiedi un nuovo link per reimpostare la password."
+                    )
+                }
+                if errorCode == .overEmailSendRateLimit || errorCode == .overRequestRateLimit {
+                    return AlertItem(
+                        title: "Troppi tentativi",
+                        message: "Hai richiesto troppi link in poco tempo. Attendi qualche minuto e riprova."
+                    )
+                }
+            case .implicitGrantRedirect(let message):
+                return AlertItem(title: "Link non valido", message: message)
+            default:
+                break
+            }
+        }
+
+        let message = error.localizedDescription.isEmpty
+        ? "Non è stato possibile aprire il link di reset. Richiedi un nuovo link."
+        : error.localizedDescription
+        return AlertItem(title: "Errore", message: message)
+    }
+
+    private func urlParameters(from url: URL) -> [String: String] {
+        var params: [String: String] = [:]
+
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.queryItems?.forEach { item in
+                if let value = item.value {
+                    params[item.name] = value
+                }
+            }
+        }
+
+        if let fragment = url.fragment,
+           let fragmentComponents = URLComponents(string: "?\(fragment)") {
+            fragmentComponents.queryItems?.forEach { item in
+                if let value = item.value {
+                    params[item.name] = value
+                }
+            }
+        }
+
+        return params
+    }
+}

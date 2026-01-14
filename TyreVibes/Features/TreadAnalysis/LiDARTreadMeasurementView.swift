@@ -14,12 +14,20 @@ import ARKit
 struct LiDARTreadMeasurementView: View {
     // MARK: - Properties
 
-    @StateObject private var viewModel = TreadDepthViewModel()
+    @StateObject private var viewModel: TreadDepthViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var showSettings = false
     @State private var showHistory = false
     @State private var showResults = false
+    @State private var didNotifyCompletion = false
+
+    let onCompleted: (() -> Void)?
+
+    init(onCompleted: (() -> Void)? = nil) {
+        self.onCompleted = onCompleted
+        _viewModel = StateObject(wrappedValue: TreadDepthViewModel())
+    }
 
     // MARK: - Body
 
@@ -27,7 +35,7 @@ struct LiDARTreadMeasurementView: View {
         ZStack {
             // AR View (background)
             if viewModel.isLiDARAvailable {
-                ARViewContainer(viewModel: viewModel)
+                LiDARARViewContainer(viewModel: viewModel)
                     .edgesIgnoringSafeArea(.all)
             } else {
                 unavailableView
@@ -58,7 +66,7 @@ struct LiDARTreadMeasurementView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(configuration: $viewModel.scanConfiguration)
+            LiDARSettingsView(configuration: $viewModel.scanConfiguration)
         }
         .sheet(isPresented: $showHistory) {
             MeasurementHistoryView(
@@ -70,7 +78,7 @@ struct LiDARTreadMeasurementView: View {
         }
         .sheet(isPresented: $showResults) {
             if let measurement = viewModel.lastMeasurement {
-                MeasurementResultView(measurement: measurement)
+                MeasurementResultView(measurement: measurement, history: viewModel.measurementHistory)
             }
         }
         .alert("Errore", isPresented: $viewModel.showError) {
@@ -81,6 +89,10 @@ struct LiDARTreadMeasurementView: View {
         .onChange(of: viewModel.measurementState) { _, newState in
             if newState == .completed {
                 showResults = true
+                if !didNotifyCompletion {
+                    didNotifyCompletion = true
+                    onCompleted?()
+                }
             }
         }
     }
@@ -104,7 +116,7 @@ struct LiDARTreadMeasurementView: View {
                 Image(systemName: viewModel.measurementState.icon)
                     .foregroundColor(.white)
                 Text(viewModel.measurementState.displayName)
-                    .font(.customFont(size: 14, weight: .semiBold))
+                    .font(.customFont(size: 14, weight: .semibold))
                     .foregroundColor(.white)
             }
             .padding(.horizontal, 12)
@@ -157,7 +169,7 @@ struct LiDARTreadMeasurementView: View {
             Text(viewModel.statusMessage)
                 .font(.customFont(size: 16, weight: .medium))
                 .multilineTextAlignment(.center)
-                .foregroundColor(.customTextColor)
+                .foregroundColor(.white)
 
             // Point count (durante scansione)
             if viewModel.isScanning {
@@ -202,8 +214,8 @@ struct LiDARTreadMeasurementView: View {
 
             // Progress percentage
             Text("\(Int(viewModel.scanProgress * 100))%")
-                .font(.customFont(size: 14, weight: .semiBold))
-                .foregroundColor(.customTextColor)
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white)
         }
         .padding(.horizontal, 20)
     }
@@ -217,7 +229,7 @@ struct LiDARTreadMeasurementView: View {
                 HStack {
                     Image(systemName: "clock.arrow.circlepath")
                     Text("Storico")
-                        .font(.customFont(size: 16, weight: .semiBold))
+                        .font(.customFont(size: 16, weight: .semibold))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -225,7 +237,7 @@ struct LiDARTreadMeasurementView: View {
                     RoundedRectangle(cornerRadius: 18)
                         .fill(Color.customFieldColor)
                 )
-                .foregroundColor(.customTextColor)
+                .foregroundColor(.white)
             }
             .disabled(viewModel.isScanning || viewModel.isProcessing)
 
@@ -320,7 +332,7 @@ struct LiDARTreadMeasurementView: View {
 
 // MARK: - AR View Container
 
-struct ARViewContainer: UIViewRepresentable {
+struct LiDARARViewContainer: UIViewRepresentable {
     let viewModel: TreadDepthViewModel
     private let service = LiDARTreadMeasurementService.shared
 
@@ -343,6 +355,7 @@ struct ARViewContainer: UIViewRepresentable {
 
         // Setup frame update delegate
         context.coordinator.arView = arView
+        context.coordinator.startFrameUpdates()
 
         return arView
     }
@@ -363,10 +376,9 @@ struct ARViewContainer: UIViewRepresentable {
         init(viewModel: TreadDepthViewModel) {
             self.viewModel = viewModel
             super.init()
-            setupFrameUpdates()
         }
 
-        private func setupFrameUpdates() {
+        func startFrameUpdates() {
             // Update frame ogni 100ms durante scansione
             frameUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                 guard let self = self,
@@ -391,7 +403,7 @@ struct ARViewContainer: UIViewRepresentable {
 
 // MARK: - Settings View
 
-struct SettingsView: View {
+struct LiDARSettingsView: View {
     @Binding var configuration: LiDARTreadMeasurementService.ScanConfiguration
     @Environment(\.dismiss) private var dismiss
 
@@ -482,6 +494,7 @@ struct SettingsView: View {
 
 struct MeasurementResultView: View {
     let measurement: TreadDepthMeasurement
+    let history: [TreadDepthMeasurement]
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -493,6 +506,9 @@ struct MeasurementResultView: View {
 
                     // Profondità media
                     depthSection
+
+                    // Insight consumo
+                    insightSection
 
                     // Zone map
                     zoneMapSection
@@ -557,19 +573,19 @@ struct MeasurementResultView: View {
                 .font(.customFont(size: 18, weight: .bold))
 
             HStack(spacing: 20) {
-                StatCard(
+                LiDARStatCard(
                     title: "Media",
                     value: String(format: "%.2f mm", measurement.averageDepth),
                     color: .blue
                 )
 
-                StatCard(
+                LiDARStatCard(
                     title: "Min",
                     value: String(format: "%.2f mm", measurement.minDepth),
                     color: .orange
                 )
 
-                StatCard(
+                LiDARStatCard(
                     title: "Max",
                     value: String(format: "%.2f mm", measurement.maxDepth),
                     color: .green
@@ -581,10 +597,37 @@ struct MeasurementResultView: View {
                     .font(.customFont(size: 14, weight: .regular))
                 Spacer()
                 Text(String(format: "%.2f mm", measurement.standardDeviation))
-                    .font(.customFont(size: 14, weight: .semiBold))
+                    .font(.customFont(size: 14, weight: .semibold))
             }
-            .foregroundColor(.customTextColor)
+            .foregroundColor(.white)
         }
+    }
+
+    private var insightSection: some View {
+        let insight = buildInsight()
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(insight.primary)
+                .font(.customFont(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+
+            if let secondary = insight.secondary {
+                Text(secondary)
+                    .font(.customFont(size: 14, weight: .regular))
+                    .foregroundColor(.white.opacity(0.75))
+            }
+
+            if insight.showCTA {
+                Text("Vuoi sapere quando dovrai cambiarle, non solo quanto manca?")
+                    .font(.customFont(size: 14, weight: .semibold))
+                    .foregroundColor(Color.customBitterSweet)
+                    .padding(.top, 6)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.customFieldColor)
+        )
     }
 
     private var zoneMapSection: some View {
@@ -607,12 +650,12 @@ struct MeasurementResultView: View {
             Text("Informazioni Scansione")
                 .font(.customFont(size: 18, weight: .bold))
 
-            MetadataRow(label: "Punti Campionati", value: "\(measurement.samplePoints)")
-            MetadataRow(label: "Durata", value: String(format: "%.1fs", measurement.metadata.scanDuration))
-            MetadataRow(label: "Distanza Media", value: String(format: "%.1f cm", measurement.metadata.averageDistance))
-            MetadataRow(label: "Qualità Mesh", value: measurement.metadata.meshQuality.displayName)
-            MetadataRow(label: "Illuminazione", value: measurement.metadata.lightingConditions.displayName)
-            MetadataRow(label: "Data", value: formatDate(measurement.timestamp))
+            LiDARMetadataRow(label: "Punti Campionati", value: "\(measurement.samplePoints)")
+            LiDARMetadataRow(label: "Durata", value: String(format: "%.1fs", measurement.metadata.scanDuration))
+            LiDARMetadataRow(label: "Distanza Media", value: String(format: "%.1f cm", measurement.metadata.averageDistance))
+            LiDARMetadataRow(label: "Qualità Mesh", value: measurement.metadata.meshQuality.displayName)
+            LiDARMetadataRow(label: "Illuminazione", value: measurement.metadata.lightingConditions.displayName)
+            LiDARMetadataRow(label: "Data", value: formatDate(measurement.timestamp))
         }
         .padding(16)
         .background(
@@ -629,7 +672,7 @@ struct MeasurementResultView: View {
                 HStack {
                     Image(systemName: "square.and.arrow.down")
                     Text("Salva Misurazione")
-                        .font(.customFont(size: 16, weight: .semiBold))
+                        .font(.customFont(size: 16, weight: .semibold))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -646,7 +689,7 @@ struct MeasurementResultView: View {
                 HStack {
                     Image(systemName: "square.and.arrow.up")
                     Text("Condividi")
-                        .font(.customFont(size: 16, weight: .semiBold))
+                        .font(.customFont(size: 16, weight: .semibold))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -654,7 +697,7 @@ struct MeasurementResultView: View {
                     RoundedRectangle(cornerRadius: 18)
                         .fill(Color.customFieldColor)
                 )
-                .foregroundColor(.customTextColor)
+                .foregroundColor(.white)
             }
         }
     }
@@ -665,6 +708,44 @@ struct MeasurementResultView: View {
         formatter.timeStyle = .short
         formatter.locale = Locale(identifier: "it_IT")
         return formatter.string(from: date)
+    }
+
+    private func buildInsight() -> (primary: String, secondary: String?, showCTA: Bool) {
+        let primary = "Sei a \(formatMm(measurement.averageDepth)) mm."
+        guard let comparison = comparisonMeasurement() else {
+            return (primary, nil, false)
+        }
+
+        let days = daysBetween(start: comparison.timestamp, end: measurement.timestamp)
+        let delta = measurement.averageDepth - comparison.averageDepth
+        let deltaText = formatDelta(delta)
+        let secondary = "Negli ultimi \(days) giorni: \(deltaText) mm."
+        return (primary, secondary, true)
+    }
+
+    private func comparisonMeasurement() -> TreadDepthMeasurement? {
+        let minimumDays = 30
+        let cutoff = Calendar.current.date(byAdding: .day, value: -minimumDays, to: measurement.timestamp) ?? measurement.timestamp
+        let candidates = history.filter { $0.id != measurement.id && $0.timestamp <= cutoff }
+        return candidates.sorted { $0.timestamp > $1.timestamp }.first
+    }
+
+    private func daysBetween(start: Date, end: Date) -> Int {
+        let components = Calendar.current.dateComponents([.day], from: start, to: end)
+        return max(1, components.day ?? 0)
+    }
+
+    private func formatDelta(_ delta: Double) -> String {
+        let sign = delta >= 0 ? "+" : "-"
+        return "\(sign)\(formatMm(abs(delta)))"
+    }
+
+    private func formatMm(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.1f", value)
     }
 }
 
@@ -710,7 +791,7 @@ struct MeasurementHistoryView: View {
             }
         }
         .sheet(item: $selectedMeasurement) { measurement in
-            MeasurementResultView(measurement: measurement)
+            MeasurementResultView(measurement: measurement, history: measurements)
         }
     }
 
@@ -721,7 +802,7 @@ struct MeasurementHistoryView: View {
                 .foregroundColor(.gray)
 
             Text("Nessuna Misurazione")
-                .font(.customFont(size: 18, weight: .semiBold))
+                .font(.customFont(size: 18, weight: .semibold))
 
             Text("Le tue misurazioni appariranno qui")
                 .font(.customFont(size: 14, weight: .regular))
@@ -733,7 +814,7 @@ struct MeasurementHistoryView: View {
 
 // MARK: - Supporting Views
 
-struct StatCard: View {
+struct LiDARStatCard: View {
     let title: String
     let value: String
     let color: Color
@@ -769,7 +850,7 @@ struct ZoneRow: View {
             Spacer()
 
             Text(String(format: "%.2f mm", depth))
-                .font(.customFont(size: 14, weight: .semiBold))
+                .font(.customFont(size: 14, weight: .semibold))
                 .foregroundColor(depthColor)
         }
         .padding(.horizontal, 12)
@@ -791,7 +872,7 @@ struct ZoneRow: View {
     }
 }
 
-struct MetadataRow: View {
+struct LiDARMetadataRow: View {
     let label: String
     let value: String
 
@@ -804,8 +885,8 @@ struct MetadataRow: View {
             Spacer()
 
             Text(value)
-                .font(.customFont(size: 14, weight: .semiBold))
-                .foregroundColor(.customTextColor)
+                .font(.customFont(size: 14, weight: .semibold))
+                .foregroundColor(.white)
         }
     }
 }
@@ -821,7 +902,7 @@ struct MeasurementHistoryRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(String(format: "%.2f mm", measurement.averageDepth))
-                    .font(.customFont(size: 16, weight: .semiBold))
+                    .font(.customFont(size: 16, weight: .semibold))
 
                 Text(formatDate(measurement.timestamp))
                     .font(.customFont(size: 12, weight: .regular))

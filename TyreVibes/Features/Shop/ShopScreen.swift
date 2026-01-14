@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShopScreen: View {
     @State private var selectedCategory = "All Tires"
+    @State private var showNotificationScreen: Bool = false
     let categories = ["All Tires", "Winter", "Summer", "All Seasons"]
     
     var body: some View {
@@ -11,122 +12,10 @@ struct ShopScreen: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Status Bar
-                
-                // App Bar with Marketplace title
-                AppBarViewShop()
-                
-                // Search and Filter
-                SearchFilterView()
-                
-                // Main Content
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Recommended for you section
-                        SectionHeaderView(
-                            title: "Recommended for you",
-                            actionText: "View All",
-                            actionColor: Color(hex: "#F36656")
-                        )
-                        
-                        // Category Pills
-                        CategoryPillsView(
-                            categories: categories,
-                            selectedCategory: $selectedCategory
-                        )
-                        
-                        // UltraGrip Product Card
-                        UltraGripCardView()
-                        
-                        // Featured Tires Section
-                        SectionHeaderView(
-                            title: "Featured Tires",
-                            actionText: "View All",
-                            actionColor: Color(hex: "#F36656")
-                        )
-                        
-                        // Featured Products (Horizontal Scroll)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                FeaturedTireCardView(
-                                    title: "WinterContact TS",
-                                    subtitle: "870",
-                                    size: "245/45R18",
-                                    price: "$ 188.99"
-                                )
-                                FeaturedTireCardView(
-                                    title: "WinterContact TS",
-                                    subtitle: "870",
-                                    size: "245/45R18",
-                                    price: "$ 188.99"
-                                )
-                            }
-                            .padding(.horizontal, 24)
-                        }
-                        
-                        // Nearby Dealers Section
-                        SectionHeaderView(
-                            title: "Nearby Dealers",
-                            actionText: "View Map",
-                            actionColor: Color(hex: "#F36656")
-                        )
-                        .padding(.horizontal, 24)
-                        
-                        // Dealers Cards
-                        HStack(spacing: 16) {
-                            DealerCardView(
-                                name: "Premium Tire Shop",
-                                address: "456 Oak Ave, Westside",
-                                distance: "1.2 mi",
-                                services: ["Rotation", "Balancing", "Alignment"],
-                                isAvailable: true
-                            )
-                            
-                            DealerCardView(
-                                name: "City Auto Center",
-                                address: "123 Main St, Downtown",
-                                distance: "0.8 mi",
-                                services: ["Installation", "Balancing", "Alignment"],
-                                isAvailable: true
-                            )
-                        }
-                        .padding(.horizontal, 24)
-                        
-                        // Checkout Section Header
-                        VStack(alignment: .leading) {
-                            Text("Checkout")
-                                .font(.system(size: 22, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 16)
-                        
-                        // Checkout Summary
-                        CheckoutSummaryView()
-                        
-                        // Divider
-                        Divider()
-                            .background(Color(hex: "#2FB8FF").opacity(0.2))
-                            .padding(.horizontal, 24)
-                        
-                        // Payment Methods
-                        PaymentMethodsView()
-                        
-                        // Complete Purchase Button
-                        Button(action: {}) {
-                            Text("Complete Purchase")
-                                .font(.system(size: 18, weight: .semibold))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 62)
-                                .background(Color(hex: "#F36656").opacity(0.5))
-                                .foregroundColor(.white)
-                                .cornerRadius(100)
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 100)
-                    }
-                    .padding(.top, 16)
+                AppBarViewShop(showNotificationScreen: $showNotificationScreen)
+                ComingSoonView()
+                .fullScreenCover(isPresented: $showNotificationScreen) {
+                        NotificationScreen()
                 }
                 
                 Spacer()
@@ -135,14 +24,45 @@ struct ShopScreen: View {
     }
 }
 
+private struct ComingSoonView: View {
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+
+            Image(systemName: "cart")
+                .font(.system(size: 56, weight: .light))
+                .foregroundColor(.white.opacity(0.35))
+
+            VStack(spacing: 6) {
+                Text("Stiamo arrivando")
+                    .font(.customFont(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+                Text("Il marketplace sarà disponibile a breve.")
+                    .font(.customFont(size: 14, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 80)
+    }
+}
+
 // MARK: - App Bar
 struct AppBarViewShop: View {
+    @Binding var showNotificationScreen: Bool
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Marketplace")
                     .font(.system(size: 36, weight: .semibold))
                     .foregroundColor(.white)
+                Text("Stiamo arrivando")
+                    .font(.customFont(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.65))
             }
             
             Spacer()

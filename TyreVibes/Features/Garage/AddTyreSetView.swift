@@ -108,6 +108,21 @@ struct AddTyreSetView: View {
         return components.joined(separator: " • ")
     }
 
+    private var activeSetName: String? {
+        let trimmed = setName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private var activeSetPosition: String? {
+        guard let currentPosition else { return nil }
+        switch currentPosition {
+        case .front:
+            return "front"
+        case .rear:
+            return "rear"
+        }
+    }
+
     private var recommendedSets: [RecommendedTyreSet] {
         guard !vehicleTyres.isEmpty else { return [] }
 
@@ -153,7 +168,7 @@ struct AddTyreSetView: View {
             switch newValue {
             case .frontRear:
                 includeRearTyre = true
-                setName = ""
+                setName = newValue.rawValue
             case .custom:
                 includeRearTyre = false
                 setName = ""
@@ -169,7 +184,9 @@ struct AddTyreSetView: View {
                     isPresentingScanner = false
                 },
                 vehicleid: vehicleId,
-                scanContext: scanContext
+                scanContext: scanContext,
+                setName: activeSetName,
+                setPosition: activeSetPosition
             )
         }
     }

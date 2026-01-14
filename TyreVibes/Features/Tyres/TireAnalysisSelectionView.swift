@@ -36,25 +36,45 @@ struct TireAnalysisSelectionView: View {
 
                         // Vehicle Selection Section
                         VStack(alignment: .leading, spacing: 10) {
-                            Text(LocalizedStringKey("Select Vehicle"))
-                                .font(.customFont(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.top, 4)
+                            if !garageViewModel.vehicles.isEmpty {
+                                Text(LocalizedStringKey("Select Vehicle"))
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 24)
+                                    .padding(.top, 4)
+                            }
 
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 16) {
-                                    ForEach(garageViewModel.vehicles, id: \.vehicle.id) { vehicle in
-                                        VehicleCard(
-                                            vehicle: vehicle,
-                                            isSelected: selectedVehicle?.vehicle.id == vehicle.vehicle.id
-                                        ) {
-                                            selectVehicle(vehicle)
-                                        }
-                                    }
+                            if garageViewModel.isLoading {
+                                HStack {
+                                    ProgressView()
+                                        .tint(.white)
+                                    Text(LocalizedStringKey("Loading..."))
+                                        .font(.customFont(size: 14, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
                                 }
                                 .padding(.horizontal, 24)
-                                .padding(.vertical, 20)
+                                .padding(.vertical, 16)
+                            } else if garageViewModel.vehicles.isEmpty {
+                                Text(LocalizedStringKey("No vehicles found, please add a new one"))
+                                    .font(.customFont(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 16)
+                            } else {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(garageViewModel.vehicles, id: \.vehicle.id) { vehicle in
+                                            VehicleCard(
+                                                vehicle: vehicle,
+                                                isSelected: selectedVehicle?.vehicle.id == vehicle.vehicle.id
+                                            ) {
+                                                selectVehicle(vehicle)
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 20)
+                                }
                             }
                         }
 
@@ -121,21 +141,23 @@ struct TireAnalysisSelectionView: View {
                 VStack {
                     Spacer().frame(height: 500)
 
-                    Button(action: {
-                        if selectedVehicle != nil && selectedTyre != nil {
-                            navigateToAnalysis = true
+                    if !garageViewModel.vehicles.isEmpty {
+                        Button(action: {
+                            if selectedVehicle != nil && selectedTyre != nil {
+                                navigateToAnalysis = true
+                            }
+                        }) {
+                            Text(LocalizedStringKey("Start"))
+                                .font(.customFont(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(width: 212, height: 62)
+                                .background(Color.customBitterSweet)
                         }
-                    }) {
-                        Text(LocalizedStringKey("Start"))
-                            .font(.customFont(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 212, height: 62)
-                            .background(Color.customBitterSweet)
+                        .disabled(selectedVehicle == nil || selectedTyre == nil)
+                        .opacity(selectedVehicle == nil || selectedTyre == nil ? 0.5 : 1)
+                        .cornerRadius(100)
+                        .padding(.horizontal, 24)
                     }
-                    .disabled(selectedVehicle == nil || selectedTyre == nil)
-                    .opacity(selectedVehicle == nil || selectedTyre == nil ? 0.5 : 1)
-                    .cornerRadius(100)
-                    .padding(.horizontal, 24)
                 }
             }
             .navigationBarHidden(true)
@@ -149,9 +171,7 @@ struct TireAnalysisSelectionView: View {
         }
         .task {
             await garageViewModel.fetchCars()
-        }
-        .onChange(of: garageViewModel.vehicles) { _, newVehicles in
-            if selectedVehicle == nil, let firstVehicle = newVehicles.first {
+            if selectedVehicle == nil, let firstVehicle = garageViewModel.vehicles.first {
                 selectVehicle(firstVehicle, animated: false)
             }
         }
@@ -182,6 +202,17 @@ struct VehicleCard: View {
     let isSelected: Bool
     let action: () -> Void
 
+    private var vehicleDisplayName: String {
+        let make = vehicle.vehicle.make ?? ""
+        let modelText = vehicle.vehicle.smartModelDescription ?? vehicle.vehicle.model ?? ""
+        let parts = [make, modelText].filter { !$0.isEmpty }
+        return parts.joined(separator: " ")
+    }
+
+    private var usesCompactLayout: Bool {
+        vehicleDisplayName.count > 18
+    }
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 0) {
@@ -210,7 +241,7 @@ struct VehicleCard: View {
                         .scaleEffect(isSelected ? 1.10 : 1.05)
                         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
 
-                    VStack(spacing: 8) {
+                    VStack(spacing: usesCompactLayout ? 6 : 8) {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.white.opacity(0.2))
                             .frame(width: 116, height: 90)
@@ -229,12 +260,12 @@ struct VehicleCard: View {
                                 }
                             }
 
-                        Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
+                        Text(vehicleDisplayName)
                             .font(.customFont(size: 12, weight: .semibold))
                             .foregroundColor(.white)
                             .lineLimit(2)
                             .frame(width: 116)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, usesCompactLayout ? 0 : 8)
                     }
                 }
             }

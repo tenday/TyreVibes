@@ -48,6 +48,7 @@ struct SettingsView: View {
                             cameraPermission: $viewModel.cameraPermission,
                             privacyLevel: $viewModel.privacyLevel,
                             onDataProtection: { viewModel.isPresentingDataProtection = true },
+                            onPasskey: { viewModel.registerPasskey() },
                             onExportData: { viewModel.exportMyData() }
                         )
                         .padding(.top, 24)
@@ -114,16 +115,16 @@ struct SettingsView: View {
                 }
             }
             .confirmationDialog(
-                "Conferma Logout",
+                "Conferma Logout".localized,
                 isPresented: $viewModel.isPresentingLogoutConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Logout", role: .destructive) {
+                Button("Logout".localized, role: .destructive) {
                     viewModel.logout()
                 }
-                Button("Annulla", role: .cancel) {}
+                Button("Annulla".localized, role: .cancel) {}
             } message: {
-                Text("Sei sicuro di voler effettuare il logout? Dovrai accedere nuovamente per utilizzare l'app.")
+                Text("Sei sicuro di voler effettuare il logout? Dovrai accedere nuovamente per utilizzare l'app.".localized)
             }
             .task {
                 viewModel.onAppear()
@@ -154,7 +155,7 @@ struct AppBarView: View {
 
     var body: some View {
         HStack {
-            Text("Settings")
+            Text("Settings".localized)
                 .font(.customFont(size: 36, weight: .semibold))
                 .foregroundColor(.white)
 
@@ -170,6 +171,8 @@ struct AppBarView: View {
                         .padding(12)
                         .background(glassCircle)
                 }
+                .accessibilityLabel("Aggiorna statistiche".localized)
+                .accessibilityHint("Ricarica le statistiche dell'app".localized)
 
                 Button(action: onNotifications) {
                     ZStack(alignment: .topTrailing) {
@@ -192,8 +195,17 @@ struct AppBarView: View {
                         }
                     }
                 }
+                .accessibilityLabel(notificationsAccessibilityLabel)
+                .accessibilityHint("Apri il centro notifiche".localized)
             }
         }
+    }
+
+    private var notificationsAccessibilityLabel: String {
+        if notificationCount > 0 {
+            return String(format: "Notifiche, %d non lette".localized, notificationCount)
+        }
+        return "Notifiche".localized
     }
 
     private var glassCircle: some View {
@@ -234,25 +246,25 @@ struct PerformanceSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Performance & Optimization")
+            Text("Performance & Optimization".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
             ToggleCard(
-                title: "Background Synchronization",
-                subtitle: "Keep data up to date when app is closed",
+                title: "Background Synchronization".localized,
+                subtitle: "Keep data up to date when app is closed".localized,
                 isOn: $backgroundSync
             )
 
             ToggleCard(
-                title: "Battery Optimization",
-                subtitle: "Reduce background activities when battery is low",
+                title: "Battery Optimization".localized,
+                subtitle: "Reduce background activities when battery is low".localized,
                 isOn: $batteryOptimization
             )
 
             GlassCard(height: 72) {
                 HStack {
-                    Text("Image Quality")
+                    Text("Image Quality".localized)
                         .font(.custom("Sora-SemiBold", size: 16))
                         .foregroundColor(.white)
 
@@ -262,7 +274,7 @@ struct PerformanceSection: View {
                         .frame(width: 130)
                         .tint(Color(hex: "5CEBFF"))
 
-                    Text(imageQualityLabel)
+                    Text(imageQualityLabel.localized)
                         .font(.custom("Sora-Regular", size: 14))
                         .foregroundColor(.white)
                 }
@@ -270,15 +282,15 @@ struct PerformanceSection: View {
             }
 
             ToggleCard(
-                title: "Image Cache Management",
-                subtitle: "Automatically clear cached images to save space",
+                title: "Image Cache Management".localized,
+                subtitle: "Automatically clear cached images to save space".localized,
                 isOn: $cacheManagement
             )
 
             HStack(spacing: 16) {
-                StatCard(value: stats.appSize, label: "App Size")
-                StatCard(value: stats.cacheSize, label: "Cache Size")
-                StatCard(value: stats.batteryUsage, label: "Battery")
+                StatCard(value: stats.appSize, label: "App Size".localized)
+                StatCard(value: stats.cacheSize, label: "Cache Size".localized)
+                StatCard(value: stats.batteryUsage, label: "Battery".localized)
             }
         }
     }
@@ -295,42 +307,42 @@ struct CacheManagementSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Gestione Cache")
+            Text("Gestione Cache".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
             // Cache Statistics
             VStack(spacing: 12) {
-                CacheStatRow(label: "Cache Immagini", size: stats.imageCacheSize, icon: "photo.fill")
-                CacheStatRow(label: "Cache Veicoli", size: stats.vehicleCacheSize, icon: "car.fill")
-                CacheStatRow(label: "File Temporanei", size: stats.tempFilesSize, icon: "doc.fill")
+                CacheStatRow(label: "Cache Immagini".localized, size: stats.imageCacheSize, icon: "photo.fill")
+                CacheStatRow(label: "Cache Veicoli".localized, size: stats.vehicleCacheSize, icon: "car.fill")
+                CacheStatRow(label: "File Temporanei".localized, size: stats.tempFilesSize, icon: "doc.fill")
             }
 
             // Individual Clear Buttons
             VStack(spacing: 12) {
                 CacheButton(
-                    title: "Pulisci Cache Immagini",
+                    title: "Pulisci Cache Immagini".localized,
                     icon: "photo.on.rectangle.angled",
                     size: stats.imageCacheSize,
                     action: onClearImageCache
                 )
 
                 CacheButton(
-                    title: "Pulisci Cache Veicoli",
+                    title: "Pulisci Cache Veicoli".localized,
                     icon: "car.2",
                     size: stats.vehicleCacheSize,
                     action: onClearVehicleCache
                 )
 
                 CacheButton(
-                    title: "Pulisci Cache Pneumatici",
+                    title: "Pulisci Cache Pneumatici".localized,
                     icon: "circle.hexagongrid.fill",
                     size: "—",
                     action: onClearTyreCache
                 )
 
                 CacheButton(
-                    title: "Pulisci File Temporanei",
+                    title: "Pulisci File Temporanei".localized,
                     icon: "doc.badge.gearshape",
                     size: stats.tempFilesSize,
                     action: onClearTempFiles
@@ -346,11 +358,11 @@ struct CacheManagementSection: View {
                             .font(.system(size: 20))
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Pulisci Tutta la Cache")
+                            Text("Pulisci Tutta la Cache".localized)
                                 .font(.custom("Sora-Bold", size: 16))
                                 .foregroundColor(.white)
 
-                            Text("Dimensione totale: \(stats.cacheSize)")
+                            Text(String(format: "Dimensione totale: %@".localized, stats.cacheSize))
                                 .font(.custom("Sora-Regular", size: 12))
                                 .foregroundColor(.white.opacity(0.6))
                         }
@@ -442,34 +454,58 @@ struct SecuritySection: View {
     @Binding var privacyLevel: PrivacyLevel
 
     let onDataProtection: () -> Void
+    let onPasskey: () -> Void
     let onExportData: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Security and Privacy")
+            Text("Security and Privacy".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
             ToggleCard(
-                title: "Biometric Authentication",
-                subtitle: "Use Face ID or fingerprint to secure the app",
+                title: "Biometric Authentication".localized,
+                subtitle: "Use Face ID or fingerprint to secure the app".localized,
                 isOn: $biometricAuth
             )
 
+            Button(action: onPasskey) {
+                GlassCard(height: 62, borderColor: Color(hex: "2FB8FF")) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Passkey".localized)
+                                .font(.custom("Sora-SemiBold", size: 16))
+                                .foregroundColor(.white)
+
+                            Text("Create a passkey to sign in faster".localized)
+                                .font(.custom("Sora-Regular", size: 12))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "key.fill")
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+
             ToggleCard(
-                title: "Location Permission",
-                subtitle: "Allow app to access your location",
+                title: "Location Permission".localized,
+                subtitle: "Allow app to access your location".localized,
                 isOn: $locationPermission
             )
 
             ToggleCard(
-                title: "Camera Permission",
-                subtitle: "Allow app to access your camera for AR features",
+                title: "Camera Permission".localized,
+                subtitle: "Allow app to access your camera for AR features".localized,
                 isOn: $cameraPermission
             )
 
             HStack(spacing: 16) {
-                ForEach(PrivacyLevel.allCases, id: \.self) { level in
+                ForEach(PrivacyLevel.allCases, id: \.self) {
+                    level in
                     PrivacyLevelButton(
                         level: level,
                         isSelected: privacyLevel == level
@@ -483,11 +519,11 @@ struct SecuritySection: View {
                 GlassCard(height: 100) {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Data Protection")
+                            Text("Data Protection".localized)
                                 .font(.custom("Sora-SemiBold", size: 16))
                                 .foregroundColor(.white)
 
-                            Text("View collected data and request deletion")
+                            Text("View collected data and request deletion".localized)
                                 .font(.custom("Sora-Regular", size: 16))
                                 .foregroundColor(.white.opacity(0.6))
                                 .lineLimit(2)
@@ -504,7 +540,7 @@ struct SecuritySection: View {
 
             Button(action: onExportData) {
                 GlassCard(height: 62, borderColor: Color(hex: "2FB8FF")) {
-                    Text("Export My Data (GDPR)")
+                    Text("Export My Data (GDPR)".localized)
                         .font(.custom("Sora-Bold", size: 16))
                         .foregroundColor(.white)
                 }
@@ -519,11 +555,12 @@ struct LanguageSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Language")
+            Text("Language".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
-            ForEach(Language.allCases, id: \.self) { language in
+            ForEach(Language.allCases, id: \.self) {
+                language in
                 LanguageCard(
                     language: language,
                     isSelected: selectedLanguage == language
@@ -537,11 +574,11 @@ struct LanguageSection: View {
 
 // MARK: - Reusable Components
 struct GlassCard<Content: View>: View {
-    let height: CGFloat
+    let height: CGFloat?
     let borderColor: Color
     let content: Content
 
-    init(height: CGFloat, borderColor: Color = Color(hex: "5CEBFF").opacity(0.4), @ViewBuilder content: () -> Content) {
+    init(height: CGFloat? = nil, borderColor: Color = Color(hex: "5CEBFF").opacity(0.4), @ViewBuilder content: () -> Content) {
         self.height = height
         self.borderColor = borderColor
         self.content = content()
@@ -587,6 +624,9 @@ struct ToggleCard: View {
                 Toggle("", isOn: $isOn)
                     .labelsHidden()
                     .toggleStyle(SwitchToggleStyle(tint: Color(hex: "2FB8FF")))
+                    .accessibilityLabel(title)
+                    .accessibilityHint(subtitle)
+                    .accessibilityValue(isOn ? "Attivo".localized : "Disattivo".localized)
             }
             .padding(.horizontal, 18)
         }
@@ -627,7 +667,7 @@ struct PrivacyLevelButton: View {
                 height: 62,
                 borderColor: isSelected ? Color(hex: "2FB8FF") : Color(hex: "5CEBFF").opacity(0.4)
             ) {
-                Text(level.rawValue)
+                Text(level.rawValue.localized)
                     .font(.custom(isSelected ? "Sora-Bold" : "Sora-Regular", size: 16))
                     .foregroundColor(.white)
             }
@@ -648,7 +688,7 @@ struct LanguageCard: View {
                     Text(language.flag)
                         .font(.system(size: 24))
 
-                    Text(language.name)
+                    Text(language.name.localized)
                         .font(.custom("Sora-SemiBold", size: 16))
                         .foregroundColor(.white)
 
@@ -676,31 +716,31 @@ struct NotificationsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Notifications")
+            Text("Notifications".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
             ToggleCard(
-                title: "Enable Notifications",
-                subtitle: "Receive alerts and updates from the app",
+                title: "Enable Notifications".localized,
+                subtitle: "Receive alerts and updates from the app".localized,
                 isOn: $notificationsEnabled
             )
 
             if notificationsEnabled {
                 VStack(spacing: 18) {
                     ToggleCard(
-                        title: "Promotions & Offers",
-                        subtitle: "Get notified about special deals",
+                        title: "Promotions & Offers".localized,
+                        subtitle: "Get notified about special deals".localized,
                         isOn: $promotionNotifications
                     )
                     ToggleCard(
-                        title: "App Updates",
-                        subtitle: "Know when a new version is available",
+                        title: "App Updates".localized,
+                        subtitle: "Know when a new version is available".localized,
                         isOn: $updateNotifications
                     )
                     ToggleCard(
-                        title: "Analysis Complete",
-                        subtitle: "Receive an alert when tyre analysis is done",
+                        title: "Analysis Complete".localized,
+                        subtitle: "Receive an alert when tyre analysis is done".localized,
                         isOn: $analysisNotifications
                     )
                 }
@@ -716,12 +756,13 @@ struct AppearanceSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Appearance")
+            Text("Appearance".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
             HStack(spacing: 16) {
-                ForEach(AppTheme.allCases, id: \.self) { theme in
+                ForEach(AppTheme.allCases, id: \.self) {
+                    theme in
                     ThemeButton(
                         theme: theme,
                         isSelected: selectedTheme == theme
@@ -745,7 +786,7 @@ struct ThemeButton: View {
                 height: 62,
                 borderColor: isSelected ? Color(hex: "2FB8FF") : Color(hex: "5CEBFF").opacity(0.4)
             ) {
-                Text(theme.rawValue)
+                Text(theme.rawValue.localized)
                     .font(.custom(isSelected ? "Sora-Bold" : "Sora-Regular", size: 16))
                     .foregroundColor(.white)
             }
@@ -762,7 +803,7 @@ struct AccountSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Account")
+            Text("Account".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
@@ -772,7 +813,7 @@ struct AccountSection: View {
                         Image(systemName: "square.and.arrow.up")
                             .foregroundColor(Color(hex: "5CEBFF"))
                             .font(.system(size: 20))
-                        Text("Esporta i Miei Dati")
+                        Text("Esporta i Miei Dati".localized)
                             .font(.custom("Sora-SemiBold", size: 16))
                             .foregroundColor(.white)
                         Spacer()
@@ -789,7 +830,7 @@ struct AccountSection: View {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
                             .foregroundColor(.orange)
                             .font(.system(size: 20))
-                        Text("Logout")
+                        Text("Logout".localized)
                             .font(.custom("Sora-SemiBold", size: 16))
                             .foregroundColor(.white)
                         Spacer()
@@ -804,7 +845,7 @@ struct AccountSection: View {
                         Image(systemName: "trash")
                             .foregroundColor(.red)
                             .font(.system(size: 20))
-                        Text("Elimina Account")
+                        Text("Elimina Account".localized)
                             .font(.custom("Sora-SemiBold", size: 16))
                             .foregroundColor(.red)
                         Spacer()
@@ -818,6 +859,7 @@ struct AccountSection: View {
 
 struct AboutSection: View {
     @State private var showHelpSheet = false
+    @State private var showMailUnavailable = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "N/A"
@@ -829,33 +871,33 @@ struct AboutSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("About & Support")
+            Text("About & Support".localized)
                 .font(.custom("Sora-SemiBold", size: 22))
                 .foregroundColor(.white)
 
-            AboutButton(title: "Centro Assistenza", icon: "questionmark.circle") {
+            AboutButton(title: "Centro Assistenza".localized, icon: "questionmark.circle") {
                 showHelpSheet = true
             }
 
-            AboutButton(title: "Termini di Servizio", icon: "doc.text") {
+            AboutButton(title: "Termini di Servizio".localized, icon: "doc.text") {
                 openURL("https://tyrevibes.app/terms")
             }
 
-            AboutButton(title: "Privacy Policy", icon: "hand.raised") {
+            AboutButton(title: "Privacy Policy".localized, icon: "hand.raised") {
                 openURL("https://tyrevibes.app/privacy")
             }
 
-            AboutButton(title: "Valuta Quest'App", icon: "star") {
+            AboutButton(title: "Valuta Quest'App".localized, icon: "star") {
                 rateApp()
             }
 
-            AboutButton(title: "Contattaci", icon: "envelope") {
+            AboutButton(title: "Contattaci".localized, icon: "envelope") {
                 openEmail()
             }
 
             VStack(spacing: 8) {
                 HStack {
-                    Text("Versione App")
+                    Text("Versione App".localized)
                         .font(.custom("Sora-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
                     Spacer()
@@ -865,7 +907,7 @@ struct AboutSection: View {
                 }
 
                 HStack {
-                    Text("Build Number")
+                    Text("Build Number".localized)
                         .font(.custom("Sora-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
                     Spacer()
@@ -878,6 +920,14 @@ struct AboutSection: View {
         }
         .sheet(isPresented: $showHelpSheet) {
             HelpCenterSheet()
+        }
+        .alert("Mail non disponibile".localized, isPresented: $showMailUnavailable) {
+            Button("Copia email".localized) {
+                UIPasteboard.general.string = "support@tyrevibes.com"
+            }
+            Button("OK".localized, role: .cancel) { }
+        } message: {
+            Text("Configura un account Mail per inviare supporto a support@tyrevibes.com".localized)
         }
     }
 
@@ -902,14 +952,20 @@ struct AboutSection: View {
     }
 
     private func openEmail() {
-        let email = "support@tyrevibes.app"
-        let subject = "TyreVibes Support Request"
-        let body = "Versione App: \(appVersion) (Build \(buildNumber))\n\nDescrivi il tuo problema o richiesta:\n\n"
+        let email = "support@tyrevibes.com"
+        let subject = "TyreVibes Support Request".localized
+        let body = String(
+            format: "Versione App: %@ (Build %@)\n\nDescrivi il tuo problema o richiesta:\n\n".localized,
+            appVersion,
+            buildNumber
+        )
 
         let urlString = "mailto:\(email)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&body=\(body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
 
-        if let url = URL(string: urlString) {
+        if let url = URL(string: urlString), UIApplication.shared.canOpenURL(url) {
             UIApplication.shared.open(url)
+        } else {
+            showMailUnavailable = true
         }
     }
 }
@@ -967,6 +1023,16 @@ enum PrivacyLevel: String, CaseIterable {
 
 struct HelpCenterSheet: View {
     @Environment(\.dismiss) private var dismiss
+    private let supportEmail = "support@tyrevibes.com"
+    @State private var showMailUnavailable = false
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "N/A"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "N/A"
+    }
 
     private let faqs: [(question: String, answer: String)] = [
         (
@@ -1010,27 +1076,26 @@ struct HelpCenterSheet: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        ForEach(Array(faqs.enumerated()), id: \.offset) { index, faq in
-                            FAQItem(question: faq.question, answer: faq.answer)
+                        ForEach(Array(faqs.enumerated()), id: \.offset) {
+                            index, faq in
+                            FAQItem(question: faq.question.localized, answer: faq.answer.localized)
                         }
 
                         // Contact Support Button
                         VStack(spacing: 12) {
-                            Text("Non hai trovato quello che cercavi?")
+                            Text("Non hai trovato quello che cercavi?".localized)
                                 .font(.custom("Sora-Regular", size: 14))
                                 .foregroundColor(.white.opacity(0.7))
                                 .padding(.top, 24)
 
                             Button(action: {
-                                if let url = URL(string: "mailto:support@tyrevibes.app") {
-                                    UIApplication.shared.open(url)
-                                }
+                                openSupportEmail()
                             }) {
                                 GlassCard(height: 56, borderColor: Color(hex: "2FB8FF")) {
                                     HStack {
                                         Image(systemName: "envelope.fill")
                                             .foregroundColor(Color(hex: "5CEBFF"))
-                                        Text("Contatta il Supporto")
+                                        Text("Contatta il Supporto".localized)
                                             .font(.custom("Sora-SemiBold", size: 16))
                                             .foregroundColor(.white)
                                     }
@@ -1044,16 +1109,40 @@ struct HelpCenterSheet: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("Centro Assistenza")
+            .navigationTitle("Centro Assistenza".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Chiudi") {
+                    Button("Chiudi".localized) {
                         dismiss()
                     }
                     .foregroundColor(Color(hex: "5CEBFF"))
                 }
             }
+            .alert("Mail non disponibile".localized, isPresented: $showMailUnavailable) {
+                Button("Copia email".localized) {
+                    UIPasteboard.general.string = supportEmail
+                }
+                Button("OK".localized, role: .cancel) { }
+            } message: {
+                Text(String(format: "Configura un account Mail per inviare supporto a %@".localized, supportEmail))
+            }
+        }
+    }
+
+    private func openSupportEmail() {
+        let subject = "TyreVibes Support Request".localized
+        let body = String(
+            format: "Versione App: %@ (Build %@)\n\nDescrivi il tuo problema o richiesta:\n\n".localized,
+            appVersion,
+            buildNumber
+        )
+        let urlString = "mailto:\(supportEmail)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&body=\(body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+
+        if let url = URL(string: urlString), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        } else {
+            showMailUnavailable = true
         }
     }
 }

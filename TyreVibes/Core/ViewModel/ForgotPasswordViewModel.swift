@@ -37,11 +37,19 @@ class ForgotPasswordViewModel: ObservableObject {
                 didSendLink = true
                 alertItem = AlertItem(
                     title: "Email inviata",
-                    message: "Ti abbiamo inviato un link per reimpostare la password. Controlla anche la cartella spam."
+                    message: "Se l'email è registrata, ti invieremo un link per reimpostare la password. Controlla anche la cartella spam."
                 )
             } catch {
-                let alert = mapErrorToAlert(error, fallbackTitle: "Invio non riuscito")
-                alertItem = AlertItem(title: alert.title, message: alert.message)
+                if let authError = error as? AuthServiceError, case .noUserFound = authError {
+                    didSendLink = true
+                    alertItem = AlertItem(
+                        title: "Email inviata",
+                        message: "Se l'email è registrata, ti invieremo un link per reimpostare la password. Controlla anche la cartella spam."
+                    )
+                } else {
+                    let alert = mapErrorToAlert(error, fallbackTitle: "Invio non riuscito")
+                    alertItem = AlertItem(title: alert.title, message: alert.message)
+                }
             }
             isSendingLink = false
         }
@@ -52,8 +60,6 @@ class ForgotPasswordViewModel: ObservableObject {
             switch authError {
             case .invalidMail(let reason):
                 return ("Email non valida", reason)
-            case .noUserFound:
-                return ("Utente non trovato", "Non esiste un account associato a questa email.")
             default:
                 break
             }

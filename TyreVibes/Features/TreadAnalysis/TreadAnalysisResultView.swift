@@ -13,7 +13,8 @@ struct TreadAnalysisResultView: View {
             VStack {
 
                 // Header
-                Text("\(vehicle.vehicle.make ?? "") \(vehicle.vehicle.model ?? "")")
+                let modelText = vehicle.vehicle.smartModelDescription ?? vehicle.vehicle.model ?? ""
+                Text("\(vehicle.vehicle.make ?? "") \(modelText)")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.white)

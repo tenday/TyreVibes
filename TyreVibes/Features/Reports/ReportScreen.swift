@@ -6,14 +6,34 @@ struct TireData1 {
     let rearLeft: Int
     let rearRight: Int
 }
+
+struct ReportItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let description: String
+    let type: String
+    let date: String
+    let data: TireData1
+}
+
+struct DocumentItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let date: String
+    let icon: String
+    let tint: Color
+}
+
 // MARK: - Reports & Documentations View
 struct ReportsDocumentationsView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var searchText = ""
     @State private var showFilterSheet = false
-    
-    
-   
+
+    private let reports: [ReportItem] = []
+
+    private let documents: [DocumentItem] = []
     
     var body: some View {
         ZStack {
@@ -25,17 +45,16 @@ struct ReportsDocumentationsView: View {
                 // App Bar
                 HStack {
                     Text("Reports & Docs")
-                        .font(.custom("Sora-SemiBold", size: 36))
+                        .font(.customFont(size: 36, weight: .semibold))
                         .foregroundColor(.white)
                     
                     Spacer()
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .frame(height: 62)
+                .padding(.top, 10)
                 
                 // Search + Filter
-                HStack(spacing: 4) {
+                HStack(spacing: 12) {
                     // Search Bar
                     HStack(spacing: 12) {
                         Image(systemName: "magnifyingglass")
@@ -43,12 +62,11 @@ struct ReportsDocumentationsView: View {
                             .foregroundColor(.white.opacity(0.6))
                         
                         TextField("Search...", text: $searchText)
-                            .font(.custom("Sora-Regular", size: 14))
+                            .font(.customFont(size: 14, weight: .regular))
                             .foregroundColor(.white)
                     }
                     .padding(.horizontal, 16)
                     .frame(height: 48)
-                    .frame(width: 340)
                     .background(Color(hex: "212121"))
                     .cornerRadius(35)
                     
@@ -58,151 +76,55 @@ struct ReportsDocumentationsView: View {
                             .font(.system(size: 20))
                             .foregroundColor(.white)
                             .frame(width: 48, height: 48)
-                            .background(Color(hex: "212121"))
-                            .clipShape(Circle())
                     }
+                    .frame(width: 80, height: 48)
+                    .background(Color(hex: "212121"))
+                    .cornerRadius(35)
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 12)
                 
                 // Scrollable Content
-                ScrollView {
-                    VStack(spacing: 22) {
-                        // Report Cards (with random values)
-                        ReportCard(
-                            vehicleName: ["Tesla Model 3", "BMW X5", "Audi A3", "Toyota Camry", "Hyundai Tucson"].randomElement()!,
-                            description: [
-                                "All tires in fair condition. Rear right tire shows signs of uneven wear.",
-                                "Front tires show moderate wear. Rear tires in good condition.",
-                                "All tires in excellent condition. No immediate action needed.",
-                                "Rear left tire pressure slightly low. Monitor over next week.",
-                                "Uneven wear detected on front right tire. Rotation recommended."
-                            ].randomElement()!,
-                            reportType: ["Quick Scan", "Complete Tire Health", "Rotation Check"].randomElement()!,
-                            date: {
-                                let formatter = DateFormatter()
-                                formatter.dateFormat = "MMM d, yyyy"
-                                let daysAgo = Int.random(in: 0...10)
-                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
-                                return formatter.string(from: randomDate)
-                            }(),
-                            tireData: TireData1(
-                                frontLeft: Int.random(in: 60...100),
-                                frontRight: Int.random(in: 60...100),
-                                rearLeft: Int.random(in: 60...100),
-                                rearRight: Int.random(in: 60...100)
-                            )
-                        )
-                        
-                        // Document Card (with random values)
-                        DocumentCard(
-                            title: [
-                                "Toyota Camry",
-                                "Tire Replacement Invoice",
-                                "Service History",
-                                "Inspection Certificate",
-                                "BMW X5"
-                            ].randomElement()!,
-                            subtitle: [
-                                "TireCity Auto Service",
-                                "AutoPro Garage",
-                                "QuickFix Center",
-                                "Speedy Wheels",
-                                "Urban Motors"
-                            ].randomElement()!,
-                            date: {
-                                let formatter = DateFormatter()
-                                formatter.dateFormat = "MMM d, yyyy"
-                                let daysAgo = Int.random(in: 0...15)
-                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
-                                return formatter.string(from: randomDate)
-                            }(),
-                            iconColor: [
-                                Color(hex: "F36656").opacity(0.1),
-                                Color(hex: "FEB96A").opacity(0.1),
-                                Color(hex: "5CEBFF").opacity(0.1),
-                                Color(hex: "2FB8FF").opacity(0.1),
-                                Color(hex: "A9FF8B").opacity(0.1)
-                            ].randomElement()!,
-                            icon: [
-                                "doc.text",
-                                "wrench.and.screwdriver",
-                                "checkmark.seal",
-                                "car.fill",
-                                "doc.plaintext"
-                            ].randomElement()!
-                        )
-                        
-                        // Another Report Card (with random values)
-                        ReportCard(
-                            vehicleName: ["Tesla Model 3", "BMW X5", "Audi A3", "Toyota Camry", "Hyundai Tucson"].randomElement()!,
-                            description: [
-                                "All tires in good condition. Recommend rotations in the next 1,000 miles.",
-                                "Front right tire needs replacement soon.",
-                                "Tire pressure optimal for all tires.",
-                                "Check rear left tire for slow leak.",
-                                "Excellent tread depth on all tires."
-                            ].randomElement()!,
-                            reportType: ["Quick Scan", "Complete Tire Health", "Rotation Check"].randomElement()!,
-                            date: {
-                                let formatter = DateFormatter()
-                                formatter.dateFormat = "MMM d, yyyy"
-                                let daysAgo = Int.random(in: 0...20)
-                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
-                                return formatter.string(from: randomDate)
-                            }(),
-                            tireData: TireData1(
-                                frontLeft: Int.random(in: 60...100),
-                                frontRight: Int.random(in: 60...100),
-                                rearLeft: Int.random(in: 60...100),
-                                rearRight: Int.random(in: 60...100)
-                            )
-                        )
-                        
-                        // Service Document Card (with random values)
-                        DocumentCard(
-                            title: [
-                                "Wheel Alignment Report",
-                                "Tire Rotation Receipt",
-                                "Brake Inspection",
-                                "Annual Service Document",
-                                "Alignment Certificate"
-                            ].randomElement()!,
-                            subtitle: [
-                                "TireCity Auto Service",
-                                "AutoPro Garage",
-                                "QuickFix Center",
-                                "Speedy Wheels",
-                                "Urban Motors"
-                            ].randomElement()!,
-                            date: {
-                                let formatter = DateFormatter()
-                                formatter.dateFormat = "MMM d, yyyy"
-                                let daysAgo = Int.random(in: 0...30)
-                                let randomDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
-                                return formatter.string(from: randomDate)
-                            }(),
-                            iconColor: [
-                                Color(hex: "FEB96A").opacity(0.1),
-                                Color(hex: "F36656").opacity(0.1),
-                                Color(hex: "5CEBFF").opacity(0.1),
-                                Color(hex: "2FB8FF").opacity(0.1),
-                                Color(hex: "A9FF8B").opacity(0.1)
-                            ].randomElement()!,
-                            icon: [
-                                "wrench.and.screwdriver",
-                                "doc.text",
-                                "car.fill",
-                                "doc.plaintext",
-                                "checkmark.seal"
-                            ].randomElement()!
-                        )
-                    }
+                if reports.isEmpty && documents.isEmpty {
+                    EmptyStateView(
+                        icon: "doc.text.magnifyingglass",
+                        title: "Nessun report disponibile",
+                        subtitle: "Esegui un analisi pneumatici per generare il tuo primo report."
+                    )
                     .padding(.horizontal, 24)
-                    .padding(.top, 22)
-                    .padding(.bottom, 100)
+                    .padding(.top, 24)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 18, pinnedViews: []) {
+                            ForEach(reports) { report in
+                                ReportCard(
+                                    vehicleName: report.title,
+                                    description: report.description,
+                                    reportType: report.type,
+                                    date: report.date,
+                                    tireData: report.data
+                                )
+                            }
+                            
+                            ForEach(documents) { doc in
+                                DocumentCard(
+                                    title: doc.title,
+                                    subtitle: doc.subtitle,
+                                    date: doc.date,
+                                    iconColor: doc.tint,
+                                    icon: doc.icon
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 100)
+                    }
+                    .padding(.top, 16)
+                    .scrollIndicators(.hidden)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .navigationBarHidden(true)
     }
@@ -217,101 +139,82 @@ struct ReportCard: View {
     let tireData: TireData1
     
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Background
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(hex: "212121"))
-                .frame(height: 214)
-            
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(vehicleName)
-                        .font(.custom("Sora-SemiBold", size: 14))
-                        .foregroundColor(.white)
-                    
-                    Text(description)
-                        .font(.custom("Sora-Regular", size: 12))
-                        .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(2)
-                        .frame(height: 35)
-                }
-                .padding(.top, 38)
-                .padding(.horizontal, 14)
+        VStack(alignment: .leading, spacing: 12) {
+            // Top bar
+            HStack {
+                    Text(reportType.uppercased())
+                    .font(.customFont(size: 10, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Capsule())
                 
                 Spacer()
                 
-                // Tire Data
-                HStack(spacing: 36) {
-                    VStack(spacing: 10) {
-                        TireDataRow(label: "Front Left:", value: "\(tireData.frontLeft)%")
-                        TireDataRow(label: "Rear Left:", value: "\(tireData.rearLeft)%")
+                HStack(spacing: 14) {
+                    Button(action: {}) {
+                        Image(systemName: "paperplane")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
                     }
-                    .frame(width: 123)
+                    .buttonStyle(.plain)
                     
-                    VStack(spacing: 10) {
-                        TireDataRow(label: "Front Right:", value: "\(tireData.frontRight)%")
-                        TireDataRow(label: "Rear Right:", value: "\(tireData.rearRight)%")
+                    Button(action: {}) {
+                        Image(systemName: "arrow.down.to.line")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
                     }
-                    .frame(width: 133)
+                    .buttonStyle(.plain)
                 }
-                .padding(.leading, 50)
-                .padding(.bottom, 18)
+            }
+            
+            // Title & description
+            VStack(alignment: .leading, spacing: 6) {
+                Text(vehicleName)
+                    .font(.customFont(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
                 
-                // Divider
-                Rectangle()
-                    .fill(Color.white.opacity(0.1))
-                    .frame(height: 1)
-                    .padding(.horizontal, 26)
-                
-                // Footer
-                HStack {
-                    // Report Type Badge
-                    Text(reportType)
-                        .font(.custom("Sora-Regular", size: 10))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(hex: "191919"))
-                        .cornerRadius(12)
-                    
-                    Spacer()
-                    
-                    // Action Buttons
-                    HStack(spacing: 12) {
-                        Button(action: {}) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
-                        }
-                        
-                        Button(action: {}) {
-                            Image(systemName: "arrow.down.to.line")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
-                        }
-                    }
+                Text(description)
+                    .font(.customFont(size: 13, weight: .regular))
+                    .foregroundColor(.white.opacity(0.75))
+                    .lineLimit(3)
+            }
+            
+            // Tire Data grid
+            HStack(spacing: 32) {
+                VStack(alignment: .leading, spacing: 10) {
+                    TireDataRow(label: "Front Left:", value: "\(tireData.frontLeft)%")
+                    TireDataRow(label: "Rear Left:", value: "\(tireData.rearLeft)%")
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 8)
-                .padding(.bottom, 14)
-                
-                // Date
-                HStack(spacing: 8) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white)
-                    
-                    Text(date)
-                        .font(.custom("Sora-Regular", size: 12))
-                        .foregroundColor(.white)
+                VStack(alignment: .leading, spacing: 10) {
+                    TireDataRow(label: "Front Right:", value: "\(tireData.frontRight)%")
+                    TireDataRow(label: "Rear Right:", value: "\(tireData.rearRight)%")
                 }
-                .padding(.leading, 26)
-                .padding(.bottom, 14)
+            }
+            .padding(.vertical, 6)
+            
+            Divider()
+                .background(Color.white.opacity(0.1))
+            
+            // Date row
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text(date)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white)
+                
+                Spacer()
             }
         }
-        .frame(height: 214)
-        .padding(.horizontal,24)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(hex: "212121"))
+        )
     }
 }
 
@@ -323,16 +226,15 @@ struct TireDataRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.custom("Sora-Regular", size: 14))
-                .foregroundColor(.white.opacity(0.6))
+                .font(.customFont(size: 13, weight: .regular))
+                .foregroundColor(.white.opacity(0.65))
             
             Spacer()
             
             Text(value)
-                .font(.custom("Sora-Regular", size: 14))
+                .font(.customFont(size: 13, weight: .semibold))
                 .foregroundColor(.white)
         }
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -345,74 +247,62 @@ struct DocumentCard: View {
     let icon: String
     
     var body: some View {
-        ZStack(alignment: .leading) {
-            // Background
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(hex: "212121"))
-                .frame(height: 101)
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(iconColor)
+                    .frame(width: 52, height: 74)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+            }
             
-            HStack(spacing: 0) {
-                // Icon Container
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(iconColor)
-                        .frame(width: 55, height: 85)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.customFont(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                Text(subtitle)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.75))
+                    .lineLimit(1)
+                
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.8))
                     
-                    Image(systemName: icon)
-                        .font(.system(size: 20))
+                    Text(date)
+                        .font(.customFont(size: 12, weight: .regular))
                         .foregroundColor(.white)
                 }
-                .padding(.leading, 8)
-                
-                // Content
-                VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(title)
-                            .font(.custom("Sora-SemiBold", size: 14))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                        
-                        Text(subtitle)
-                            .font(.custom("Sora-Regular", size: 12))
-                            .foregroundColor(.white.opacity(0.8))
-                            .lineLimit(1)
-                    }
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 8) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white)
-                        
-                        Text(date)
-                            .font(.custom("Sora-Regular", size: 12))
-                            .foregroundColor(.white)
-                    }
+            }
+            
+            Spacer()
+            
+            VStack(spacing: 12) {
+                Button(action: {}) {
+                    Image(systemName: "paperplane")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
                 }
-                .padding(.leading, 17)
-                .padding(.vertical, 14)
+                .buttonStyle(.plain)
                 
-                Spacer()
-                
-                // Action Buttons
-                VStack(spacing: 12) {
-                    Button(action: {}) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white)
-                    }
-                    
-                    Button(action: {}) {
-                        Image(systemName: "arrow.down.to.line")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white)
-                    }
+                Button(action: {}) {
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
                 }
-                .padding(.trailing, 12)
+                .buttonStyle(.plain)
             }
         }
-        .frame(height: 101)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(hex: "212121"))
+        )
     }
 }
 

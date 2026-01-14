@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct CustomAlertButton {
+public struct ModalAlertButton {
     public let title: String
     public let role: ButtonRole?
     public let action: () -> Void
@@ -12,24 +12,24 @@ public struct CustomAlertButton {
     }
 }
 
-public struct CustomAlertConfig: Identifiable {
+public struct ModalAlertConfig: Identifiable {
     public let id = UUID()
     public let title: String
     public let message: String
-    public let buttons: [CustomAlertButton]
+    public let buttons: [ModalAlertButton]
 
-    public init(title: String, message: String, buttons: [CustomAlertButton] = [CustomAlertButton("OK")]) {
+    public init(title: String, message: String, buttons: [ModalAlertButton] = [ModalAlertButton("OK")]) {
         self.title = title
         self.message = message
         self.buttons = buttons
     }
 }
 
-public struct CustomAlertView: View {
+public struct ModalAlertView: View {
     @Binding public var isPresented: Bool
-    public let config: CustomAlertConfig
+    public let config: ModalAlertConfig
 
-    public init(isPresented: Binding<Bool>, config: CustomAlertConfig) {
+    public init(isPresented: Binding<Bool>, config: ModalAlertConfig) {
         self._isPresented = isPresented
         self.config = config
     }
@@ -80,16 +80,16 @@ public struct CustomAlertView: View {
 }
 
 public extension View {
-    func customAlert(isPresented: Binding<Bool>, config: CustomAlertConfig) -> some View {
+    func modalAlert(isPresented: Binding<Bool>, config: ModalAlertConfig) -> some View {
         ZStack {
             self
-            CustomAlertView(isPresented: isPresented, config: config)
+            ModalAlertView(isPresented: isPresented, config: config)
         }
     }
 }
 
 #if DEBUG
-struct CustomAlertView_Previews: PreviewProvider {
+struct ModalAlertView_Previews: PreviewProvider {
     struct PreviewWrapper: View {
         @State private var showAlert = false
 
@@ -99,12 +99,12 @@ struct CustomAlertView_Previews: PreviewProvider {
                     showAlert = true
                 }
             }
-            .customAlert(isPresented: $showAlert, config: CustomAlertConfig(
+            .modalAlert(isPresented: $showAlert, config: ModalAlertConfig(
                 title: "Hello",
                 message: "This is a custom alert.",
                 buttons: [
-                    CustomAlertButton("Cancel", role: .cancel) { print("Cancel tapped") },
-                    CustomAlertButton("OK") { print("OK tapped") }
+                    ModalAlertButton("Cancel", role: .cancel) { print("Cancel tapped") },
+                    ModalAlertButton("OK") { print("OK tapped") }
                 ]
             ))
         }

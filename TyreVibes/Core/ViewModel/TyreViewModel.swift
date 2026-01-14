@@ -9,6 +9,8 @@ struct TyreRegistrationPayload {
     let loadIndex: String
     let speedRating: String
     let season: String
+    let setName: String?
+    let setPosition: String?
 
     init(
         brand: String,
@@ -17,7 +19,9 @@ struct TyreRegistrationPayload {
         dot: String,
         loadIndex: String,
         speedRating: String,
-        season: String
+        season: String,
+        setName: String? = nil,
+        setPosition: String? = nil
     ) {
         self.brand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
         self.model = model.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -26,10 +30,14 @@ struct TyreRegistrationPayload {
         self.loadIndex = loadIndex.trimmingCharacters(in: .whitespacesAndNewlines)
         self.speedRating = speedRating.trimmingCharacters(in: .whitespacesAndNewlines)
         self.season = season.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSetName = setName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.setName = trimmedSetName?.isEmpty == true ? nil : trimmedSetName
+        let trimmedSetPosition = setPosition?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.setPosition = trimmedSetPosition?.isEmpty == true ? nil : trimmedSetPosition
     }
 
     func toDictionary(vehicleId: Int) -> [String: Any] {
-        [
+        var payload: [String: Any] = [
             "vehicle_id": vehicleId,
             "brand": brand,
             "model": model,
@@ -39,6 +47,13 @@ struct TyreRegistrationPayload {
             "speedRating": speedRating,
             "season": season
         ]
+        if let setName {
+            payload["setName"] = setName
+        }
+        if let setPosition {
+            payload["setPosition"] = setPosition
+        }
+        return payload
     }
 }
 
@@ -130,6 +145,8 @@ struct TyreRegistered: Codable, Identifiable {
     let loadIndex: String
     let speedRating: String
     let season: String
+    let setId: Int? = nil
+    let setName: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -141,6 +158,8 @@ struct TyreRegistered: Codable, Identifiable {
         case loadIndex
         case speedRating
         case season
+        case setId = "set_id"
+        case setName = "set_name"
     }
 }
 
@@ -152,6 +171,8 @@ class TyreViewModel: ObservableObject {
     @Published var loadIndex: String = ""
     @Published var speedRating: String = ""
     @Published var season: String = "Winter"
+    @Published var setName: String = ""
+    @Published var setPosition: String = ""
 
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
@@ -164,16 +185,6 @@ class TyreViewModel: ObservableObject {
         return registeredTyres
     }
 
-    // MARK: - Get Supabase JWT Token
-    private func getAuthToken() async -> String? {
-        do {
-            let session = try await SupabaseManager.client.auth.session
-            return session.accessToken
-        } catch {
-            print("⚠️ [TyreViewModel] Failed to get auth token: \(error.localizedDescription)")
-            return nil
-        }
-    }
 
     func insertTyre(vehicleId: Int) {
         let payload = TyreRegistrationPayload(
@@ -183,7 +194,9 @@ class TyreViewModel: ObservableObject {
             dot: dot,
             loadIndex: loadIndex,
             speedRating: speedRating,
-            season: season
+            season: season,
+            setName: setName,
+            setPosition: setPosition
         )
 
         registerTyres([payload], vehicleId: vehicleId)
@@ -218,9 +231,7 @@ class TyreViewModel: ObservableObject {
 
         // Get auth token and execute request
         Task {
-            if let token = await getAuthToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+            await AuthTokenHelper.addAuthHeader(to: &request)
 
             URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -275,9 +286,7 @@ class TyreViewModel: ObservableObject {
 
         // Get auth token and execute request
         Task {
-            if let token = await getAuthToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+            await AuthTokenHelper.addAuthHeader(to: &request)
 
             URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -333,7 +342,9 @@ class TyreViewModel: ObservableObject {
                 dot: $0.dot.uppercased(),
                 loadIndex: $0.loadIndex,
                 speedRating: $0.speedRating.uppercased(),
-                season: $0.season
+                season: $0.season,
+                setName: $0.setName,
+                setPosition: $0.setPosition
             )
         }
 
@@ -395,9 +406,7 @@ class TyreViewModel: ObservableObject {
 
         // Get auth token and execute request
         Task {
-            if let token = await getAuthToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+            await AuthTokenHelper.addAuthHeader(to: &request)
 
             URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {

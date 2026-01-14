@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Supabase
 
 // MARK: - Models
 
@@ -154,7 +153,7 @@ struct TyreAnalysisInput: Codable {
     }
 }
 
-struct TreadDepthMeasurement: Codable, Identifiable {
+struct SupabaseTreadDepthMeasurement: Codable, Identifiable {
     let id: UUID
     let analysisId: UUID
     let tyrePosition: String
@@ -180,6 +179,28 @@ struct TreadDepthMeasurement: Codable, Identifiable {
     }
 }
 
+struct SupabaseTreadDepthMeasurementInsert: Encodable {
+    let analysisId: UUID
+    let tyrePosition: String
+    let measurementX: Double?
+    let measurementY: Double?
+    let zone: String?
+    let depthMm: Double
+    let confidence: Double?
+    let measurementMethod: String?
+
+    enum CodingKeys: String, CodingKey {
+        case analysisId = "analysis_id"
+        case tyrePosition = "tyre_position"
+        case measurementX = "measurement_x"
+        case measurementY = "measurement_y"
+        case zone
+        case depthMm = "depth_mm"
+        case confidence
+        case measurementMethod = "measurement_method"
+    }
+}
+
 struct LifecycleProjection: Codable, Identifiable {
     let id: UUID
     let analysisId: UUID
@@ -200,13 +221,29 @@ struct LifecycleProjection: Codable, Identifiable {
     }
 }
 
+struct LifecycleProjectionInsert: Encodable {
+    let analysisId: UUID
+    let kilometersFromNow: Int
+    let projectedDepth: Double
+    let confidence: Double
+    let isProjected: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case analysisId = "analysis_id"
+        case kilometersFromNow = "kilometers_from_now"
+        case projectedDepth = "projected_depth"
+        case confidence
+        case isProjected = "is_projected"
+    }
+}
+
 // MARK: - Service
 
 @MainActor
 class TyreAnalysisService {
     static let shared = TyreAnalysisService()
 
-    private let supabase = SupabaseManager.client
+    private let networkManager = NetworkManager.shared
 
     private init() {}
 
@@ -216,13 +253,10 @@ class TyreAnalysisService {
     func saveAnalysis(_ input: TyreAnalysisInput) async throws -> TyreAnalysisRecord {
         print("💾 [TyreAnalysisService] Saving analysis for tyre \(input.tyreId)")
 
-        let response: TyreAnalysisRecord = try await supabase
-            .from("tyre_analyses")
-            .insert(input)
-            .select()
-            .single()
-            .execute()
-            .value
+        let response: TyreAnalysisRecord = try await networkManager.post(
+            endpoint: "/v1/tyre_analyses",
+            body: input
+        )
 
         print("✅ [TyreAnalysisService] Analysis saved with ID: \(response.id)")
         return response
@@ -232,21 +266,18 @@ class TyreAnalysisService {
     func getLatestAnalysis(forTyreId tyreId: Int) async throws -> TyreAnalysisRecord? {
         print("🔍 [TyreAnalysisService] Fetching latest analysis for tyre \(tyreId)")
 
-        let analyses: [TyreAnalysisRecord] = try await supabase
-            .from("tyre_analyses")
-            .select()
-            .eq("tyre_id", value: tyreId)
-            .order("analysis_date", ascending: false)
-            .limit(1)
-            .execute()
-            .value
-
-        if let analysis = analyses.first {
+        do {
+            let analysis: TyreAnalysisRecord = try await networkManager.get(
+                endpoint: "/v1/tyre_analyses/tyre/\(tyreId)/latest"
+            )
             print("✅ [TyreAnalysisService] Found analysis from \(analysis.analysisDate)")
             return analysis
-        } else {
-            print("⚠️ [TyreAnalysisService] No analysis found for tyre \(tyreId)")
-            return nil
+        } catch let error as NetworkError {
+            if case .notFound = error {
+                print("⚠️ [TyreAnalysisService] No analysis found for tyre \(tyreId)")
+                return nil
+            }
+            throw error
         }
     }
 
@@ -254,13 +285,9 @@ class TyreAnalysisService {
     func getAnalysisHistory(forTyreId tyreId: Int) async throws -> [TyreAnalysisRecord] {
         print("🔍 [TyreAnalysisService] Fetching analysis history for tyre \(tyreId)")
 
-        let analyses: [TyreAnalysisRecord] = try await supabase
-            .from("tyre_analyses")
-            .select()
-            .eq("tyre_id", value: tyreId)
-            .order("analysis_date", ascending: false)
-            .execute()
-            .value
+        let analyses: [TyreAnalysisRecord] = try await networkManager.get(
+            endpoint: "/v1/tyre_analyses/tyre/\(tyreId)"
+        )
 
         print("✅ [TyreAnalysisService] Found \(analyses.count) analyses")
         return analyses
@@ -270,13 +297,9 @@ class TyreAnalysisService {
     func getAnalyses(forVehicleId vehicleId: Int) async throws -> [TyreAnalysisRecord] {
         print("🔍 [TyreAnalysisService] Fetching analyses for vehicle \(vehicleId)")
 
-        let analyses: [TyreAnalysisRecord] = try await supabase
-            .from("tyre_analyses")
-            .select()
-            .eq("vehicle_id", value: vehicleId)
-            .order("analysis_date", ascending: false)
-            .execute()
-            .value
+        let analyses: [TyreAnalysisRecord] = try await networkManager.get(
+            endpoint: "/v1/tyre_analyses/vehicle/\(vehicleId)"
+        )
 
         print("✅ [TyreAnalysisService] Found \(analyses.count) analyses")
         return analyses
@@ -286,11 +309,9 @@ class TyreAnalysisService {
     func deleteAnalysis(id: UUID) async throws {
         print("🗑️ [TyreAnalysisService] Deleting analysis \(id)")
 
-        try await supabase
-            .from("tyre_analyses")
-            .delete()
-            .eq("id", value: id.uuidString)
-            .execute()
+        try await networkManager.delete(
+            endpoint: "/v1/tyre_analyses/\(id.uuidString)"
+        )
 
         print("✅ [TyreAnalysisService] Analysis deleted")
     }
@@ -305,35 +326,44 @@ class TyreAnalysisService {
         print("💾 [TyreAnalysisService] Saving \(measurements.count) tread measurements")
 
         let records = measurements.map { measurement in
-            [
-                "analysis_id": analysisId.uuidString,
-                "tyre_position": measurement.position,
-                "depth_mm": measurement.depth,
-                "measurement_x": measurement.x as Any,
-                "measurement_y": measurement.y as Any,
-                "zone": measurement.zone as Any,
-                "measurement_method": "calculated"
-            ] as [String: Any]
+            SupabaseTreadDepthMeasurementInsert(
+                analysisId: analysisId,
+                tyrePosition: measurement.position,
+                measurementX: measurement.x,
+                measurementY: measurement.y,
+                zone: measurement.zone,
+                depthMm: measurement.depth,
+                confidence: nil,
+                measurementMethod: "calculated"
+            )
         }
 
-        try await supabase
-            .from("tread_depth_measurements")
-            .insert(records)
-            .execute()
+        struct MeasurementBatch: Encodable {
+            let measurements: [SupabaseTreadDepthMeasurementInsert]
+        }
+
+        let payload = MeasurementBatch(measurements: records)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        let body = try encoder.encode(payload)
+
+        try await networkManager.requestWithoutResponse(
+            endpoint: "/v1/tread_depth_measurements",
+            method: .post,
+            body: body
+        )
 
         print("✅ [TyreAnalysisService] Tread measurements saved")
     }
 
     /// Recupera misurazioni per un'analisi
-    func getTreadMeasurements(forAnalysisId analysisId: UUID) async throws -> [TreadDepthMeasurement] {
+    func getTreadMeasurements(forAnalysisId analysisId: UUID) async throws -> [SupabaseTreadDepthMeasurement] {
         print("🔍 [TyreAnalysisService] Fetching tread measurements for analysis \(analysisId)")
 
-        let measurements: [TreadDepthMeasurement] = try await supabase
-            .from("tread_depth_measurements")
-            .select()
-            .eq("analysis_id", value: analysisId.uuidString)
-            .execute()
-            .value
+        let measurements: [SupabaseTreadDepthMeasurement] = try await networkManager.get(
+            endpoint: "/v1/tread_depth_measurements/analysis/\(analysisId.uuidString)"
+        )
 
         print("✅ [TyreAnalysisService] Found \(measurements.count) measurements")
         return measurements
@@ -349,19 +379,30 @@ class TyreAnalysisService {
         print("💾 [TyreAnalysisService] Saving \(projections.count) lifecycle projections")
 
         let records = projections.map { projection in
-            [
-                "analysis_id": analysisId.uuidString,
-                "kilometers_from_now": projection.km,
-                "projected_depth": projection.depth,
-                "confidence": projection.confidence,
-                "is_projected": projection.isProjected
-            ] as [String: Any]
+            LifecycleProjectionInsert(
+                analysisId: analysisId,
+                kilometersFromNow: projection.km,
+                projectedDepth: projection.depth,
+                confidence: projection.confidence,
+                isProjected: projection.isProjected
+            )
         }
 
-        try await supabase
-            .from("tyre_lifecycle_projections")
-            .insert(records)
-            .execute()
+        struct ProjectionBatch: Encodable {
+            let projections: [LifecycleProjectionInsert]
+        }
+
+        let payload = ProjectionBatch(projections: records)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        let body = try encoder.encode(payload)
+
+        try await networkManager.requestWithoutResponse(
+            endpoint: "/v1/tyre_lifecycle_projections",
+            method: .post,
+            body: body
+        )
 
         print("✅ [TyreAnalysisService] Lifecycle projections saved")
     }
@@ -370,13 +411,9 @@ class TyreAnalysisService {
     func getLifecycleProjections(forAnalysisId analysisId: UUID) async throws -> [LifecycleProjection] {
         print("🔍 [TyreAnalysisService] Fetching lifecycle projections for analysis \(analysisId)")
 
-        let projections: [LifecycleProjection] = try await supabase
-            .from("tyre_lifecycle_projections")
-            .select()
-            .eq("analysis_id", value: analysisId.uuidString)
-            .order("kilometers_from_now", ascending: true)
-            .execute()
-            .value
+        let projections: [LifecycleProjection] = try await networkManager.get(
+            endpoint: "/v1/tyre_lifecycle_projections/analysis/\(analysisId.uuidString)"
+        )
 
         print("✅ [TyreAnalysisService] Found \(projections.count) projections")
         return projections
@@ -386,19 +423,16 @@ class TyreAnalysisService {
 
     /// Calcola statistiche per un utente
     func getUserStatistics() async throws -> UserAnalysisStats? {
-        guard let userId = try? await supabase.auth.session.user.id else {
+        guard let userId = try? await SupabaseManager.client.auth.session.user.id else {
             print("⚠️ [TyreAnalysisService] No user ID available")
             return nil
         }
 
         print("📊 [TyreAnalysisService] Fetching statistics for user \(userId)")
 
-        let stats: [UserAnalysisStats] = try await supabase
-            .from("user_analysis_stats")
-            .select()
-            .eq("user_id", value: userId.uuidString)
-            .execute()
-            .value
+        let stats: [UserAnalysisStats] = try await networkManager.get(
+            endpoint: "/v1/user_analysis_stats/\(userId.uuidString)"
+        )
 
         return stats.first
     }

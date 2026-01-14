@@ -45,6 +45,17 @@ struct TyreDetailView: View {
         return "\(tyre.brand) \(tyre.model)"
     }
 
+    var tyreSetDisplay: String {
+        guard let tyre = tyre else { return "N/A" }
+        if let name = tyre.setName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        if let setId = tyre.setId, setId > 0 {
+            return "Set \(setId)"
+        }
+        return "N/A"
+    }
+
     var remainingLifeColor: Color {
         let percentage = viewModel.remainingLifePercentage
         if percentage >= 0.7 {
@@ -55,6 +66,32 @@ struct TyreDetailView: View {
             return .yellow
         } else {
             return .orange
+        }
+    }
+
+    @ViewBuilder
+    private var analysisNotice: some View {
+        switch viewModel.analysisStatus {
+        case .missing:
+            AnalysisNoticeCard(
+                title: L10n.noAnalysisYet.localized,
+                message: L10n.runScanToSeeDetails.localized,
+                icon: "exclamationmark.triangle.fill",
+                accentColor: .orange
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 30)
+        case .error:
+            AnalysisNoticeCard(
+                title: L10n.analysisUnavailable.localized,
+                message: L10n.unableToLoadAnalysis.localized,
+                icon: "xmark.octagon.fill",
+                accentColor: .red
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 30)
+        default:
+            EmptyView()
         }
     }
 
@@ -69,10 +106,11 @@ struct TyreDetailView: View {
                         // Header with tyre info
                         if let tyre = tyre {
                             VStack(alignment: .leading, spacing: 16) {
-                                InfoRow(label: "Make", value: tyre.brand)
-                                InfoRow(label: "Model", value: tyre.model)
-                                InfoRow(label: "Season", value: tyre.season)
-                                InfoRow(label: "DOT", value: tyre.dot)
+                                InfoRow(label: String(localized: "Make"), value: tyre.brand)
+                                InfoRow(label: String(localized: "Model"), value: tyre.model)
+                                InfoRow(label: String(localized: "Season"), value: tyre.season)
+                                InfoRow(label: String(localized: "Tyre Set"), value: tyreSetDisplay)
+                                InfoRow(label: String(localized: "DOT"), value: tyre.dot)
                             }
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
@@ -88,8 +126,10 @@ struct TyreDetailView: View {
                         .padding(.vertical, 20)
                         .padding(.bottom, 30)
 
+                        analysisNotice
+
                         // Tread depth measurements
-                        if let treadData = viewModel.treadDepthData {
+                        if viewModel.hasAnalysis, let treadData = viewModel.treadDepthData {
                             VStack(spacing: 20) {
                                 HStack(spacing: 40) {
                                     TreadDepthCard(
@@ -128,39 +168,41 @@ struct TyreDetailView: View {
                         }
 
                         // Remaining life
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
+                        if viewModel.hasAnalysis {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
 
-                                Text("Remaining Life")
-                                    .font(.customFont(size: 16, weight: .medium))
-                                    .foregroundColor(.gray)
-                                Spacer()
+                                    Text("Remaining Life")
+                                        .font(.customFont(size: 16, weight: .medium))
+                                        .foregroundColor(.gray)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+                                .padding(.top)
+
+                                HStack {
+                                    Text("\(Int(viewModel.remainingLifePercentage * 100))%")
+                                        .font(.customFont(size: 28, weight: .bold))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                                .padding(.horizontal)
+
+                                ProgressView(value: viewModel.remainingLifePercentage)
+                                    .progressViewStyle(CustomProgressViewStyle(color: remainingLifeColor))
+                                    //.frame(height: 12)
+                                    .padding()
                             }
-                            .padding(.horizontal)
-                            .padding(.top)
-
-                            HStack {
-                                Text("\(Int(viewModel.remainingLifePercentage * 100))%")
-                                    .font(.customFont(size: 28, weight: .bold))
-                                    .foregroundColor(.white)
-                                Spacer()
-                            }
-                            .padding(.horizontal)
-
-                            ProgressView(value: viewModel.remainingLifePercentage)
-                                .progressViewStyle(CustomProgressViewStyle(color: remainingLifeColor))
-                                //.frame(height: 12)
-                                .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.customFieldColor)
+                            .cornerRadius(14)
+                            .padding(.horizontal, 20)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.customFieldColor)
-                        .cornerRadius(14)
-                        .padding(.horizontal, 20)
                         
                         
 
                         // Tire Lifecycle Chart
-                        if let lifeEstimate = viewModel.remainingLifeEstimate {
+                        if viewModel.hasAnalysis, let lifeEstimate = viewModel.remainingLifeEstimate {
                             VStack(alignment: .leading, spacing: 15) {
                                 HStack {
                                     Text("Tire Lifecycle")
@@ -187,19 +229,19 @@ struct TyreDetailView: View {
                         
 
                         // Tire Condition
-                        VStack(alignment: .leading, spacing: 15) {
-                            HStack {
-                                Text("Tire Condition")
-                                    .font(.customFont(size: 18, weight: .semibold))
-                                    .foregroundColor(.white)
-                                Spacer()
-                            }
-                            .padding()
+                        if viewModel.hasAnalysis, let conditionData = viewModel.tireConditionData {
+                            VStack(alignment: .leading, spacing: 15) {
+                                HStack {
+                                    Text("Tire Condition")
+                                        .font(.customFont(size: 18, weight: .semibold))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                                .padding()
 
-                            HStack(spacing: 20) {
-                                TireConditionIcon()
+                                HStack(spacing: 20) {
+                                    TireConditionIcon()
 
-                                if let conditionData = viewModel.tireConditionData {
                                     HStack(spacing: 20) {
                                         TireConditionBar(
                                             position: "FL",
@@ -222,15 +264,15 @@ struct TyreDetailView: View {
                                             color: conditionData.color(for: "RR")
                                         )
                                     }
-                                }
 
+                                }
+                                //.padding()
+                                
                             }
-                            //.padding()
-                            
+                            .background(Color.customFieldColor)
+                            .cornerRadius(14)
+                            .padding()
                         }
-                        .background(Color.customFieldColor)
-                        .cornerRadius(14)
-                        .padding()
                     }
                 }
                 .opacity(isReady ? 1 : 0)
@@ -243,7 +285,7 @@ struct TyreDetailView: View {
                         onConfirmCompletion?()
                         dismiss()
                     }) {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "xmark")
                             .foregroundColor(.white)
                             .font(.system(size: 18, weight: .medium))
                     }
@@ -614,6 +656,41 @@ struct InfoPill: View {
         .padding(.vertical, 6)
         .background(color.opacity(0.2))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Analysis Notice Card
+struct AnalysisNoticeCard: View {
+    let title: String
+    let message: String
+    let icon: String
+    let accentColor: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(accentColor)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.customFont(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Text(message)
+                    .font(.customFont(size: 14, weight: .medium))
+                    .foregroundColor(.gray)
+            }
+
+            Spacer()
+        }
+        .padding()
+        .background(Color.customFieldColor)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(accentColor.opacity(0.4), lineWidth: 1)
+        )
+        .cornerRadius(14)
     }
 }
 

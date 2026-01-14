@@ -249,8 +249,12 @@ class AuthService {
     func sendPasswordReset(email: String) async throws {
         try await SupabaseManager.client.auth.resetPasswordForEmail(
             email,
-            redirectTo: URL(string: "it.tyrevibes.app://reset-password")!
+            redirectTo: URL(string: "https://tyrevibes.com/reset_password")!
         )
+    }
+
+    func handlePasswordRecovery(url: URL) async throws {
+        _ = try await SupabaseManager.client.auth.session(from: url)
     }
 
     func updateUserPassword(password: String) async throws {

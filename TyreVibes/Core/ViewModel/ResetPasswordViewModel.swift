@@ -16,6 +16,15 @@ class ResetPasswordViewModel: ObservableObject {
 
     private let authService = AuthService()
 
+    var passwordRequirements: [PasswordRequirement] {
+        [
+            PasswordRequirement(text: "At least one upper case letter", isValid: hasUpperCase),
+            PasswordRequirement(text: "At least one numeral (0-9)", isValid: hasNumber),
+            PasswordRequirement(text: "Minimum 6 characters", isValid: hasMinLength),
+            PasswordRequirement(text: "At least one special symbol (!@#$%^&*<>()-)", isValid: hasSpecialChar)
+        ]
+    }
+
     var isResetButtonEnabled: Bool {
         isFormValid() && !isLoading
     }

@@ -4,13 +4,33 @@ import UIKit
 // MARK: - Vista Principale della Barra di Navigazione
 struct BottomNavigationView: View {
     @State private var selectedIndex: Int = 0
-    
+
     // Aggiunto un namespace per l'animazione
     @Namespace private var animationNamespace
 
+    // Supporto accessibilità - Reduce Motion
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     // Nomi delle icone come da screenshot (uso SF Symbols come placeholder)
     let iconNames = ["vehicleIcon", "reportIcon", "storeIcon", "settingIcon"]
-    
+
+    // MARK: - Accessibility Labels
+    private let tabAccessibilityLabels = [
+        "Garage",
+        "Report",
+        "Shop",
+        "Impostazioni",
+        "Analisi pneumatici"
+    ]
+
+    private let tabAccessibilityHints = [
+        "Visualizza i tuoi veicoli",
+        "Visualizza report e documentazione",
+        "Sfoglia lo shop pneumatici",
+        "Apri le impostazioni",
+        "Avvia analisi pneumatici"
+    ]
+
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
@@ -21,25 +41,12 @@ struct BottomNavigationView: View {
 
             ZStack {
                 // AREA CONTENUTO
-                Group {
-                    switch selectedIndex {
-                    case 0:
-                        GarageScreen()
-                    case 1:
-                        ReportsDocumentationsView()
-                    case 2:
-                        ShopScreen()
-                    case 3:
-                        SettingsView()
-                    case 4:
-                        TireAnalysisSelectionView()
-                    default:
-                        GarageScreen()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.customBackgroundColor.ignoresSafeArea())
-                .ignoresSafeArea(.keyboard, edges: .bottom)
+                contentView(for: selectedIndex)
+                    .id(selectedIndex)
+                    .transition(.opacity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.customBackgroundColor.ignoresSafeArea())
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
             }
             // Barra ancorata in basso; l'altezza è calcolata dall'aspect ratio dell'asset
             .overlay(alignment: .bottom) {
@@ -66,30 +73,41 @@ struct BottomNavigationView: View {
                                       .frame(width: width, height: barH * 0.05)
                                       .luminanceToAlpha()
                               )
-                              
+
                       )
+                      .accessibilityHidden(true)
                     
                     
                     HStack(spacing: 0) {
                         // Left side - Garage
                         Button(action: {
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 0 }
+                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
+                                selectedIndex = 0
+                            }
                         }) {
-                            TabItem(iconName: iconNames[0], isSelected: selectedIndex == 0, namespace: animationNamespace)
+                            TabItem(iconName: iconNames[0], isSelected: selectedIndex == 0, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(tabAccessibilityLabels[0])
+                        .accessibilityHint(tabAccessibilityHints[0])
+                        .accessibilityAddTraits(selectedIndex == 0 ? .isSelected : [])
 
                         // Reports
                         Button(action: {
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 1 }
+                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
+                                selectedIndex = 1
+                            }
                         }) {
-                            TabItem(iconName: iconNames[1], isSelected: selectedIndex == 1, namespace: animationNamespace)
+                            TabItem(iconName: iconNames[1], isSelected: selectedIndex == 1, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(tabAccessibilityLabels[1])
+                        .accessibilityHint(tabAccessibilityHints[1])
+                        .accessibilityAddTraits(selectedIndex == 1 ? .isSelected : [])
 
                         // Central spacer for floating button
                         Spacer()
@@ -97,35 +115,50 @@ struct BottomNavigationView: View {
 
                         // Right side - Store
                         Button(action: {
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 2 }
+                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
+                                selectedIndex = 2
+                            }
                         }) {
-                            TabItem(iconName: iconNames[2], isSelected: selectedIndex == 2, namespace: animationNamespace)
+                            TabItem(iconName: iconNames[2], isSelected: selectedIndex == 2, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(tabAccessibilityLabels[2])
+                        .accessibilityHint(tabAccessibilityHints[2])
+                        .accessibilityAddTraits(selectedIndex == 2 ? .isSelected : [])
 
                         // Settings
                         Button(action: {
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 3 }
+                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
+                                selectedIndex = 3
+                            }
                         }) {
-                            TabItem(iconName: iconNames[3], isSelected: selectedIndex == 3, namespace: animationNamespace)
+                            TabItem(iconName: iconNames[3], isSelected: selectedIndex == 3, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(tabAccessibilityLabels[3])
+                        .accessibilityHint(tabAccessibilityHints[3])
+                        .accessibilityAddTraits(selectedIndex == 3 ? .isSelected : [])
                     }
                     .padding(.horizontal, width * 0.05)
 
                     // Central floating button - positioned precisely
                     Button(action: {
-                        withAnimation(.interpolatingSpring(stiffness: 300, damping: 15)) { selectedIndex = 4 }
+                        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
+                            selectedIndex = 4
+                        }
                     }) {
-                        TabItem(iconName: "Archi", isSelected: selectedIndex == 4, namespace: animationNamespace)
+                        TabItem(iconName: "Archi", isSelected: selectedIndex == 4, namespace: animationNamespace, reduceMotion: reduceMotion)
                             .frame(width: 80, height: 80)
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(tabAccessibilityLabels[4])
+                    .accessibilityHint(tabAccessibilityHints[4])
+                    .accessibilityAddTraits(selectedIndex == 4 ? .isSelected : [])
                     .offset(y: -50)
                 }
                 .frame(width: width, height: barH)
@@ -145,6 +178,7 @@ struct TabItem: View {
     let iconName: String
     let isSelected: Bool
     let namespace: Namespace.ID
+    var reduceMotion: Bool = false
 
     var body: some View {
         ZStack {
@@ -197,7 +231,7 @@ struct TabItem: View {
                         .frame(width: 50, height: 50)
                 }
                 .scaleEffect(isSelected ? 1.1 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                .animation(reduceMotion ? .none : .easeInOut(duration: 0.2), value: isSelected)
             } else {
                 // Regular tab items with liquid glass effect
                 ZStack {
@@ -279,6 +313,25 @@ struct CenterActionButton: View {
 // MARK: - Placeholder Screens
 struct VehiclesView: View { var body: some View { Text("Vehicles").foregroundColor(.white) } }
 struct ReportsView: View { var body: some View { Text("Reports").foregroundColor(.white) } }
+
+private func contentView(for index: Int) -> some View {
+    Group {
+        switch index {
+        case 0:
+            GarageScreen()
+        case 1:
+            ReportsDocumentationsView()
+        case 2:
+            ShopScreen()
+        case 3:
+            SettingsView()
+        case 4:
+            TireAnalysisSelectionView()
+        default:
+            GarageScreen()
+        }
+    }
+}
 
 
 // MARK: - Forma Personalizzata della Barra

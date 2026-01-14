@@ -8,6 +8,7 @@ struct ACISPIDAuthScreen: View {
     @State private var vehicleResponse: BolloAPIResponse?
     @State private var showErrorBanner = false
     @State private var errorBannerMessage = ""
+    @State private var hasAcceptedSpidConsent = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -103,6 +104,43 @@ struct ACISPIDAuthScreen: View {
 
                     Spacer()
 
+                    // Consenso esplicito prima di procedere con SPID
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Consenso SPID")
+                            .font(.customFont(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+
+                        Text("Accetto di accedere tramite SPID. La mia identità verrà utilizzata solo per recuperare i dati ACI richiesti e non verrà conservata o usata per altri scopi.")
+                            .font(.customFont(size: 13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.7))
+                            .multilineTextAlignment(.leading)
+
+                        HStack(spacing: 10) {
+                            Toggle("", isOn: $hasAcceptedSpidConsent)
+                                .labelsHidden()
+                                .toggleStyle(CheckboxToggleStyle())
+
+                            Text("Ho letto e accetto l'informativa privacy.")
+                                .font(.customFont(size: 12, weight: .medium))
+                                .foregroundColor(.white.opacity(0.85))
+
+                            Spacer()
+
+                            Link("Privacy", destination: URL(string: "https://tyrevibes.app/privacy")!)
+                                .font(.customFont(size: 12, weight: .semibold))
+                                .foregroundColor(.customBitterSweet)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.black.opacity(0.2))
+                    )
+                    .padding(.horizontal, 24)
+
+                    Spacer()
+
                     // Pulsante di autenticazione
                     Button(action: {
                         startAuthentication()
@@ -128,8 +166,8 @@ struct ACISPIDAuthScreen: View {
                                 )
                         )
                     }
-                    .disabled(authService.isAuthenticating || vehicleResponse != nil)
-                    .opacity(authService.isAuthenticating || vehicleResponse != nil ? 0.5 : 1.0)
+                    .disabled(authService.isAuthenticating || vehicleResponse != nil || !hasAcceptedSpidConsent)
+                    .opacity(authService.isAuthenticating || vehicleResponse != nil || !hasAcceptedSpidConsent ? 0.5 : 1.0)
                     .padding(.horizontal, 24)
 
                     // Pulsante di reset (solo se autenticato)

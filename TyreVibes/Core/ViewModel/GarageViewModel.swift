@@ -21,17 +21,6 @@ class GarageViewModel: ObservableObject {
     private let authService = AuthService()
     static let apiConfig = PlateAPIService.apiConfig
 
-    // MARK: - Get Supabase JWT Token
-    private func getAuthToken() async -> String? {
-        do {
-            let session = try await SupabaseManager.client.auth.session
-            return session.accessToken
-        } catch {
-            print("⚠️ [GarageViewModel] Failed to get auth token: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
 
     func fetchCars() async {
         // Show cached vehicles first if available, but only if not loading
@@ -57,9 +46,7 @@ class GarageViewModel: ObservableObject {
             request.httpMethod = "GET"
 
             // Add JWT token
-            if let token = await getAuthToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+            await AuthTokenHelper.addAuthHeader(to: &request)
 
             let (data, _) = try await URLSession.shared.data(for: request)
             // Save raw data to UserDefaults before decoding
@@ -104,9 +91,7 @@ class GarageViewModel: ObservableObject {
                 request.httpMethod = "DELETE"
 
                 // Add JWT token
-                if let token = await getAuthToken() {
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                }
+                await AuthTokenHelper.addAuthHeader(to: &request)
 
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {

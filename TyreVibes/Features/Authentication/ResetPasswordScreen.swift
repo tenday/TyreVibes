@@ -96,25 +96,9 @@ struct ResetPasswordScreen: View {
                                 
                                 // Password Requirements
                                 VStack(alignment: .leading, spacing: 12) {
-                                 //   PasswordRequirementRow(
-                                 //       requirement: Pass, text: "At least one upper case letter",
-                                 //       isValid: viewModel.hasUpperCase
-                                 //   )
-                                    
-                                 //   PasswordRequirement(
-                                 //       text: "At least one numeral (0-9)",
-                                 //       isValid: viewModel.hasNumber
-                                 //   )
-                                 
-                                 //   PasswordRequirement(
-                                 //       text: "Minimum 6 characters",
-                                 //       isValid: viewModel.hasMinLength
-                                 //   )
-                                    
-                                  //  PasswordRequirement(
-                                  //      text: "At least one special symbol (!@#$%^&*<>()-)",
-                                  //      isValid: viewModel.hasSpecialChar
-                                  //  )
+                                    ForEach(viewModel.passwordRequirements) { requirement in
+                                        PasswordRequirementRow(requirement: requirement)
+                                    }
                                 }
                                 .padding(.top, 0)
                                 

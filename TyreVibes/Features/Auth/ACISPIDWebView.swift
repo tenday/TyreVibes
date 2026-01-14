@@ -211,6 +211,7 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
 
     private var didNavigateToVehicleEndpoint = false  // Flag per tracciare il completamento dell'auth SPID
     private var authCompleted = false  // Flag per bloccare navigazioni dopo il successo
+    private var isRequestingVehicleData = false  // Evita richieste duplicate al vehicle endpoint
 
     func goBack() {
         webView?.goBack()
@@ -276,6 +277,18 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
 
         // STRATEGIA: Dopo l'autenticazione SPID, nascondi la WebView e naviga all'endpoint vehicle
         // La WebView estrarrà il JSON dalla pagina quando sarà caricata
+        if !didNavigateToVehicleEndpoint && urlString.contains("bollo.aci.it/api/v2/vehicle") {
+            print("✅ [ACISPIDWebView] Raggiunto endpoint vehicle")
+            didNavigateToVehicleEndpoint = true
+
+            Task { @MainActor in
+                self.hideWebView = true
+            }
+
+            checkForAuthResponse(in: webView)
+            return
+        }
+
         if !didNavigateToVehicleEndpoint && urlString.contains(authCompletedPattern) {
             print("✅ [ACISPIDWebView] Autenticazione SPID completata su IAM ACI!")
             print("📋 [ACISPIDWebView] Navigazione all'endpoint vehicle...")
@@ -380,9 +393,8 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
 
     // MARK: - Helper Methods
 
-    /// Controlla se la pagina contiene un JSON di risposta dall'autenticazione
-    /// NOTA: Questo metodo è mantenuto come fallback, ma normalmente non viene più usato
-    /// perché usiamo URLSession direttamente invece della WebView per le chiamate API
+    /// Controlla se la pagina contiene un JSON di risposta dall'autenticazione.
+    /// Se non trova JSON, avvia il recupero dati via URLSession con i cookie.
     private func checkForAuthResponse(in webView: WKWebView) {
         // Se l'autenticazione è già completata, non fare nulla
         if authCompleted {
@@ -505,13 +517,21 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
                 }
             } else {
                 print("⏭️ [ACISPIDWebView] Nessun JSON trovato in questa pagina, continua navigazione...")
+                self.requestVehicleData()
             }
         }
     }
 
     private func requestVehicleData() {
+        if authCompleted || isRequestingVehicleData {
+            return
+        }
+
+        isRequestingVehicleData = true
+
         guard webView != nil else {
             print("❌ [ACISPIDWebView] WebView non disponibile per il recupero cookie")
+            isRequestingVehicleData = false
             return
         }
 
@@ -524,6 +544,7 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
             if cookies.isEmpty {
                 print("⚠️ [ACISPIDWebView] Nessun cookie ACI trovato!")
                 print("⚠️ [ACISPIDWebView] L'autenticazione potrebbe non essere completa")
+                self.isRequestingVehicleData = false
                 return
             }
 
@@ -541,6 +562,8 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
                     Task { @MainActor in
                         self.vehicleResponse = response
                         self.authSuccess = true
+                        self.authCompleted = true
+                        self.isRequestingVehicleData = false
 
                         // Chiama anche i callback se disponibili
                         self.onVehicleData?(response)
@@ -551,6 +574,7 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
 
                     Task { @MainActor in
                         self.authError = error
+                        self.isRequestingVehicleData = false
 
                         // Chiama anche il callback di errore
                         self.onAuthFailure?(error)

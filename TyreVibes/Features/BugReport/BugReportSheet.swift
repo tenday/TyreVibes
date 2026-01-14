@@ -21,6 +21,12 @@ struct BugReportSheet: View {
     // MARK: - Constants
 
     private let maxCharacters = 1000
+    
+    // MARK: - Computed Properties
+    
+    private var isFeedback: Bool {
+        manager.reportType == .feedback
+    }
 
     // MARK: - Body
 
@@ -96,7 +102,7 @@ struct BugReportSheet: View {
 
             Spacer()
 
-            Text("Segnala Bug")
+            Text(manager.reportType.title)
                 .font(.customFont(size: 18, weight: .bold))
                 .foregroundColor(.white)
 
@@ -119,16 +125,16 @@ struct BugReportSheet: View {
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
+                Image(systemName: isFeedback ? "bubble.left.and.bubble.right.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 20))
                     .foregroundColor(.customSandyBrown)
 
-                Text("Hai riscontrato un problema?")
+                Text(isFeedback ? "Dacci il tuo parere" : "Hai riscontrato un problema?")
                     .font(.customFont(size: 16, weight: .semibold))
                     .foregroundColor(.white)
             }
 
-            Text("Descrivi il bug che hai riscontrato. Il tuo feedback ci aiuta a migliorare l'app!")
+            Text(isFeedback ? "I tuoi suggerimenti sono preziosi per far crescere TyreVibes!" : "Descrivi il bug che hai riscontrato. Il tuo feedback ci aiuta a migliorare l'app!")
                 .font(.customFont(size: 14, weight: .regular))
                 .foregroundColor(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
@@ -161,7 +167,7 @@ struct BugReportSheet: View {
 
     private var textEditorSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Descrizione del problema *")
+            Text(isFeedback ? "Il tuo feedback *" : "Descrizione del problema *")
                 .font(.customFont(size: 14, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
 
@@ -176,7 +182,7 @@ struct BugReportSheet: View {
 
                 // Placeholder
                 if bugDescription.isEmpty {
-                    Text("Descrivi cosa è successo, quali passaggi hai effettuato, e quale era il risultato atteso...")
+                    Text(isFeedback ? "Raccontaci cosa ti piace o cosa vorresti vedere migliorato..." : "Descrivi cosa è successo, quali passaggi hai effettuato, e quale era il risultato atteso...")
                         .font(.customFont(size: 15, weight: .regular))
                         .foregroundColor(.white.opacity(0.3))
                         .padding(.horizontal, 16)
@@ -212,7 +218,7 @@ struct BugReportSheet: View {
                     .font(.customFont(size: 15, weight: .medium))
                     .foregroundColor(.white)
 
-                Text("Lo screenshot aiuta a comprendere meglio il problema")
+                Text(isFeedback ? "Utile se vuoi mostrarci qualcosa di specifico" : "Lo screenshot aiuta a comprendere meglio il problema")
                     .font(.customFont(size: 13, weight: .regular))
                     .foregroundColor(.white.opacity(0.6))
             }
@@ -279,7 +285,7 @@ struct BugReportSheet: View {
                 .font(.system(size: 20))
                 .foregroundColor(.green)
 
-            Text("Bug segnalato con successo!")
+            Text(isFeedback ? "Feedback inviato con successo!" : "Bug segnalato con successo!")
                 .font(.customFont(size: 14, weight: .medium))
                 .foregroundColor(.white)
 
@@ -317,7 +323,7 @@ struct BugReportSheet: View {
                         .font(.system(size: 16))
                 }
 
-                Text(manager.isSubmitting ? "Invio in corso..." : "Invia Segnalazione")
+                Text(manager.isSubmitting ? "Invio in corso..." : (isFeedback ? "Invia Feedback" : "Invia Segnalazione"))
                     .font(.customFont(size: 16, weight: .semibold))
             }
             .foregroundColor(.white)

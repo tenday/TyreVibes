@@ -461,7 +461,10 @@ public class LicensePlateReader {
                                     let csrfToken = String(html[r])
                                     // Invece di restituire subito il token, chiama /allestimenti
                                     // Costruisci la URL con i parametri richiesti
-                                    var comps = URLComponents(string: "https://quotazioni.quattroruote.it/allestimenti")!
+                                    guard var comps = URLComponents(string: "https://quotazioni.quattroruote.it/allestimenti") else {
+                                        completion(.failure(NSError(domain: "LicensePlateReader", code: 12006, userInfo: [NSLocalizedDescriptionKey: "URL allestimenti non valida"])))
+                                        return
+                                    }
                                     comps.queryItems = [
                                         URLQueryItem(name: "_token", value: csrfToken),
                                         URLQueryItem(name: "plate", value: plate.uppercased()),
@@ -537,7 +540,10 @@ public class LicensePlateReader {
 
                                         if let codice = codice, let quotation = quotation {
                                             // Costruisci URL dettagli
-                                                var comps = URLComponents(string: "https://quotazioni.quattroruote.it/dettagli")!
+                                                guard var comps = URLComponents(string: "https://quotazioni.quattroruote.it/dettagli") else {
+                                                    completion(.failure(NSError(domain: "LicensePlateReader", code: 13001, userInfo: [NSLocalizedDescriptionKey: "URL dettagli non valida"])))
+                                                    return
+                                                }
                                                 comps.queryItems = [
                                                     URLQueryItem(name: "_token", value: csrfToken),
                                                     URLQueryItem(name: "codiceInfocarAM", value: codice),

@@ -14,6 +14,21 @@ struct mach_task_basic_info {
     var suspend_count: integer_t = 0
 }
 
+
+#if DEBUG
+// MARK: - SwiftUI Preview
+struct TyreRegistrationView_Previews: PreviewProvider {
+    static var previews: some View {
+        TyreRegistrationView(
+            onConfirmCompletion: {},
+            vehicleid: 1,
+            scanContext: "Scan the tire sidewall to automatically detect size, brand, DOT and ratings."
+        )
+        .preferredColorScheme(.dark)
+        .previewDisplayName("Tyre Registration")
+    }
+}
+#endif
 // Estensione per la notifica del flash
 extension Notification.Name {
     static let flashToggle = Notification.Name("flashToggle")
@@ -30,6 +45,8 @@ struct TireData {
     var season: String = ""
     var allText: [String] = []
     var vehicleId: Int = 0
+    var setName: String = ""
+    var setPosition: String = ""
 }
 
 // MARK: - OCR Manager
@@ -150,6 +167,22 @@ class TireOCRManager: NSObject, ObservableObject {
                     entries.append((compact, model, brand))
                 }
             }
+
+
+// MARK: - SwiftUI Preview
+#if DEBUG
+struct TyreRegistrationView_Previews: PreviewProvider {
+    static var previews: some View {
+        TyreRegistrationView(
+            onConfirmCompletion: {},
+            vehicleid: 123,
+            scanContext: "Scan the tire sidewall to automatically detect size, brand, DOT and ratings."
+        )
+        .preferredColorScheme(.dark)
+        .previewDisplayName("Tyre Registration – Dark")
+    }
+}
+#endif
         }
         return entries
     }()
@@ -194,9 +227,9 @@ class TireOCRManager: NSObject, ObservableObject {
     
     func extractTextFromImage(_ image: CGImage) {
         // Skip if already processing to avoid queue buildup
-        guard !isProcessing else { 
+        guard !isProcessing else {
             print("OCR already processing, skipping frame")
-            return 
+            return
         }
         
         // Check available memory before processing
@@ -349,7 +382,7 @@ class TireOCRManager: NSObject, ObservableObject {
         
         // Ensure the image stays within reasonable bounds
         let extent = correctedImage.extent
-        if extent.width > 0 && extent.height > 0 && 
+        if extent.width > 0 && extent.height > 0 &&
            extent.width < 5000 && extent.height < 5000 {
             return correctedImage
         } else {
@@ -585,7 +618,7 @@ class TireOCRManager: NSObject, ObservableObject {
     
     /// Extract load and speed with confidence scoring
     private func extractLoadAndSpeedWithConfidence(from text: String, confidence: Double, into data: inout TireData) throws {
-        guard text.count <= 200 else { 
+        guard text.count <= 200 else {
             throw NSError(domain: "TextTooLong", code: 1, userInfo: nil)
         }
         
@@ -825,8 +858,8 @@ class TireOCRManager: NSObject, ObservableObject {
         ]
         
         for combo in commonCombinations {
-            if combo.width.contains(width) && 
-               combo.profile.contains(profile) && 
+            if combo.width.contains(width) &&
+               combo.profile.contains(profile) &&
                combo.diameter.contains(diameter) {
                 return 1.2  // Boost confidence for common combinations
             }
@@ -1013,8 +1046,8 @@ class TireOCRManager: NSObject, ObservableObject {
             k += 1
         }
         
-        let jaro = (Double(matches) / Double(len1) + 
-                   Double(matches) / Double(len2) + 
+        let jaro = (Double(matches) / Double(len1) +
+                   Double(matches) / Double(len2) +
                    Double(matches - transpositions/2) / Double(matches)) / 3.0
         
         return jaro
@@ -1281,7 +1314,7 @@ class TireOCRManager: NSObject, ObservableObject {
     }
 
     private func extractLoadAndSpeed(from text: String, into data: inout TireData) throws {
-        guard text.count <= 200 else { 
+        guard text.count <= 200 else {
             throw NSError(domain: "TextTooLong", code: 1, userInfo: nil)
         }
         
@@ -1322,6 +1355,8 @@ struct TyreRegistrationView: View {
     var onConfirmCompletion: (() -> Void)? = nil
     var vehicleid: Int = 0
     var scanContext: String? = nil
+    var setName: String? = nil
+    var setPosition: String? = nil
     
     @Environment(\.dismiss) private var dismiss
     @StateObject private var ocrManager = TireOCRManager()
@@ -1345,6 +1380,12 @@ struct TyreRegistrationView: View {
     private var tireDataWithVehicleId: TireData {
         var data = ocrManager.extractedData
         data.vehicleId = vehicleid
+        if let setName, !setName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data.setName = setName
+        }
+        if let setPosition, !setPosition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data.setPosition = setPosition
+        }
         return data
     }
     
@@ -1551,9 +1592,9 @@ struct TyreRegistrationView: View {
             }
             }
         }
-        .onAppear { 
+        .onAppear {
             isCameraActive = true
-            resetScanningSession() 
+            resetScanningSession()
         }
         .onDisappear {
             isCameraActive = false
@@ -1622,50 +1663,50 @@ struct ExtractedDataView: View {
             VStack(spacing: 12) {
                 EssentialDataRow(
                     icon: "textformat.size",
-                    label: "Size",
+                    label: String(localized: "Size"),
                     value: data.size,
                     isCompleted: !data.size.isEmpty
                 )
 
                 EssentialDataRow(
                     icon: "tag.fill",
-                    label: "Brand",
+                    label: String(localized: "Brand"),
                     value: data.brand,
                     isCompleted: !data.brand.isEmpty
                 )
 
                 EssentialDataRow(
                     icon: "textformat",
-                    label: "Model",
-                    value: data.model.isEmpty ? "Auto-detecting..." : data.model,
+                    label: String(localized: "Model"),
+                    value: data.model.isEmpty ? String(localized: "Auto-detecting...") : data.model,
                     isCompleted: !data.model.isEmpty
                 )
 
                 EssentialDataRow(
                     icon: "speedometer",
-                    label: "Load Index",
+                    label: String(localized: "Load Index"),
                     value: data.loadIndex,
                     isCompleted: !data.loadIndex.isEmpty
                 )
 
                 EssentialDataRow(
                     icon: "gauge.high",
-                    label: "Speed Rating",
+                    label: String(localized: "Speed Rating"),
                     value: data.speedRating,
                     isCompleted: !data.speedRating.isEmpty
                 )
 
                 EssentialDataRow(
                     icon: "calendar",
-                    label: "DOT Code",
+                    label: String(localized: "DOT Code"),
                     value: data.dot,
                     isCompleted: !data.dot.isEmpty
                 )
 
                 EssentialDataRow(
                     icon: "snowflake",
-                    label: "Season",
-                    value: data.season.isEmpty ? "Auto-detecting..." : data.season,
+                    label: String(localized: "Season"),
+                    value: data.season.isEmpty ? String(localized: "Auto-detecting...") : data.season,
                     isCompleted: !data.season.isEmpty
                 )
             }
@@ -1695,13 +1736,13 @@ struct ExtractedDataView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("All data collected! Redirecting...")
+                    Text(String(localized: "All data collected! Redirecting..."))
                         .font(.customFont(size: 14, weight: .medium))
                         .foregroundColor(.green)
                 }
                 .transition(.scale.combined(with: .opacity))
             } else {
-                Text("Keep scanning to collect all tire information")
+                Text(String(localized: "Keep scanning to collect all tire information"))
                     .font(.customFont(size: 14, weight: .regular))
                     .foregroundColor(.white.opacity(0.7))
                     .transition(.opacity)
@@ -1739,7 +1780,7 @@ struct EssentialDataRow: View {
                     .font(.customFont(size: 14, weight: .semibold))
                     .foregroundColor(.white)
             } else {
-                Text("Scanning...")
+                Text(String(localized: "Scanning..."))
                     .font(.customFont(size: 14, weight: .regular))
                     .foregroundColor(.white.opacity(0.5))
                     .italic()
@@ -2232,7 +2273,7 @@ extension OCRCameraView: AVCaptureVideoDataOutputSampleBufferDelegate {
         
         // Validate crop rectangle - less restrictive
         guard cropRect.width > 25 && cropRect.height > 25, // Reduced from 50
-              cropRect.maxX <= CGFloat(imageWidth) && 
+              cropRect.maxX <= CGFloat(imageWidth) &&
               cropRect.maxY <= CGFloat(imageHeight) else {
             return nil
         }
@@ -2240,4 +2281,3 @@ extension OCRCameraView: AVCaptureVideoDataOutputSampleBufferDelegate {
         return image.cropping(to: cropRect)
     }
 }
-

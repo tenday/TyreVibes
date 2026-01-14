@@ -18,6 +18,51 @@ class VehicleImageService {
     static let defaultAngles: [Int] = Array(200...231)
     private static let cache = NSCache<NSNumber, UIImage>()
 
+    /// Normalizza il colore proveniente dall'API (spesso in italiano o con spazi) verso un paintId accettato da imagin.studio.
+    /// Mantiene eventuali codici già compatibili (es. pspc****) e riduce a una palette base altrimenti.
+    static func normalizedPaintId(from raw: String?) -> String {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return "BLACK"
+        }
+
+        let upper = raw.folding(options: .diacriticInsensitive, locale: .current).uppercased()
+
+        // Se è un codice immagin (pspc****) o un codice esadecimale già formattato lo manteniamo
+        if upper.range(of: #"^(PSPC|MZ|NZ)[A-Z0-9]*$"#, options: .regularExpression) != nil {
+            return upper
+        }
+        let hex = upper.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        if hex.range(of: #"^[A-F0-9]{6}$"#, options: .regularExpression) != nil {
+            return hex
+        }
+
+        let normalized = upper.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " ")
+        let palette: [(keywords: [String], paint: String)] = [
+            (["BIANCO", "WHITE", "PERLA", "PEARL"], "WHITE"),
+            (["NERO", "BLACK", "NOIR"], "BLACK"),
+            (["GRIGIO", "GREY", "GRAY", "ARGENTO", "SILVER", "ANTRACITE"], "GRAY"),
+            (["ROSSO", "RED", "BORDEAUX", "RUBINO"], "RED"),
+            (["BLU", "BLUE", "AZZURRO", "NAVY"], "BLUE"),
+            (["VERDE", "GREEN"], "GREEN"),
+            (["GIALLO", "YELLOW"], "YELLOW"),
+            (["ARANCIO", "ARANCIONE", "ORANGE"], "ORANGE"),
+            (["MARRONE", "BROWN", "BRONZO"], "BROWN"),
+            (["BEIGE", "CREMA", "SABBIA"], "BEIGE"),
+            (["ORO", "GOLD"], "GOLD"),
+            (["VIOLA", "PURPLE", "LILLA"], "PURPLE")
+        ]
+
+        for entry in palette {
+            if entry.keywords.contains(where: { normalized.contains($0) }) {
+                return entry.paint
+            }
+        }
+
+        // Fallback: rimuovi spazi/punteggiatura, usa valore maiuscolo
+        let trimmed = normalized.components(separatedBy: .whitespacesAndNewlines).joined()
+        return trimmed.isEmpty ? "BLACK" : trimmed
+    }
+
     /// Builds the CDN URL for a specific angle (without performing the request)
     private static func buildURL(make: String,
                                  modelFamily: String,
@@ -33,7 +78,7 @@ class VehicleImageService {
             URLQueryItem(name: "customer", value: options.customer),
             URLQueryItem(name: "make", value: make),
             URLQueryItem(name: "modelFamily", value: modelFamily),
-            URLQueryItem(name: "paintId", value: paintId),
+            URLQueryItem(name: "paintId", value: normalizedPaintId(from: paintId)),
             URLQueryItem(name: "angle", value: String(angle)),
             URLQueryItem(name: "modelYear", value: String(year)),
             URLQueryItem(name: "fileType", value: options.fileType),
@@ -76,7 +121,7 @@ class VehicleImageService {
             URLQueryItem(name: "customer", value: options.customer),
             URLQueryItem(name: "make", value: make),
             URLQueryItem(name: "modelFamily", value: modelFamily),
-            URLQueryItem(name: "paintId", value: paintId),
+            URLQueryItem(name: "paintId", value: normalizedPaintId(from: paintId)),
             URLQueryItem(name: "angle", value: String(options.angle)),
             URLQueryItem(name: "modelYear", value: String(year)),
             URLQueryItem(name: "fileType", value: options.fileType),
@@ -145,6 +190,7 @@ class VehicleImageService {
                               progress: ((Int, Int) -> Void)? = nil,
                               plate: String,
                               completion: @escaping ([UIImage?]) -> Void) {
+        let resolvedPaint = normalizedPaintId(from: paintId)
         let total = angles.count
         if total == 0 { completion([]); return }
 
@@ -154,7 +200,7 @@ class VehicleImageService {
 
         for angle in angles {
             group.enter()
-            fetchVehicleImage(make: make, modelFamily: modelFamily, year: year, paintId: paintId, angle: angle, options: options, plate: plate) { result in
+            fetchVehicleImage(make: make, modelFamily: modelFamily, year: year, paintId: resolvedPaint, angle: angle, options: options, plate: plate) { result in
                 if case .success(let img) = result {
                     lock.lock(); results[angle] = img; lock.unlock()
                 }

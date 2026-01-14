@@ -18,11 +18,11 @@ struct DataProtectionSheet: View {
                                 .foregroundColor(Color(hex: "5CEBFF"))
                                 .padding(.top, 16)
 
-                            Text("I Tuoi Dati Sono Protetti")
+                            Text("I Tuoi Dati Sono Protetti".localized)
                                 .font(.custom("Sora-SemiBold", size: 20))
                                 .foregroundColor(.white)
 
-                            Text("Hai il controllo completo sui tuoi dati personali")
+                            Text("Hai il controllo completo sui tuoi dati personali".localized)
                                 .font(.custom("Sora-Regular", size: 14))
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
@@ -30,62 +30,118 @@ struct DataProtectionSheet: View {
                         .padding(.bottom, 8)
 
                         // Dati Personali
-                        DataSection(title: "Dati Personali", icon: "person.fill") {
-                            DataRow(label: "Autenticazione Biometrica", value: viewModel.biometricAuth ? "Abilitata" : "Disabilitata", icon: "faceid")
-                            DataRow(label: "Lingua Preferita", value: viewModel.selectedLanguage.name, icon: "globe")
-                            DataRow(label: "Livello Privacy", value: viewModel.privacyLevel.rawValue, icon: "hand.raised")
-                            DataRow(label: "Tema Selezionato", value: viewModel.selectedTheme.rawValue, icon: "paintbrush")
+                        DataSection(title: "Dati Personali".localized, icon: "person.fill") {
+                            DataProtectionRow(
+                                label: "Autenticazione Biometrica".localized,
+                                value: viewModel.biometricAuth ? "Abilitata".localized : "Disabilitata".localized,
+                                icon: "faceid"
+                            )
+                            DataProtectionRow(
+                                label: "Lingua Preferita".localized,
+                                value: viewModel.selectedLanguage.name.localized,
+                                icon: "globe"
+                            )
+                            DataProtectionRow(
+                                label: "Livello Privacy".localized,
+                                value: viewModel.privacyLevel.rawValue.localized,
+                                icon: "hand.raised"
+                            )
+                            DataProtectionRow(
+                                label: "Tema Selezionato".localized,
+                                value: viewModel.selectedTheme.rawValue.localized,
+                                icon: "paintbrush"
+                            )
                         }
 
                         // Notifiche e Preferenze
-                        DataSection(title: "Notifiche e Preferenze", icon: "bell.fill") {
-                            DataRow(label: "Notifiche", value: viewModel.notificationsEnabled ? "Abilitate" : "Disabilitate", icon: "bell.badge")
-                            DataRow(label: "Notifiche Promozionali", value: viewModel.promotionNotifications ? "Sì" : "No", icon: "megaphone")
-                            DataRow(label: "Notifiche Aggiornamenti", value: viewModel.updateNotifications ? "Sì" : "No", icon: "arrow.down.circle")
-                            DataRow(label: "Notifiche Analisi", value: viewModel.analysisNotifications ? "Sì" : "No", icon: "chart.bar")
+                        DataSection(title: "Notifiche e Preferenze".localized, icon: "bell.fill") {
+                            DataProtectionRow(
+                                label: "Notifiche".localized,
+                                value: viewModel.notificationsEnabled ? "Abilitate".localized : "Disabilitate".localized,
+                                icon: "bell.badge"
+                            )
+                            DataProtectionRow(
+                                label: "Notifiche Promozionali".localized,
+                                value: viewModel.promotionNotifications ? "Sì".localized : "No".localized,
+                                icon: "megaphone"
+                            )
+                            DataProtectionRow(
+                                label: "Notifiche Aggiornamenti".localized,
+                                value: viewModel.updateNotifications ? "Sì".localized : "No".localized,
+                                icon: "arrow.down.circle"
+                            )
+                            DataProtectionRow(
+                                label: "Notifiche Analisi".localized,
+                                value: viewModel.analysisNotifications ? "Sì".localized : "No".localized,
+                                icon: "chart.bar"
+                            )
                         }
 
                         // Attività e Diagnostica
-                        DataSection(title: "Attività & Diagnostica", icon: "chart.line.uptrend.xyaxis") {
-                            DataRow(label: "Sincronizzazione Cloud", value: viewModel.backgroundSync ? "Attiva" : "Inattiva", icon: "icloud")
-                            DataRow(label: "Analytics", value: viewModel.privacyLevel == .strict ? "Disabilitato" : "Abilitato", icon: "chart.pie")
-                            DataRow(label: "Ottimizzazione Batteria", value: viewModel.batteryOptimization ? "Attiva" : "Inattiva", icon: "battery.100")
+                        DataSection(title: "Attività & Diagnostica".localized, icon: "chart.line.uptrend.xyaxis") {
+                            DataProtectionRow(
+                                label: "Sincronizzazione Cloud".localized,
+                                value: viewModel.backgroundSync ? "Attiva".localized : "Inattiva".localized,
+                                icon: "icloud"
+                            )
+                            DataProtectionRow(
+                                label: "Analytics".localized,
+                                value: viewModel.privacyLevel == .strict ? "Disabilitato".localized : "Abilitato".localized,
+                                icon: "chart.pie"
+                            )
+                            DataProtectionRow(
+                                label: "Ottimizzazione Batteria".localized,
+                                value: viewModel.batteryOptimization ? "Attiva".localized : "Inattiva".localized,
+                                icon: "battery.100"
+                            )
                         }
 
                         // Performance
-                        DataSection(title: "Performance & Storage", icon: "cpu") {
-                            DataRow(label: "Dimensione App", value: viewModel.stats.appSize, icon: "app")
-                            DataRow(label: "Cache Utilizzata", value: viewModel.stats.cacheSize, icon: "internaldrive")
-                            DataRow(label: "Qualità Immagini", value: viewModel.imageQualityLabel, icon: "photo")
-                            DataRow(label: "Gestione Cache Auto", value: viewModel.cacheManagement ? "Abilitata" : "Disabilitata", icon: "trash.circle")
+                        DataSection(title: "Performance & Storage".localized, icon: "cpu") {
+                            DataProtectionRow(label: "Dimensione App".localized, value: viewModel.stats.appSize, icon: "app")
+                            DataProtectionRow(label: "Cache Utilizzata".localized, value: viewModel.stats.cacheSize, icon: "internaldrive")
+                            DataProtectionRow(label: "Qualità Immagini".localized, value: viewModel.imageQualityLabel.localized, icon: "photo")
+                            DataProtectionRow(
+                                label: "Gestione Cache Auto".localized,
+                                value: viewModel.cacheManagement ? "Abilitata".localized : "Disabilitata".localized,
+                                icon: "trash.circle"
+                            )
                         }
 
                         // Permessi
-                        DataSection(title: "Permessi di Sistema", icon: "checkmark.shield") {
-                            DataRow(label: "Localizzazione", value: viewModel.locationPermission ? "Consentita" : "Negata", icon: "location")
-                            DataRow(label: "Fotocamera", value: viewModel.cameraPermission ? "Consentita" : "Negata", icon: "camera")
+                        DataSection(title: "Permessi di Sistema".localized, icon: "checkmark.shield") {
+                            DataProtectionRow(
+                                label: "Localizzazione".localized,
+                                value: viewModel.locationPermission ? "Consentita".localized : "Negata".localized,
+                                icon: "location"
+                            )
+                            DataProtectionRow(
+                                label: "Fotocamera".localized,
+                                value: viewModel.cameraPermission ? "Consentita".localized : "Negata".localized,
+                                icon: "camera"
+                            )
                         }
 
                         // Info GDPR
-                        GlassCard(height: .infinity, borderColor: Color(hex: "5CEBFF").opacity(0.6)) {
+                        GlassCard(height: nil, borderColor: Color(hex: "5CEBFF").opacity(0.6)) {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack {
                                     Image(systemName: "info.circle.fill")
                                         .foregroundColor(Color(hex: "5CEBFF"))
-                                    Text("I Tuoi Diritti GDPR")
+                                    Text("I Tuoi Diritti GDPR".localized)
                                         .font(.custom("Sora-SemiBold", size: 16))
                                         .foregroundColor(.white)
                                 }
 
-                                Text("In conformità con il GDPR, hai il diritto di:")
+                                Text("In conformità con il GDPR, hai il diritto di:".localized)
                                     .font(.custom("Sora-Regular", size: 14))
                                     .foregroundColor(.white.opacity(0.8))
 
                                 VStack(alignment: .leading, spacing: 8) {
-                                    BulletPoint(text: "Esportare tutti i tuoi dati in formato JSON")
-                                    BulletPoint(text: "Richiedere la cancellazione completa del tuo account")
-                                    BulletPoint(text: "Accedere a tutti i dati che abbiamo raccolto su di te")
-                                    BulletPoint(text: "Modificare le tue preferenze sulla privacy in qualsiasi momento")
+                                    BulletPoint(text: "Esportare tutti i tuoi dati in formato JSON".localized)
+                                    BulletPoint(text: "Richiedere la cancellazione completa del tuo account".localized)
+                                    BulletPoint(text: "Accedere a tutti i dati che abbiamo raccolto su di te".localized)
+                                    BulletPoint(text: "Modificare le tue preferenze sulla privacy in qualsiasi momento".localized)
                                 }
                                 .padding(.leading, 8)
                             }
@@ -101,7 +157,7 @@ struct DataProtectionSheet: View {
                                     HStack {
                                         Image(systemName: "square.and.arrow.up")
                                             .foregroundColor(Color(hex: "5CEBFF"))
-                                        Text("Esporta i Miei Dati")
+                                        Text("Esporta i Miei Dati".localized)
                                             .font(.custom("Sora-SemiBold", size: 16))
                                             .foregroundColor(.white)
                                     }
@@ -116,7 +172,7 @@ struct DataProtectionSheet: View {
                                     HStack {
                                         Image(systemName: "trash")
                                             .foregroundColor(.red)
-                                        Text("Richiedi Cancellazione Dati")
+                                        Text("Richiedi Cancellazione Dati".localized)
                                             .font(.custom("Sora-SemiBold", size: 16))
                                             .foregroundColor(.red)
                                     }
@@ -130,11 +186,11 @@ struct DataProtectionSheet: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("Protezione Dati")
+            .navigationTitle("Protezione Dati".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Chiudi") {
+                    Button("Chiudi".localized) {
                         dismiss()
                     }
                     .foregroundColor(Color(hex: "5CEBFF"))
@@ -146,7 +202,7 @@ struct DataProtectionSheet: View {
 
 // MARK: - Supporting Views
 
-struct DataSection<Content: View>: View {
+fileprivate struct DataSection<Content: View>: View {
     let title: String
     let icon: String
     let content: Content
@@ -168,7 +224,7 @@ struct DataSection<Content: View>: View {
                     .foregroundColor(.white)
             }
 
-            GlassCard(height: .infinity) {
+            GlassCard(height: nil) {
                 VStack(spacing: 12) {
                     content
                 }
@@ -178,7 +234,7 @@ struct DataSection<Content: View>: View {
     }
 }
 
-struct DataRow: View {
+fileprivate struct DataProtectionRow: View {
     let label: String
     let value: String
     let icon: String
@@ -203,7 +259,7 @@ struct DataRow: View {
     }
 }
 
-struct BulletPoint: View {
+fileprivate struct BulletPoint: View {
     let text: String
 
     var body: some View {

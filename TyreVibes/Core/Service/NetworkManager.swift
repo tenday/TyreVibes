@@ -92,13 +92,7 @@ class NetworkManager {
 
     // MARK: - Get Supabase JWT Token
     private func getAuthToken() async -> String? {
-        do {
-            let session = try await SupabaseManager.client.auth.session
-            return session.accessToken
-        } catch {
-            print("⚠️ [NetworkManager] Failed to get auth token: \(error.localizedDescription)")
-            return nil
-        }
+        await AuthTokenHelper.getAuthToken()
     }
 
     // MARK: - Generic Request Method

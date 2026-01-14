@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TyreVibes - Reset Password</title>
+    <style>
+      :root {
+        --bg: #0f0f10;
+        --fg: #f4f4f4;
+        --muted: #b6b6b6;
+        --accent: #ff6b5a;
+        --card: #17181a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(120% 120% at 20% 0%, #202126 0%, var(--bg) 55%);
+        color: var(--fg);
+        font-family: "Sora", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      .card {
+        width: min(560px, 92vw);
+        background: var(--card);
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        text-align: left;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 28px;
+        letter-spacing: 0.3px;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      a.link {
+        color: var(--fg);
+        text-decoration: underline;
+      }
+
+      .note {
+        font-size: 14px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Reset your password</h1>
+      <p>
+        This link is meant to open the TyreVibes app. If you are on iPhone and have
+        the app installed, it should open automatically.
+      </p>
+      <p>
+        If it did not open, tap the button below or install the app and try again.
+      </p>
+      <div class="actions">
+        <a class="button" id="open-app" href="it.tyrevibes.app://reset-password">Open the app</a>
+        <a class="link" href="https://apps.apple.com/app/id0000000000">Get the app</a>
+      </div>
+      <p class="note">
+        Replace the App Store link with your real app URL.
+      </p>
+    </main>
+    <script>
+      (function () {
+        var params = window.location.search + window.location.hash;
+        var appUrl = "it.tyrevibes.app://reset-password" + params;
+        var openAppLink = document.getElementById("open-app");
+        if (openAppLink) {
+          openAppLink.href = appUrl;
+        }
+      })();
+    </script>
+  </body>
+</html>

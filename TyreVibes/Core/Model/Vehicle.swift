@@ -1,3 +1,5 @@
+import Foundation
+
 struct Vehicle: Identifiable, Codable, Hashable {
     let id: Int
     let modelDetail: String?
@@ -159,5 +161,115 @@ struct TyreSizeSet: Identifiable, Hashable {
         self.name = name
         self.tyres = tyres
         self.isDefault = isDefault
+    }
+}
+
+// MARK: - Derived Info
+extension Vehicle {
+    /// Descrizione "intelligente" del motore quando il campo engine è mancante.
+    /// Combina cilindrata (L), alimentazione e potenza come fallback.
+    var smartEngineDescription: String? {
+        func cleaned(_ value: String?) -> String? {
+            guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+                return nil
+            }
+            return trimmed
+        }
+
+        if let engine = cleaned(engine) {
+            return engine.uppercased()
+        }
+
+        var parts: [String] = []
+
+        if let displacement = displacementCC, displacement > 0 {
+            let liters = Double(displacement) / 1000.0
+            let formatter = NumberFormatter()
+            formatter.minimumFractionDigits = 1
+            formatter.maximumFractionDigits = 1
+            if let lit = formatter.string(from: NSNumber(value: liters)) {
+                parts.append("\(lit)L")
+            } else {
+                parts.append("\(displacement) CC")
+            }
+        }
+
+        if let fuel = cleaned(fuelType)?.uppercased() {
+            parts.append(fuel)
+        }
+
+        if let power = powerCV, power > 0 {
+            parts.append("\(power) CV")
+        } else if let kw = cleaned(powerKW) {
+            parts.append("\(kw.uppercased()) kW")
+        }
+
+        if !parts.isEmpty {
+            return parts.joined(separator: " ")
+        }
+
+        if let version = cleaned(version)?.uppercased() ?? cleaned(modelDetail)?.uppercased() {
+            return version
+        }
+
+        return nil
+    }
+
+    /// Descrizione "intelligente" del modello quando `model` è mancante.
+    /// Pulisce il nome rimuovendo il brand e le indicazioni di serie/generazione numerica.
+    /// Usa model -> version -> modelDetail come fallback.
+    var smartModelDescription: String? {
+        func cleaned(_ value: String?) -> String? {
+            guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+                return nil
+            }
+            return trimmed
+        }
+
+        func normalizedModel(_ raw: String, make: String?) -> String? {
+            var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+
+            // Rimuovi il brand se è prefisso
+            if let make = make?.trimmingCharacters(in: .whitespacesAndNewlines), !make.isEmpty {
+                let lowerText = text.lowercased()
+                let makeLower = make.lowercased()
+                if lowerText.hasPrefix(makeLower + " ") {
+                    text = String(text.dropFirst(make.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+
+            // Normalizza spazi
+            text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+
+            // Rimuovi indicazioni di serie/generazione numerica (ma mantieni "SERIE A" o simili)
+            let patterns = [
+                #"(?i)\b\d+\s*(?:a|ª)?\s*serie\b"#,      // "4a serie"
+                #"(?i)\bserie\s*\d+(?:a|ª)?\b"#,         // "serie 4"
+                #"(?i)\bserie\s*[ivx]+\b"#,              // "serie iv"
+                #"(?i)\b[ivx]+\s*serie\b"#,              // "iv serie"
+                #"(?i)\bmk\s*\d+\b"#                     // "mk4"
+            ]
+            for pattern in patterns {
+                text = text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+            }
+
+            text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !text.isEmpty else { return nil }
+            return text.uppercased()
+        }
+
+        if let model = cleaned(model), let normalized = normalizedModel(model, make: make) {
+            return normalized
+        }
+        if let version = cleaned(version), let normalized = normalizedModel(version, make: make) {
+            return normalized
+        }
+        if let detail = cleaned(modelDetail), let normalized = normalizedModel(detail, make: make) {
+            return normalized
+        }
+        return nil
     }
 }

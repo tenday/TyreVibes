@@ -371,7 +371,7 @@ class ParticleFilter {
         // Inizializza particles con distribuzione Gaussiana
         self.particles = (0..<numParticles).map { _ in
             Particle(
-                state: gaussianRandom(mean: initialMean, std: initialStd),
+                state: Self.gaussianRandom(mean: initialMean, std: initialStd),
                 weight: 1.0 / Double(numParticles)
             )
         }
@@ -382,13 +382,13 @@ class ParticleFilter {
     func update(measurement: Double) -> Double {
         // Prediction step
         for i in 0..<particles.count {
-            particles[i].state += gaussianRandom(mean: 0, std: processNoise)
+            particles[i].state += Self.gaussianRandom(mean: 0, std: processNoise)
         }
 
         // Update weights basato sulla likelihood
         for i in 0..<particles.count {
             let diff = measurement - particles[i].state
-            let likelihood = gaussianPDF(x: diff, mean: 0, std: measurementNoise)
+            let likelihood = Self.gaussianPDF(x: diff, mean: 0, std: measurementNoise)
             particles[i].weight *= likelihood
         }
 
@@ -443,14 +443,14 @@ class ParticleFilter {
         particles = newParticles
     }
 
-    private func gaussianPDF(x: Double, mean: Double, std: Double) -> Double {
+    private static func gaussianPDF(x: Double, mean: Double, std: Double) -> Double {
         let variance = std * std
         let coefficient = 1.0 / sqrt(2.0 * .pi * variance)
         let exponent = -0.5 * pow(x - mean, 2) / variance
         return coefficient * exp(exponent)
     }
 
-    private func gaussianRandom(mean: Double, std: Double) -> Double {
+    private static func gaussianRandom(mean: Double, std: Double) -> Double {
         // Box-Muller transform
         let u1 = Double.random(in: 0..<1)
         let u2 = Double.random(in: 0..<1)

@@ -653,7 +653,7 @@ struct TyreControlPanel: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                    Text("Mostra indicatore usura")
+                    Text(String(localized: "Show wear indicator"))
                         .font(.customFont(size: 14, weight: .medium))
                         .foregroundColor(.white)
                 }
@@ -662,9 +662,9 @@ struct TyreControlPanel: View {
             
             // Quick specs
             HStack(spacing: 20) {
-                QuickSpec(label: "Larghezza", value: "\(tyre.width ?? 0)mm", color: .blue)
-                QuickSpec(label: "Rapporto", value: "\(tyre.ratio ?? 0)%", color: .green)
-                QuickSpec(label: "Diametro", value: "R\(tyre.diameter ?? 0)", color: .purple)
+                QuickSpec(label: String(localized: "Width"), value: "\(tyre.width ?? 0)mm", color: .blue)
+                QuickSpec(label: String(localized: "Ratio"), value: "\(tyre.ratio ?? 0)%", color: .green)
+                QuickSpec(label: String(localized: "Diameter"), value: "R\(tyre.diameter ?? 0)", color: .purple)
             }
             
             // Selected detail info

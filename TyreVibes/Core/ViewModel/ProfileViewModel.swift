@@ -9,7 +9,7 @@ struct UserProfile: Codable {
     var profileImageUrl: String?
 }
 
-struct UserPreferences: Codable {
+struct UserPreferences: Codable, Equatable {
     var emailNotifications: Bool
     var productUpdates: Bool
     var smsNotifications: Bool
@@ -67,22 +67,6 @@ struct ProfileImageUpdateData: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case profileImageUrl = "profile_image_url"
-    }
-}
-
-struct UserActivityData: Encodable {
-    let userId: String
-    let activityType: String
-    let title: String
-    let subtitle: String
-    let icon: String
-
-    enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case activityType = "activity_type"
-        case title
-        case subtitle
-        case icon
     }
 }
 

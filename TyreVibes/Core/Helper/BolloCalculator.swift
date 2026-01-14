@@ -120,7 +120,7 @@ public enum BolloCalculator {
             guard let fuel = normalizedFuel else { return 0 }
             let isHybrid = fuel.contains("ibrid") || fuel.contains("hybrid")
             guard isHybrid else { return 0 }
-            if let firstRegistrationDate {
+            if let firstRegistrationDate = firstRegistrationDate {
                 let years = Calendar.current.dateComponents([.year], from: firstRegistrationDate, to: referenceDate).year ?? 0
                 return years < 3 ? 0.5 : 0
             }
@@ -254,7 +254,7 @@ public enum BolloCalculator {
         let baseRate: Double = 20 // €/kW oltre i 185
         var multiplier: Double = 1.0
 
-        if let firstRegistrationDate {
+        if let firstRegistrationDate = firstRegistrationDate {
             let years = Calendar.current.dateComponents([.year], from: firstRegistrationDate, to: referenceDate).year ?? 0
             switch years {
             case ..<5:

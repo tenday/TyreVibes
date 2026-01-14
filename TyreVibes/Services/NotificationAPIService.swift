@@ -16,15 +16,17 @@ class NotificationAPIService {
 
     private init() {
         // Ottieni l'URL e la key dal plist
-        guard let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
-              let plist = NSDictionary(contentsOfFile: path),
-              let urlString = plist["SUPABASE_URL"] as? String,
-              let key = plist["SUPABASE_KEY"] as? String else {
-            fatalError("Api.plist non trovato o le chiavi non sono configurate")
+        if let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let urlString = plist["SUPABASE_URL"] as? String,
+           let key = plist["SUPABASE_KEY"] as? String {
+            self.baseURL = urlString
+            self.supabaseKey = key
+        } else {
+            print("⚠️ [NotificationAPIService] Api.plist non trovato o chiavi mancanti. Il servizio non funzionerà.")
+            self.baseURL = ""
+            self.supabaseKey = ""
         }
-
-        self.baseURL = urlString
-        self.supabaseKey = key
     }
 
     // MARK: - Device Token Management
@@ -34,13 +36,23 @@ class NotificationAPIService {
     ///   - payload: Dizionario contenente user_id, device_token, platform, etc.
     ///   - jwtToken: JWT token di autenticazione Supabase
     func registerDeviceToken(payload: [String: Any], jwtToken: String) async throws {
-        let endpoint = "\(baseURL)/rest/v1/device_tokens"
+        guard !baseURL.isEmpty, !supabaseKey.isEmpty else {
+            throw APIError.configurationError
+        }
+        
+        // Usa upsert per evitare errori 409 (duplicate key) se il token esiste già
+        let endpoint = "\(baseURL)/rest/v1/device_tokens?on_conflict=device_token"
 
-        var request = URLRequest(url: URL(string: endpoint)!)
+        guard let url = URL(string: endpoint) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
 
         // Converti payload in JSON
         let jsonData = try JSONSerialization.data(withJSONObject: payload)
@@ -50,6 +62,12 @@ class NotificationAPIService {
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 409 {
+            // Se il token esiste già consideriamo l'operazione riuscita
+            print("ℹ️ Device token già registrato sul backend, nessuna azione necessaria")
+            return
         }
 
         // Supabase restituisce 201 per creazione o 200 per upsert
@@ -63,9 +81,17 @@ class NotificationAPIService {
 
     /// Deregistra il device token dal backend
     func unregisterDeviceToken(token: String, jwtToken: String) async throws {
+        guard !baseURL.isEmpty, !supabaseKey.isEmpty else {
+            throw APIError.configurationError
+        }
+        
         let endpoint = "\(baseURL)/rest/v1/device_tokens?device_token=eq.\(token)"
 
-        var request = URLRequest(url: URL(string: endpoint)!)
+        guard let url = URL(string: endpoint) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
@@ -87,9 +113,17 @@ class NotificationAPIService {
 
     /// Recupera le notifiche dal server per l'utente corrente
     func fetchNotifications(userId: String, jwtToken: String, limit: Int = 50) async throws -> [AppNotification] {
+        guard !baseURL.isEmpty, !supabaseKey.isEmpty else {
+            throw APIError.configurationError
+        }
+        
         let endpoint = "\(baseURL)/rest/v1/notifications?user_id=eq.\(userId)&order=timestamp.desc&limit=\(limit)"
 
-        var request = URLRequest(url: URL(string: endpoint)!)
+        guard let url = URL(string: endpoint) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
@@ -115,9 +149,17 @@ class NotificationAPIService {
 
     /// Segna una notifica come letta sul backend
     func markNotificationAsRead(notificationId: String, jwtToken: String) async throws {
+        guard !baseURL.isEmpty, !supabaseKey.isEmpty else {
+            throw APIError.configurationError
+        }
+        
         let endpoint = "\(baseURL)/rest/v1/notifications?id=eq.\(notificationId)"
 
-        var request = URLRequest(url: URL(string: endpoint)!)
+        guard let url = URL(string: endpoint) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
@@ -140,9 +182,17 @@ class NotificationAPIService {
 
     /// Elimina una notifica dal backend
     func deleteNotification(notificationId: String, jwtToken: String) async throws {
+        guard !baseURL.isEmpty, !supabaseKey.isEmpty else {
+            throw APIError.configurationError
+        }
+        
         let endpoint = "\(baseURL)/rest/v1/notifications?id=eq.\(notificationId)"
 
-        var request = URLRequest(url: URL(string: endpoint)!)
+        guard let url = URL(string: endpoint) else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
@@ -165,6 +215,8 @@ enum APIError: LocalizedError {
     case invalidResponse
     case serverError(statusCode: Int, message: String)
     case decodingError(Error)
+    case configurationError
+    case invalidURL
 
     var errorDescription: String? {
         switch self {
@@ -174,6 +226,10 @@ enum APIError: LocalizedError {
             return "Errore server (\(code)): \(message)"
         case .decodingError(let error):
             return "Errore decodifica: \(error.localizedDescription)"
+        case .configurationError:
+            return "Configurazione mancante (Api.plist)"
+        case .invalidURL:
+            return "URL non valida"
         }
     }
 }

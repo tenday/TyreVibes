@@ -2,12 +2,12 @@
   "OK": {
     "occurrences": [
       {
-        "file": "Core/ViewModel/CustomAlertView.swift",
+        "file": "Core/ViewModel/ModalAlertView.swift",
         "line": 21,
         "context": "Button"
       },
       {
-        "file": "Core/ViewModel/CustomAlertView.swift",
+        "file": "Core/ViewModel/ModalAlertView.swift",
         "line": 107,
         "context": "Button"
       },
@@ -51,7 +51,7 @@
   "Show Alert": {
     "occurrences": [
       {
-        "file": "Core/ViewModel/CustomAlertView.swift",
+        "file": "Core/ViewModel/ModalAlertView.swift",
         "line": 98,
         "context": "Button"
       }
@@ -60,7 +60,7 @@
   "Cancel": {
     "occurrences": [
       {
-        "file": "Core/ViewModel/CustomAlertView.swift",
+        "file": "Core/ViewModel/ModalAlertView.swift",
         "line": 106,
         "context": "Button"
       }

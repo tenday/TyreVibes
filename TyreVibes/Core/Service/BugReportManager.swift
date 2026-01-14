@@ -13,6 +13,8 @@ class BugReportManager: ObservableObject {
     // MARK: - Published Properties
 
     @Published var showBugReportSheet = false
+    @Published var showFeedbackOptions = false
+    @Published var reportType: ReportType = .bug
     @Published var isSubmitting = false
     @Published var submissionError: String?
     @Published var showSuccessAlert = false
@@ -56,11 +58,22 @@ class BugReportManager: ObservableObject {
         // Haptic feedback
         hapticFeedback.notificationOccurred(.warning)
 
-        // Cattura screenshot
+        // Cattura screenshot subito per averlo pronto
         capturedScreenshot = UIApplication.shared.captureScreenshot()
 
-        // Mostra sheet
-        showBugReportSheet = true
+        // Mostra opzioni invece del sheet diretto
+        showFeedbackOptions = true
+    }
+    
+    // MARK: - Flow Control
+    
+    func selectReportType(_ type: ReportType) {
+        self.reportType = type
+        self.showFeedbackOptions = false
+        // Ritardo leggero per permettere chiusura action sheet
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.showBugReportSheet = true
+        }
     }
 
     // MARK: - Public Methods
@@ -77,7 +90,7 @@ class BugReportManager: ObservableObject {
 
     func submitBugReport(description: String, includeScreenshot: Bool) async {
         guard !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            submissionError = "La descrizione del bug non può essere vuota"
+            submissionError = "La descrizione non può essere vuota"
             return
         }
 
@@ -94,6 +107,9 @@ class BugReportManager: ObservableObject {
 
             // Ottieni userId (può essere nil se non loggato)
             let userId = await AuthService.currentUserId
+            
+            // Ottieni breadcrumbs
+            let breadcrumbs = UserActivityLogger.shared.getLogs()
 
             // Crea request
             let request = BugReportRequest(
@@ -101,7 +117,9 @@ class BugReportManager: ObservableObject {
                 description: description,
                 screenshot: screenshotBase64,
                 deviceInfo: DeviceInfo.current,
-                timestamp: ISO8601DateFormatter().string(from: Date())
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                type: reportType,
+                breadcrumbs: breadcrumbs
             )
 
             // Invia al backend
@@ -116,7 +134,7 @@ class BugReportManager: ObservableObject {
                 body: bodyData
             )
 
-            print("✅ [BUG-REPORT] Segnalazione inviata con successo!")
+            print("✅ [REPORT] \(reportType.title) inviato con successo!")
 
             // Success
             hapticFeedback.notificationOccurred(.success)

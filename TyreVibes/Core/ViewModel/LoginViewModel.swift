@@ -27,6 +27,7 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
     @AppStorage("isLoggedIn") var isLoggedIn: Bool = false
 
     private let authService = AuthService()
+    private let passkeyService = PasskeyAuthService.shared
 
     
     var isLoginButtonEnabled: Bool {
@@ -187,6 +188,25 @@ class LoginViewModel: NSObject, ObservableObject { // 2. Eredita da NSObject
                 showHomeScreen = true
             } catch {
                 let alert = mapErrorToAlert(error, fallbackTitle: "Login Google fallito")
+                self.alertItem = AlertItem(title: alert.title, message: alert.message)
+            }
+            isLoading = false
+        }
+    }
+
+    func signInWithPasskey(presentationAnchor: ASPresentationAnchor) {
+        isLoading = true
+        Task {
+            do {
+                try await passkeyService.authenticate(presentationAnchor: presentationAnchor)
+
+                // Fetch and cache user profile immediately after login
+                await fetchAndCacheUserProfile()
+
+                isLoggedIn = true
+                showHomeScreen = true
+            } catch {
+                let alert = mapErrorToAlert(error, fallbackTitle: "Accesso con passkey fallito")
                 self.alertItem = AlertItem(title: alert.title, message: alert.message)
             }
             isLoading = false

@@ -11,18 +11,20 @@ struct LoginScreen: View {
     @State private var showPassword = false
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @State private var showAlert = false
+    @State private var baseLayoutHeight: CGFloat = 0
     
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
                 let screenWidth = geometry.size.width
                 let screenHeight = geometry.size.height
+                let layoutHeight = baseLayoutHeight == 0 ? screenHeight : baseLayoutHeight
                 
                 // Calcola le dimensioni dinamiche basate sullo schermo
                 
-                let buttonHeight = screenHeight * 0.075 // ~60pt
+                let buttonHeight = layoutHeight * 0.075 // ~60pt
                 let buttonFontSize = screenWidth * 0.045 // ~18pt
-                let socialButtonHeight = screenHeight * 0.067 // ~56pt
+                let socialButtonHeight = layoutHeight * 0.067 // ~56pt
                 let socialButtonFontSize = screenWidth * 0.04 // ~16pt
                 let iconSize = screenWidth * 0.05 // ~20pt
                 
@@ -43,6 +45,8 @@ struct LoginScreen: View {
                                     .frame(width: 15, height: 24)
                                     .foregroundColor(.white)
                             }
+                            .accessibilityLabel("Indietro")
+                            .accessibilityHint("Torna alla schermata precedente")
                             Spacer()
                         }
                         .padding(.horizontal, 20)
@@ -68,7 +72,7 @@ struct LoginScreen: View {
                                     .foregroundColor(.gray)
                                 
                             }
-                            .padding(.bottom, screenHeight * 0.045)
+                            .padding(.bottom, layoutHeight * 0.045)
                             
                             
                             // Form Fields
@@ -78,14 +82,17 @@ struct LoginScreen: View {
                                     Image("EmailIcon")
                                         .foregroundColor(.white)
                                         .frame(height: 24)
+                                        .accessibilityHidden(true)
                                     TextField("Enter Email", text: $viewModel.email)
                                         .frame(maxHeight: .infinity)
                                         .font(.customFont(size: 16, weight: .semibold))
                                         .disableAutocorrection(true)
                                         .foregroundColor(.white)
                                         .autocapitalization(.none)
-                                    
-                                    
+                                        .accessibilityLabel("Email")
+                                        .accessibilityHint("Inserisci il tuo indirizzo email")
+
+
                                 }
                                 .padding()
                                 .background(Color.customFieldColor)
@@ -96,6 +103,7 @@ struct LoginScreen: View {
                                 HStack {
                                     Image("PasswordIcon")
                                         .frame(height: 24)
+                                        .accessibilityHidden(true)
                                     if showPassword {
                                         TextField("Enter Password", text: $viewModel.password)
                                             .frame(maxHeight: .infinity)
@@ -103,6 +111,8 @@ struct LoginScreen: View {
                                             .foregroundColor(.white)
                                             .autocapitalization(.none)
                                             .autocorrectionDisabled()
+                                            .accessibilityLabel("Password")
+                                            .accessibilityHint("Inserisci la tua password")
                                     }
                                     else{
                                         SecureField("Enter Password", text: $viewModel.password)
@@ -111,8 +121,10 @@ struct LoginScreen: View {
                                             .foregroundColor(.white)
                                             .autocapitalization(.none)
                                             .autocorrectionDisabled()
+                                            .accessibilityLabel("Password")
+                                            .accessibilityHint("Inserisci la tua password")
                                     }
-                                    
+
                                     Button(action: {
                                         showPassword.toggle()
                                     }) {
@@ -120,7 +132,9 @@ struct LoginScreen: View {
                                             .frame(width: 24, height: 24)
                                             .foregroundColor(.white)
                                     }
-                                    
+                                    .accessibilityLabel(showPassword ? "Nascondi password" : "Mostra password")
+                                    .accessibilityHint("Attiva per " + (showPassword ? "nascondere" : "mostrare") + " la password")
+
                                 }
                                 .padding()
                                 .background(Color.customFieldColor)
@@ -135,6 +149,8 @@ struct LoginScreen: View {
                                         Toggle("", isOn: $viewModel.rememberMe)
                                             .labelsHidden()
                                             .toggleStyle(CheckboxToggleStyle())
+                                            .accessibilityLabel("Ricordami")
+                                            .accessibilityHint("Mantieni l'accesso per le prossime sessioni")
 
                                         Text("Remember me")
                                             .foregroundColor(.white)
@@ -150,6 +166,8 @@ struct LoginScreen: View {
                                             .font(.customFont(size: 14, weight: .semibold))
                                             .underline()
                                     }
+                                    .accessibilityLabel("Password dimenticata")
+                                    .accessibilityHint("Vai alla schermata per recuperare la password")
                                 }
 
                             }
@@ -192,8 +210,8 @@ struct LoginScreen: View {
                             }
                             .disabled(viewModel.email.isEmpty || viewModel.password.isEmpty || viewModel.isLoading)
                             .opacity(viewModel.email.isEmpty || viewModel.password.isEmpty ? 0.6 : 1.0)
-                            .padding(.bottom,screenHeight * -0.03)
-                            .padding(.top, screenHeight * 0.25)
+                            .padding(.bottom, layoutHeight * -0.03)
+                            .padding(.top, layoutHeight * 0.25)
                             
                             // Or Continue With
                             HStack {
@@ -210,90 +228,114 @@ struct LoginScreen: View {
                                     .fill(Color.customWhite.opacity(0.5))
                                     .frame(width: screenWidth * 0.25, height: 0.5)
                             }
-                            .padding(.vertical, screenHeight * 0.02)
-                            .padding(.bottom, screenHeight * -0.03)
+                            .padding(.vertical, layoutHeight * 0.02)
+                            .padding(.bottom, layoutHeight * -0.03)
                             
                             
                             // Social Login Buttons
-                            HStack(spacing: screenWidth * 0.04) {
-                                Button(action: {
-                                    viewModel.signInWithGoogle()
-                                }) {
-                                    HStack {
-                                        Image("GoogleIcon")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: iconSize, height: iconSize)
-                                        
-                                        Text("Google")
-                                            .font(.customFont(size: socialButtonFontSize, weight: .semibold))
-                                            .foregroundColor(.white)
+                            VStack(spacing: screenWidth * 0.04) {
+                                HStack(spacing: screenWidth * 0.04) {
+                                    Button(action: {
+                                        viewModel.signInWithGoogle()
+                                    }) {
+                                        HStack {
+                                            Image("GoogleIcon")
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: iconSize, height: iconSize)
+
+                                            Text("Google")
+                                                .font(.customFont(size: socialButtonFontSize, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        }
                                     }
+                                    .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
+                                    .accessibilityLabel("Accedi con Google")
+                                    .accessibilityHint("Usa il tuo account Google per accedere")
+
+                                    Button(action: {
+                                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                           let window = windowScene.windows.first {
+                                            viewModel.signInWithApple(presentationAnchor: window)
+                                        }
+                                    }) {
+                                        HStack {
+                                            Image("AppleIcon")
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: iconSize, height: iconSize)
+
+                                            Text("Apple")
+                                                .font(.customFont(size: socialButtonFontSize, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
+                                    .accessibilityLabel("Accedi con Apple")
+                                    .accessibilityHint("Usa il tuo Apple ID per accedere")
                                 }
-                                .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
-                                
+
                                 Button(action: {
                                     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                                        let window = windowScene.windows.first {
-                                        viewModel.signInWithApple(presentationAnchor: window)
+                                        viewModel.signInWithPasskey(presentationAnchor: window)
                                     }
                                 }) {
                                     HStack {
-                                        Image("AppleIcon")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: iconSize, height: iconSize)
-                                        
-                                        Text("Apple")
+                                        Image(systemName: "key.fill")
+                                            .font(.system(size: iconSize))
+                                            .foregroundColor(.white)
+
+                                        Text("Passkey")
                                             .font(.customFont(size: socialButtonFontSize, weight: .semibold))
                                             .foregroundColor(.white)
                                     }
                                 }
                                 .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
+                                .accessibilityLabel("Accedi con passkey")
+                                .accessibilityHint("Usa una passkey per accedere più velocemente")
                             }
                         }
                         .padding(.horizontal, 20)
                     }
                 }
-                .onReceive(viewModel.$alertItem) { newValue in
-                    if newValue != nil {
-                        showAlert = true
-                    } else {
-                        showAlert = false
-                    }
-                }
                 .onAppear {
-                    viewModel.attemptAutoLogin()
-                }
-                .customAlert(
-                    isPresented: $showAlert,
-                    title: viewModel.alertItem?.title ?? "Error",
-                    message: viewModel.alertItem?.message ?? "An unknown error occurred.",
-                    showprogress: false,
-                    primaryButtonTitle: "OK",
-                    primaryButtonAction: {
-                        viewModel.alertItem = nil
-                        showAlert = false
+                    if baseLayoutHeight == 0 {
+                        baseLayoutHeight = screenHeight
                     }
-                )
+                }
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .onReceive(viewModel.$alertItem) { newValue in
+                showAlert = newValue != nil
+            }
+            .onAppear {
+                viewModel.attemptAutoLogin()
+            }
+            .customAlert(
+                isPresented: $showAlert,
+                title: viewModel.alertItem?.title ?? "Error",
+                message: viewModel.alertItem?.message ?? "An unknown error occurred.",
+                showprogress: false,
+                primaryButtonTitle: "OK",
+                primaryButtonAction: {
+                    viewModel.alertItem = nil
+                    showAlert = false
+                }
+            )
             .navigationDestination(isPresented: $viewModel.showHomeScreen) {
                 BottomNavigationView()
                     .navigationBarBackButtonHidden(true)
             }
             .navigationBarHidden(true)
             .navigationBarBackButtonHidden(true)
-            .background(InteractivePopGestureEnabler())
-
         }
         .background(InteractivePopGestureEnabler())
         .preferredColorScheme(.dark)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
-        
     }
-    
 }
 
 // MARK: - Reusable Components

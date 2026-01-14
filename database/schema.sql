@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS tyres_vehicles (
     load_index VARCHAR(10),      -- es. "92"
     speed_rating VARCHAR(5),     -- es. "Y"
     season VARCHAR(20),          -- "Summer", "Winter", "All-Season"
+    set_name VARCHAR(100),       -- Nome del set (es. "Anteriore", "Posteriore")
+    set_position VARCHAR(20),    -- "front", "rear"
 
     -- Metadati
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

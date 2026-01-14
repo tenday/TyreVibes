@@ -12,13 +12,19 @@ import SwiftUI
 struct TireAnalysisView: View {
     let vehicle: VehicleResponse
     let tyre: TyreRegistered
-    @State private var selectedTires: Set<TirePosition> = []
     @State private var selectedTire: TirePosition? = .frontLeft
     @State private var navigateToResult = false
     @State private var vehicleImage: UIImage?
     @State private var isLoadingImage = true
+    @State private var completedTires: Set<TirePosition> = []
     @State private var pulseScale: CGFloat = 1.0
+    @State private var showTreadMeasurement = false
+    @State private var measuringTire: TirePosition?
     @Environment(\.presentationMode) var presentationMode
+
+    private var currentTarget: TirePosition? {
+        TirePosition.allCases.first { !completedTires.contains($0) }
+    }
 
     var body: some View {
         ZStack {
@@ -63,37 +69,55 @@ struct TireAnalysisView: View {
 
                     
                     // Tire selection buttons
-                                      // Front Left
-                                      TireButton(position: .frontLeft, isSelected: selectedTires.contains(.frontLeft))
-                                          .offset(x: -160, y: -120)
-                                          .onTapGesture {
-                                              toggleTire(.frontLeft)
-                                          }
-                                      
-                                      // Front Right
-                                      TireButton(position: .frontRight, isSelected: selectedTires.contains(.frontRight))
-                                          .offset(x: 160, y: -120)
-                                          .onTapGesture {
-                                              toggleTire(.frontRight)
-                                          }
-                                      
-                                      // Rear Left
-                                      TireButton(position: .rearLeft, isSelected: selectedTires.contains(.rearLeft))
-                                          .offset(x: -160, y: 120)
-                                          .onTapGesture {
-                                              toggleTire(.rearLeft)
-                                          }
-                                      
-                                      // Rear Right
-                                      TireButton(position: .rearRight, isSelected: selectedTires.contains(.rearRight))
-                                          .offset(x: 160, y: 120)
-                                          .onTapGesture {
-                                              toggleTire(.rearRight)
-                                          }
+                    // Front Left
+                    TireButton(
+                        position: .frontLeft,
+                        isCompleted: completedTires.contains(.frontLeft),
+                        isDimmed: isDimmed(.frontLeft)
+                    )
+                    .offset(x: -160, y: -120)
+                    .onTapGesture {
+                        handleTireTap(.frontLeft)
+                    }
+                    .allowsHitTesting(isActive(.frontLeft))
                     
+                    // Front Right
+                    TireButton(
+                        position: .frontRight,
+                        isCompleted: completedTires.contains(.frontRight),
+                        isDimmed: isDimmed(.frontRight)
+                    )
+                    .offset(x: 160, y: -120)
+                    .onTapGesture {
+                        handleTireTap(.frontRight)
+                    }
+                    .allowsHitTesting(isActive(.frontRight))
+                    
+                    // Rear Left
+                    TireButton(
+                        position: .rearLeft,
+                        isCompleted: completedTires.contains(.rearLeft),
+                        isDimmed: isDimmed(.rearLeft)
+                    )
+                    .offset(x: -160, y: 120)
+                    .onTapGesture {
+                        handleTireTap(.rearLeft)
+                    }
+                    .allowsHitTesting(isActive(.rearLeft))
+                    
+                    // Rear Right
+                    TireButton(
+                        position: .rearRight,
+                        isCompleted: completedTires.contains(.rearRight),
+                        isDimmed: isDimmed(.rearRight)
+                    )
+                    .offset(x: 160, y: 120)
+                    .onTapGesture {
+                        handleTireTap(.rearRight)
+                    }
+                    .allowsHitTesting(isActive(.rearRight))
 
-                    // Freccia indicatrice del primo step
-                    if selectedTires.isEmpty {
+                    if let target = currentTarget {
                         VStack(spacing: 8) {
                             Image(systemName: "arrow.down.circle.fill")
                                 .font(.system(size: 30))
@@ -101,7 +125,7 @@ struct TireAnalysisView: View {
                                 .scaleEffect(pulseScale)
 
                         }
-                        .offset(x: -160, y: -200)
+                        .offset(x: arrowOffset(for: target).width, y: arrowOffset(for: target).height)
                         .shadow(color: Color.white.opacity(0.6), radius: 10)
                         .transition(.opacity.combined(with: .scale))
                         .onAppear {
@@ -109,52 +133,94 @@ struct TireAnalysisView: View {
                                 pulseScale = 1.3
                             }
                         }
-                    }
-
-                    if isLoadingImage {
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.5)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: target)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
 
             }
+
+            if isLoadingImage {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.5)
+            }
         }
         .navigationBarHidden(true)
         .task {
             await loadVehicleImage()
         }
+        .fullScreenCover(isPresented: $showTreadMeasurement, onDismiss: {
+            measuringTire = nil
+        }) {
+            LiDARTreadMeasurementView(onCompleted: {
+                if let tire = measuringTire {
+                    markTireCompleted(tire)
+                }
+            })
+        }
     }
     
-    private func toggleTire(_ position: TirePosition) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                if selectedTires.contains(position) {
-                    selectedTires.remove(position)
-                } else {
-                    selectedTires.insert(position)
-                }
-            }
+    private func handleTireTap(_ position: TirePosition) {
+        guard isActive(position), !completedTires.contains(position) else { return }
+        measuringTire = position
+        showTreadMeasurement = true
+    }
+
+    private func markTireCompleted(_ position: TirePosition) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            completedTires.insert(position)
         }
-    
+    }
+
+    private func isActive(_ position: TirePosition) -> Bool {
+        currentTarget == position
+    }
+
+    private func isDimmed(_ position: TirePosition) -> Bool {
+        guard let target = currentTarget else { return false }
+        return position != target
+    }
+
+    private func arrowOffset(for position: TirePosition) -> CGSize {
+        let offset = tireOffset(for: position)
+        return CGSize(width: offset.width, height: offset.height - 80)
+    }
+
+    private func tireOffset(for position: TirePosition) -> CGSize {
+        switch position {
+        case .frontLeft:
+            return CGSize(width: -160, height: -120)
+        case .frontRight:
+            return CGSize(width: 160, height: -120)
+        case .rearLeft:
+            return CGSize(width: -160, height: 120)
+        case .rearRight:
+            return CGSize(width: 160, height: 120)
+        }
+    }
+
     struct TireButton: View {
         let position: TirePosition
-        let isSelected: Bool
+        let isCompleted: Bool
+        let isDimmed: Bool
         
         var body: some View {
             ZStack {
+                if isCompleted {
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color.customAzure.opacity(0.25))
+                        .frame(width: 42, height: 72)
+                }
+
                 // Outer circle (border)
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(isSelected ? Color(red: 0.45, green: 0.35, blue: 0.85) : Color.white, lineWidth: 2)
+                    .stroke(isCompleted ? Color.customAzure : Color.white, lineWidth: 2)
                     .frame(width: 42, height: 72)
-                
-                // Inner fill when selected
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color(red: 0.45, green: 0.35, blue: 0.85).opacity(0.2))
-                        .frame(width: 56, height: 96)
-                }
                 
                 // Tire tread pattern (3 lines)
                 VStack(spacing: 15) {
@@ -167,17 +233,22 @@ struct TireAnalysisView: View {
                     }
                 }
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .opacity(isDimmed ? 0.35 : 1.0)
         }
     }
 
     private func loadVehicleImage() async {
-        defer { isLoadingImage = false }
+        await MainActor.run {
+            isLoadingImage = true
+        }
 
         guard let make = vehicle.vehicle.make,
               let modelFamily = vehicle.vehicle.model,
               let year = vehicle.vehicle.saleStart,
               let color = vehicle.vehicle.color else {
+            await MainActor.run {
+                isLoadingImage = false
+            }
             return
         }
 
@@ -197,6 +268,7 @@ struct TireAnalysisView: View {
                 case .failure(let error):
                     print("⚠️ Errore nel caricamento dell'immagine: \(error.localizedDescription)")
                 }
+                self.isLoadingImage = false
             }
         }
     }

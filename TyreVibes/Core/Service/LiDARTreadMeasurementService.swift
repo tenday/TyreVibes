@@ -41,7 +41,10 @@ class LiDARTreadMeasurementService: NSObject {
 
     /// Verifica disponibilità LiDAR sul dispositivo
     var isLiDARAvailable: Bool {
-        return ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+        guard #available(iOS 13.4, *) else { return false }
+        // Esplicita il tipo per evitare ambiguità di risoluzione dell'overload
+        let reconstructionMode: ARWorldTrackingConfiguration.SceneReconstruction = .mesh
+        return ARWorldTrackingConfiguration.supportsSceneReconstruction(reconstructionMode)
     }
 
     // MARK: - Configuration
@@ -100,8 +103,11 @@ class LiDARTreadMeasurementService: NSObject {
         let configuration = ARWorldTrackingConfiguration()
 
         // Abilita scene reconstruction con mesh
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
-            configuration.sceneReconstruction = .mesh
+        if #available(iOS 13.4, *) {
+            let reconstructionMode: ARWorldTrackingConfiguration.SceneReconstruction = .mesh
+            if ARWorldTrackingConfiguration.supportsSceneReconstruction(reconstructionMode) {
+                configuration.sceneReconstruction = reconstructionMode
+            }
         }
 
         configuration.planeDetection = [.horizontal, .vertical]
@@ -384,10 +390,10 @@ class LiDARTreadMeasurementService: NSObject {
         let confPointer = confData?.assumingMemoryBound(to: UInt8.self)
 
         // Campionamento (ogni N pixel per performance)
-        let stride = 4
+        let pixelStride = 4
 
-        for y in stride(from: 0, to: height, by: stride) {
-            for x in stride(from: 0, to: width, by: stride) {
+        for y in stride(from: 0, to: height, by: pixelStride) {
+            for x in stride(from: 0, to: width, by: pixelStride) {
                 let index = y * width + x
                 let depth = depthPointer[index]
 
@@ -574,3 +580,4 @@ extension simd_float4 {
         return simd_float3(x, y, z)
     }
 }
+

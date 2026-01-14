@@ -9,6 +9,14 @@ import Foundation
 import SwiftUI
 import Combine
 
+enum TyreAnalysisStatus: Equatable {
+    case idle
+    case loading
+    case available
+    case missing
+    case error(String)
+}
+
 @MainActor
 class TyreDetailViewModel: ObservableObject {
 
@@ -20,6 +28,7 @@ class TyreDetailViewModel: ObservableObject {
     @Published var tireConditionData: TireConditionData?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var analysisStatus: TyreAnalysisStatus = .idle
 
     // MARK: - Dependencies
 
@@ -35,20 +44,21 @@ class TyreDetailViewModel: ObservableObject {
 
     // MARK: - Data Loading
 
-    func loadTyreData(forceRefresh: Bool = false) async {
+    func loadTyreData() async {
         isLoading = true
         errorMessage = nil
+        analysisStatus = .loading
 
         do {
             // Prova a caricare l'ultima analisi dal database
-            if !forceRefresh, let savedAnalysis = try await analysisService.getLatestAnalysis(forTyreId: tyre.id) {
+            if let savedAnalysis = try await analysisService.getLatestAnalysis(forTyreId: tyre.id) {
                 print("📦 [TyreDetailViewModel] Caricamento dati salvati per pneumatico \(tyre.id)")
                 await loadFromSavedAnalysis(savedAnalysis)
+                analysisStatus = .available
             } else {
-                print("🔄 [TyreDetailViewModel] Generazione nuovi dati per pneumatico \(tyre.id)")
-                // Genera dati basati sull'età del pneumatico (DOT)
-                let tyreAgeYears = calculateTyreAge(dot: tyre.dot)
-                await generateAndSaveNewAnalysis(tyreAge: tyreAgeYears)
+                print("⚠️ [TyreDetailViewModel] Nessuna analisi disponibile per pneumatico \(tyre.id)")
+                resetAnalysisData()
+                analysisStatus = .missing
             }
 
             isLoading = false
@@ -56,12 +66,18 @@ class TyreDetailViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             print("❌ [TyreDetailViewModel] Errore caricamento dati: \(error)")
 
-            // Fallback: genera dati localmente senza salvare
-            let tyreAgeYears = calculateTyreAge(dot: tyre.dot)
-            await generateLocalData(tyreAge: tyreAgeYears)
+            resetAnalysisData()
+            analysisStatus = .error(error.localizedDescription)
 
             isLoading = false
         }
+    }
+
+    var hasAnalysis: Bool {
+        if case .available = analysisStatus {
+            return true
+        }
+        return false
     }
 
     // MARK: - Load from Database
@@ -127,6 +143,14 @@ class TyreDetailViewModel: ObservableObject {
 
         currentAnalysisId = analysis.id
         print("✅ [TyreDetailViewModel] Dati caricati dal database")
+    }
+
+    private func resetAnalysisData() {
+        treadDepthData = nil
+        remainingLifePercentage = 0.0
+        remainingLifeEstimate = nil
+        tireConditionData = nil
+        currentAnalysisId = nil
     }
 
     // MARK: - Generate and Save New Analysis
@@ -214,20 +238,16 @@ class TyreDetailViewModel: ObservableObject {
         // Calcola vita rimanente
         remainingLifeEstimate = generateRemainingLifeEstimate(
             averageDepth: treadDepthData?.averageDepth ?? 7.2,
-                tyreAge: tyreAgeYears
-            )
-            remainingLifePercentage = calculateRemainingLifePercentage(
-                averageDepth: treadDepthData?.averageDepth ?? 7.2
-            )
+            tyreAge: tyreAgeYears
+        )
+        remainingLifePercentage = calculateRemainingLifePercentage(
+            averageDepth: treadDepthData?.averageDepth ?? 7.2
+        )
 
-            // Genera dati condizione pneumatici
-            tireConditionData = generateTireConditionData(tyreAge: tyreAgeYears)
+        // Genera dati condizione pneumatici
+        tireConditionData = generateTireConditionData(tyreAge: tyreAgeYears)
 
-            isLoading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            isLoading = false
-        }
+        isLoading = false
     }
 
     // MARK: - Private Helpers
@@ -419,7 +439,7 @@ class TyreDetailViewModel: ObservableObject {
     }
 }
 
-// MARK: - Supporting Models
+ // MARK: - Supporting Models
 
 struct TreadDepthData {
     let frontLeft: TreadMeasurement

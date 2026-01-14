@@ -1175,7 +1175,8 @@ struct CarDetailsView: View {
 
                     
                                 
-                    VStack(alignment: .leading, spacing: 20) {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 20) {
 
                         // Car Image with 360 button
                         ZStack(alignment: .topTrailing) {
@@ -1324,6 +1325,7 @@ struct CarDetailsView: View {
                             .padding(.horizontal, 8)
                         }
 
+                        }
                     }
                 }
                 .padding(.horizontal,24)

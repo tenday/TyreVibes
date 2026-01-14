@@ -61,6 +61,12 @@ enum L10n {
     static let tireCondition = "Tire Condition"
     static let treadDepth = "Tread Depth"
     static let recommended = "Recommended"
+    static let noAnalysisYet = "No analysis yet"
+    static let runScanToSeeDetails = "Run a scan to see tread depth, remaining life, and condition."
+    static let analysisUnavailable = "Analysis unavailable"
+    static let unableToLoadAnalysis = "We couldn't load the analysis data. Please try again later."
+    static let offlineTitle = "No internet connection"
+    static let offlineMessage = "Some features may be unavailable."
 
     // MARK: - Seasons
     static let winter = "Winter"
@@ -149,7 +155,7 @@ extension L10n {
         // Tire
         "Tire Registration": "Registrazione Pneumatici",
         "Tire Sidewall Scanning": "Scansione Spalla Pneumatico",
-        "Add Your Tires": "Pneumatici Supportati",
+        "Supported Tyres": "Pneumatici Supportati",
         "Tire Data": "Dati Pneumatico",
         "Scanning...": "Scansione in corso...",
         "All data collected! Redirecting...": "Tutti i dati raccolti! Reindirizzamento...",
@@ -165,6 +171,12 @@ extension L10n {
         "Tire Condition": "Condizione Pneumatico",
         "Tread Depth": "Profondità Battistrada",
         "Recommended": "Consigliato",
+        "No analysis yet": "Nessuna analisi disponibile",
+        "Run a scan to see tread depth, remaining life, and condition.": "Esegui una scansione per vedere profondità battistrada, vita residua e condizione.",
+        "Analysis unavailable": "Analisi non disponibile",
+        "We couldn't load the analysis data. Please try again later.": "Non siamo riusciti a caricare i dati dell'analisi. Riprova più tardi.",
+        "No internet connection": "Connessione assente",
+        "Some features may be unavailable.": "Alcune funzionalità potrebbero non essere disponibili.",
 
         // Seasons
         "Winter": "Inverno",
@@ -221,5 +233,3 @@ extension L10n {
         "days ago": "giorni fa"
     ]
 }
-
-

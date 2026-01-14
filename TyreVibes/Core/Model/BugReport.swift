@@ -37,6 +37,20 @@ struct DeviceInfo: Codable {
     }
 }
 
+// MARK: - Report Type
+
+enum ReportType: String, Codable, CaseIterable {
+    case bug = "bug"
+    case feedback = "feedback"
+    
+    var title: String {
+        switch self {
+        case .bug: return "Segnala Bug"
+        case .feedback: return "Invia Feedback"
+        }
+    }
+}
+
 // MARK: - Bug Report Request
 
 struct BugReportRequest: Codable {
@@ -45,6 +59,8 @@ struct BugReportRequest: Codable {
     let screenshot: String?
     let deviceInfo: DeviceInfo
     let timestamp: String
+    let type: ReportType
+    let breadcrumbs: [String]
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -52,6 +68,8 @@ struct BugReportRequest: Codable {
         case screenshot
         case deviceInfo = "device_info"
         case timestamp
+        case type
+        case breadcrumbs
     }
 }
 

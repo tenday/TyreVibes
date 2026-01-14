@@ -91,18 +91,18 @@ struct ConfirmDetailsTyreView: View {
                 
                 // Details List
                 VStack(spacing: 14) {
-                    DetailRow(label: "Size Label:", value: displayValue(tireData.size))
-                    DetailRow(label: "DOT:", value: displayValue(dotDisplayValue()))
-                    DetailRow(label: "Make:", value: displayValue(tireData.brand))
+                    DetailRow(label: "\(String(localized: "Size")):", value: displayValue(tireData.size))
+                    DetailRow(label: "\(String(localized: "DOT")):", value: displayValue(dotDisplayValue()))
+                    DetailRow(label: "\(String(localized: "Make")):", value: displayValue(tireData.brand))
                     DetailRowTextField(
-                        label: "Model:",
-                        placeholder: "Enter model",
+                        label: "\(String(localized: "Model")):",
+                        placeholder: String(localized: "Enter model"),
                         text: $modelText
                     )
                     .focused($modelFieldFocused)
-                    DetailRow(label: "Load Index:", value: displayValue(tireData.loadIndex))
-                    DetailRow(label: "Speed Rating:", value: displayValue(tireData.speedRating))
-                    DetailRowMenu(label: "Season:", value: $selectedSeason)
+                    DetailRow(label: "\(String(localized: "Load Index")):", value: displayValue(tireData.loadIndex))
+                    DetailRow(label: "\(String(localized: "Speed Rating")):", value: displayValue(tireData.speedRating))
+                    DetailRowMenu(label: "\(String(localized: "Season")):", value: $selectedSeason)
                 }
                 .padding(.top, 56)
                 .padding(.horizontal, 24)
@@ -144,7 +144,7 @@ struct ConfirmDetailsTyreView: View {
             Group {
                 if showModelAlert {
                     CustomAlertView(
-                        title: "Inserisci il modello del pneumatico per continuare.",
+                        title: String(localized: "Enter the tire model to continue."),
                         showProgress: false
                     )
                 }
@@ -192,6 +192,8 @@ struct ConfirmDetailsTyreView: View {
         viewModel.loadIndex   = tireData.loadIndex
         viewModel.speedRating = tireData.speedRating
         viewModel.season      = selectedSeason
+        viewModel.setName     = tireData.setName
+        viewModel.setPosition = tireData.setPosition
 
         viewModel.insertTyre(vehicleId: Int(tireData.vehicleId))
     }
@@ -207,6 +209,19 @@ struct ConfirmDetailsTyreView: View {
 struct DetailRowMenu: View {
     var label: String
     @Binding var value: String
+
+    private func localizedSeason(_ season: String) -> String {
+        switch season {
+        case "Winter":
+            return L10n.winter.localized
+        case "Summer":
+            return L10n.summer.localized
+        case "All Season":
+            return L10n.allSeason.localized
+        default:
+            return season
+        }
+    }
     
     var body: some View {
         HStack {
@@ -232,7 +247,7 @@ struct DetailRowMenu: View {
                 }
             } label: {
                 HStack(spacing: 8) {
-                    Text(value)
+                    Text(localizedSeason(value))
                         .font(.customFont(size: 18, weight: .bold))
                         .foregroundColor(.white)
                         .frame(minWidth: 100, alignment: .leading)

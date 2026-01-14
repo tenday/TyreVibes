@@ -14,13 +14,30 @@
 		E913FB792E2D2D2B005FB7C0 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB782E2D2D2B005FB7C0 /* Storage */; };
 		E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB7A2E2D2D8B005FB7C0 /* Supabase */; };
 		E917BAFA2E61A5320070D53B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E917BAF92E61A5320070D53B /* GoogleService-Info.plist */; };
+		E9F1A1002F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */; };
+		E9F1A1012F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E9F8D0C12E53814A00C572B1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E9F8D0C02E53814A00C572B1 /* GoogleSignIn */; };
 		E9F8D0C32E53814A00C572B1 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E9F8D0C22E53814A00C572B1 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		E9F1A1022F0B111100ABCD00 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				E9F1A1012F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		E902A1112DD011CB00E6E298 /* TyreVibes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TyreVibes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E917BAF92E61A5320070D53B /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LLM/Frameworks/llama.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -34,7 +51,6 @@
 				Core/Service/.gitkeep,
 				Core/Utility/.gitkeep,
 				Core/ViewModel/.gitkeep,
-				Core/ViewModel/CustomAlertView.swift,
 				Info.plist,
 			);
 			target = E902A1102DD011CB00E6E298 /* TyreVibes */;
@@ -57,6 +73,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E9F1A1002F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Frameworks */,
 				E913FB752E2D2D2B005FB7C0 /* PostgREST in Frameworks */,
 				E913FB732E2D2D2B005FB7C0 /* Functions in Frameworks */,
 				E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */,
@@ -75,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				E902A1132DD011CB00E6E298 /* TyreVibes */,
+				E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */,
 				E902A1122DD011CB00E6E298 /* Products */,
 				E917BAF92E61A5320070D53B /* GoogleService-Info.plist */,
 			);
@@ -98,6 +116,7 @@
 				E902A10D2DD011CB00E6E298 /* Sources */,
 				E902A10E2DD011CB00E6E298 /* Frameworks */,
 				E902A10F2DD011CB00E6E298 /* Resources */,
+				E9F1A1022F0B111100ABCD00 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -137,7 +156,7 @@
 				};
 			};
 			buildConfigurationList = E902A10C2DD011CB00E6E298 /* Build configuration list for PBXProject "TyreVibes" */;
-			developmentRegion = en;
+			developmentRegion = it;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
@@ -322,8 +341,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TyreVibes/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Necessario l'uso della fotocamera per la lettura targa";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TyreVibes ha bisogno della fotocamera per misurare la profondità del battistrada usando il sensore LiDAR e per scansionare le targhe dei veicoli.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "volto all'autenticazione";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "La posizione viene utilizzata per geolocalizzare le misurazioni e trovare gommisti nelle vicinanze.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "TyreVibes usa il microfono per l assistente vocale e la guida alla manutenzione.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "TyreVibes usa il riconoscimento vocale per capire le richieste di manutenzione.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -355,8 +377,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TyreVibes/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Necessario l'uso della fotocamera per la lettura targa";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TyreVibes ha bisogno della fotocamera per misurare la profondità del battistrada usando il sensore LiDAR e per scansionare le targhe dei veicoli.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "volto all'autenticazione";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "La posizione viene utilizzata per geolocalizzare le misurazioni e trovare gommisti nelle vicinanze.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "TyreVibes usa il microfono per l assistente vocale e la guida alla manutenzione.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "TyreVibes usa il riconoscimento vocale per capire le richieste di manutenzione.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

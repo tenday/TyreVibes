@@ -22,39 +22,44 @@ private func extractCleanModel(from model: String?) -> String {
 // Helper function to extract clean engine info (e.g., "1.5 ETSI", "2.0 TDI")
 private func extractCleanEngine(from engine: String) -> String? {
     // Lista di parole chiave valide che identificano motori / alimentazioni
-        let validEngineTokens: Set<String> = [
-            "BZ", "BENZINA", "TSI", "TFSI", "MPI", "GDI", "VTEC",
-            "DIESEL", "TDI", "TD", "CDTI", "DCI", "JTD", "MULTIJET", "CRDI", "HDI", "BLUEHDI",
-            "HYBRID", "MHEV", "PHEV", "HEV", "EHYBRID",
-            "GPL", "CNG", "METANO", "ECOFUEL",
-            "EV", "ELETTRICO", "BEV",
-            "ETSI", "ECOBOOST", "MHYBRID"
-        ]
-        
-        // Regex per catturare "numero decimale" + "sigla motore"
-        let pattern = #"(\d+(\.\d+)?)\s*([a-zA-Z]+)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
-            return nil
-        }
-        
-        let range = NSRange(engine.startIndex..<engine.endIndex, in: engine)
-        let matches = regex.matches(in: engine, options: [], range: range)
-        
-        for match in matches {
-            if match.numberOfRanges >= 4,
-               let cilindrataRange = Range(match.range(at: 1), in: engine),
-               let siglaRange = Range(match.range(at: 3), in: engine) {
-                
-                let cilindrata = String(engine[cilindrataRange])
-                let sigla = String(engine[siglaRange])
-                
-                if validEngineTokens.contains(sigla.uppercased()) {
-                    return "\(cilindrata) \(sigla)"
-                }
+    let validEngineTokens: Set<String> = [
+        "BZ", "BENZINA", "TSI", "TFSI", "MPI", "GDI", "VTEC",
+        "DIESEL", "TDI", "TD", "CDTI", "DCI", "JTD", "MULTIJET", "CRDI", "HDI", "BLUEHDI",
+        "HYBRID", "MHEV", "PHEV", "HEV", "EHYBRID",
+        "GPL", "CNG", "METANO", "ECOFUEL",
+        "EV", "ELETTRICO", "BEV",
+        "ETSI", "ECOBOOST", "MHYBRID"
+    ]
+    
+    // Regex per catturare "numero decimale" + "sigla motore", con virgola o punto e L opzionale
+    let pattern = #"(\d+(?:[.,]\d+)?)\s*(L)?\s*([a-zA-Z]+)"#
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+        return nil
+    }
+    
+    let range = NSRange(engine.startIndex..<engine.endIndex, in: engine)
+    let matches = regex.matches(in: engine, options: [], range: range)
+    
+    for match in matches {
+        if match.numberOfRanges >= 4,
+           let cilindrataRange = Range(match.range(at: 1), in: engine),
+           let siglaRange = Range(match.range(at: 3), in: engine) {
+            let unitRange = match.range(at: 2)
+            let unit = unitRange.location != NSNotFound
+                ? String(engine[Range(unitRange, in: engine)!])
+                : ""
+            
+            let cilindrata = String(engine[cilindrataRange])
+            let sigla = String(engine[siglaRange]).uppercased()
+            
+            if validEngineTokens.contains(sigla) {
+                let unitSuffix = unit.isEmpty ? "" : unit.uppercased()
+                return "\(cilindrata)\(unitSuffix) \(sigla)"
             }
         }
-        
-        return nil
+    }
+    
+    return nil
 }
 
 struct GarageScreen: View {
@@ -70,6 +75,7 @@ struct GarageScreen: View {
     @State private var tapCount = 0
     @State private var showProfileScreen: Bool = false
     @State private var showNotificationScreen: Bool = false
+    @State private var showVoiceAssistant: Bool = false
 
 
     private let sheetSpacing: CGFloat = 20
@@ -84,6 +90,7 @@ struct GarageScreen: View {
                 vehicle.plate?.plateNumber,
                 vehicle.vehicle.make,
                 vehicle.vehicle.model,
+                vehicle.vehicle.smartModelDescription,
                 vehicle.vehicle.modelDetail,
                 vehicle.plate?.registrationDate,
                 vehicle.vehicle.gearbox,
@@ -161,6 +168,46 @@ struct GarageScreen: View {
                                         }
                                     )
                             }
+                            .accessibilityLabel("Notifiche")
+                            .accessibilityHint("Apri il centro notifiche")
+                        }
+                        .frame(width: 48, height: 48)
+
+                        HStack(alignment: .center) {
+                            Button(action: {
+                                showVoiceAssistant = true
+                            }) {
+                                Image(systemName: "mic.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 22, height: 22)
+                                    .foregroundColor(.white)
+                                    .padding(12)
+                                    .background(
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.customBackgroundColor)
+                                            Circle()
+                                                .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
+                                                .blur(radius: 1)
+                                                .offset(x: 0.3, y: 1)
+                                                .mask(
+                                                    Circle().fill(LinearGradient(
+                                                        gradient: Gradient(colors: [.black, .black]),
+                                                        startPoint: .top,
+                                                        endPoint: .bottom)
+                                                    )
+                                                )
+                                            VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
+                                                .clipShape(Circle())
+                                                .padding(12)
+                                                .blur(radius: 40)
+                                                .opacity(0.8)
+                                        }
+                                    )
+                            }
+                            .accessibilityLabel("Assistente vocale")
+                            .accessibilityHint("Apri assistente per la manutenzione")
                         }
                         .frame(width: 48, height: 48)
                         
@@ -178,7 +225,7 @@ struct GarageScreen: View {
                                         ZStack {
                                             Circle()
                                                 .fill(Color.customBackgroundColor)
-                                            
+
                                             Circle()
                                                 .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
                                                 .blur(radius: 1)
@@ -190,7 +237,7 @@ struct GarageScreen: View {
                                                         endPoint: .bottom)
                                                     )
                                                 )
-                                            
+
                                             VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
                                                 .clipShape(Circle())
                                                 .padding(12)
@@ -198,9 +245,11 @@ struct GarageScreen: View {
                                                 .opacity(0.8)
                                         }
                                     )
-                                
-                                
+
+
                             }
+                            .accessibilityLabel("Profilo")
+                            .accessibilityHint("Apri il tuo profilo utente")
                         }
                         .frame(width: 48, height: 48)
                         
@@ -219,6 +268,7 @@ struct GarageScreen: View {
                             .foregroundColor(.white)
                             .frame(height: 20)
                             .offset(x: 16)
+                            .accessibilityHidden(true)
                         TextField("Search...",  text: $searchText)
                             .frame(maxHeight: .infinity)
                             .font(.customFont(size: 16, weight: .semibold))
@@ -226,7 +276,9 @@ struct GarageScreen: View {
                             .foregroundColor(.white.opacity(0.6))
                             .offset(x: 16)
                             .autocapitalization(.none)
-                        
+                            .accessibilityLabel("Cerca veicoli")
+                            .accessibilityHint("Inserisci marca, modello o targa per cercare")
+
                         if !searchText.isEmpty {
                             Button(action: {
                                 searchText = ""
@@ -236,8 +288,10 @@ struct GarageScreen: View {
                                     .frame(height: 20)
                                     .padding(10)
                             }
+                            .accessibilityLabel("Cancella ricerca")
+                            .accessibilityHint("Rimuovi il testo di ricerca")
                         }
-                        
+
                     }
                     
                     .background(Color.customFieldColor)
@@ -262,6 +316,8 @@ struct GarageScreen: View {
                                 .shadow(color: Color.black.opacity(0.22), radius: 2 , x: 0 , y: 4)
 
                         }
+                        .accessibilityLabel("Aggiungi veicolo")
+                        .accessibilityHint("Aggiungi un nuovo veicolo al garage")
                     }
                     .frame(width: 80, height: 48)
                     .background(Color.customFieldColor)
@@ -473,6 +529,9 @@ struct GarageScreen: View {
                     .fullScreenCover(isPresented: $showNotificationScreen) {
                         NotificationScreen()
                     }
+                    .fullScreenCover(isPresented: $showVoiceAssistant) {
+                        VoiceAssistantScreen()
+                    }
                     
                     
                 }
@@ -556,10 +615,10 @@ struct GarageScreen: View {
 
         📋 Details:
         • Make: \(vehicle.vehicle.make ?? "N/A")
-        • Model: \(vehicle.vehicle.model ?? "N/A")
+        • Model: \(vehicle.vehicle.smartModelDescription ?? vehicle.vehicle.model ?? "N/A")
         • Year: \(vehicle.plate?.year.map { "\($0)" } ?? "N/A")
         • License Plate: \(vehicle.plate?.plateNumber ?? "N/A")
-        • Engine: \(vehicle.vehicle.engine ?? "N/A")
+        • Engine: \(vehicle.vehicle.smartEngineDescription ?? "N/A")
         • Fuel Type: \(vehicle.vehicle.fuelType ?? "N/A")
         • Color: \(vehicle.vehicle.color ?? "N/A")
 
@@ -615,6 +674,11 @@ struct GarageScreen: View {
         let onShowDetails: () -> Void
         let onShare: () -> Void
         
+        private var engineDisplay: String {
+            let raw = v.vehicle.smartEngineDescription ?? ""
+            return extractCleanEngine(from: raw) ?? raw
+        }
+        
         
         var body: some View {
             GeometryReader { geo in
@@ -630,13 +694,14 @@ struct GarageScreen: View {
                             .clipped()
                             .shadow(color: Color(red: 0.36, green: 0.92, blue: 1), radius: 0, x: 10, y: 0)
                             .shadow(color: .black.opacity(0.25), radius: 2, x: 2, y: 0)
+                            .accessibilityHidden(true)
                     }
                     
                     VStack(alignment: .leading, spacing: h * 0.05) {
                         HStack {
                             VStack() {
                                 HStack(spacing: 12) {
-                                    Text(v.vehicle.model ?? "")
+                                    Text(v.vehicle.smartModelDescription ?? v.vehicle.model ?? "")
                                         .foregroundColor(.black)
                                         .font(.customFont(size: 16, weight: .semibold))
                                         .lineLimit(1)
@@ -661,7 +726,9 @@ struct GarageScreen: View {
                                         .foregroundColor(.gray)
                                 }
                                 .buttonStyle(.plain)
-                                
+                                .accessibilityLabel("Condividi veicolo")
+                                .accessibilityHint("Condividi le informazioni del veicolo")
+
                                 Button(action: {
                                     onShowDetails()
                                 }) {
@@ -670,6 +737,8 @@ struct GarageScreen: View {
                                         .foregroundColor(.gray)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Dettagli veicolo")
+                                .accessibilityHint("Visualizza i dettagli completi del veicolo")
                             }
                         }
                         .padding(.horizontal, w * 0.04)
@@ -704,9 +773,9 @@ struct GarageScreen: View {
 
                                     VStack(alignment: .leading, spacing: 8) {
                                         SpecRow(label: "Make:", value: v.vehicle.make ?? "")
-                                        SpecRow(label: "Model:", value: v.vehicle.model ?? "")
+                                        SpecRow(label: "Model:", value: v.vehicle.smartModelDescription ?? v.vehicle.model ?? "")
                                         SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
-                                        SpecRow(label: "Engine:", value: v.vehicle.engine ?? "")
+                                        SpecRow(label: "Engine:", value: engineDisplay, maxLines: 1, minScaleFactor: 0.7, isMarquee: true)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -822,6 +891,8 @@ struct GarageScreen: View {
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel("Elimina veicolo")
+                        .accessibilityHint("Elimina questo veicolo dal garage")
                         .padding(.trailing, 10)
                         .scaleEffect(0.85 + 0.2 * progress)
                         .opacity(progress > 0.05 ? 0.4 + 0.6 * progress : 0)
@@ -892,16 +963,131 @@ struct GarageScreen: View {
     struct SpecRow: View {
         let label: String
         let value: String
+        var maxLines: Int? = nil
+        var minScaleFactor: CGFloat = 0.85
+        var isMarquee: Bool = false
+
+        private let valueFont = Font.customFont(size: 12, weight: .semibold)
+        private let valueUIFont = UIFont(name: "Sora-SemiBold", size: 12) ?? .systemFont(ofSize: 12, weight: .semibold)
         
         var body: some View {
-            HStack(spacing: 4) {
+            HStack(alignment: .top, spacing: 4) {
                 Text(label)
                     .font(.customFont(size: 12, weight: .semibold))
                     .foregroundColor(.gray)
+                    .fixedSize(horizontal: true, vertical: false)
                 
-                Text(value)
-                    .font(.customFont(size: 12, weight: .semibold))
-                    .foregroundColor(.black)
+                if isMarquee {
+                    MarqueeText(
+                        text: value,
+                        displayFont: valueFont,
+                        measureFont: valueUIFont,
+                        color: .black,
+                        delay: 0.6,
+                        speed: 24,
+                        spacing: 24
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
+                } else {
+                    Text(value)
+                        .font(valueFont)
+                        .foregroundColor(.black)
+                        .lineLimit(maxLines)
+                        .minimumScaleFactor(minScaleFactor)
+                        .allowsTightening(true)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    struct MarqueeText: View {
+        let text: String
+        let displayFont: Font
+        let measureFont: UIFont
+        let color: Color
+        let delay: Double
+        let speed: CGFloat
+        let spacing: CGFloat
+
+        @State private var textWidth: CGFloat = 0
+        @State private var offset: CGFloat = 0
+
+        var body: some View {
+            GeometryReader { geo in
+                let containerWidth = geo.size.width
+                let shouldScroll = textWidth > containerWidth && !text.isEmpty
+
+                ZStack(alignment: .leading) {
+                    if shouldScroll {
+                        HStack(spacing: spacing) {
+                            Text(text)
+                                .font(displayFont)
+                                .foregroundColor(color)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .fixedSize(horizontal: true, vertical: false)
+                            Text(text)
+                                .font(displayFont)
+                                .foregroundColor(color)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+                        .offset(x: offset)
+                        .onAppear { startAnimation(containerWidth: containerWidth) }
+                        .onChange(of: containerWidth) { _ in
+                            startAnimation(containerWidth: containerWidth)
+                        }
+                        .onChange(of: text) { _ in
+                            measureText()
+                            startAnimation(containerWidth: containerWidth)
+                        }
+                    } else {
+                        Text(text)
+                            .font(displayFont)
+                            .foregroundColor(color)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .onAppear { offset = 0 }
+                    }
+                }
+                .clipped()
+                .onAppear {
+                    measureText()
+                    startAnimation(containerWidth: containerWidth)
+                }
+            }
+            .frame(height: measureFont.lineHeight)
+        }
+
+        private func measureText() {
+            guard !text.isEmpty else {
+                textWidth = 0
+                return
+            }
+
+            let attributes: [NSAttributedString.Key: Any] = [.font: measureFont]
+            textWidth = (text as NSString).size(withAttributes: attributes).width.rounded(.up)
+        }
+
+        private func startAnimation(containerWidth: CGFloat) {
+            guard containerWidth > 0, textWidth > containerWidth else {
+                offset = 0
+                return
+            }
+
+            let travel = textWidth + spacing
+            let duration = Double(travel / speed)
+            offset = 0
+
+            withAnimation(.linear(duration: duration).delay(delay).repeatForever(autoreverses: false)) {
+                offset = -travel
             }
         }
     }

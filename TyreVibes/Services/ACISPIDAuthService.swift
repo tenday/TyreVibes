@@ -19,8 +19,8 @@ class ACISPIDAuthService: ObservableObject {
         var components = URLComponents(string: "https://login.aci.it/index.php/")
         components?.queryItems = [
             URLQueryItem(name: "do", value: "loginSpidMobile"),
-            URLQueryItem(name: "application_key", value: "bollonet")
-            // NON passare purl - il server gestisce il redirect automaticamente
+            URLQueryItem(name: "application_key", value: "bollonet"),
+            URLQueryItem(name: "purl", value: "https://bollo.aci.it/api/v2/vehicle")
         ]
         return components?.url
     }

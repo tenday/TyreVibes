@@ -69,6 +69,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
     private let languageManager = LanguageManager.shared
     private let notificationManager = NotificationManager.shared
+    private let passkeyService = PasskeyAuthService.shared
     private var isSyncingFromStore = false
 
     private struct ExportPayload: Codable {
@@ -287,16 +288,38 @@ final class SettingsViewModel: NSObject, ObservableObject {
             let context = LAContext()
             let canEvaluate = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
             if canEvaluate {
-                defaults.set(true, forKey: "useFaceID")
+                let reason = "Attiva l'accesso biometrico"
+                context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { [weak self] success, evalError in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        if success {
+                            self.defaults.set(true, forKey: "useFaceID")
+                            self.syncSettingsToCloud()
+                        } else {
+                            self.isSyncingFromStore = true
+                            self.biometricAuth = false
+                            self.isSyncingFromStore = false
+                            self.defaults.set(false, forKey: "useFaceID")
+                            let message = evalError?.localizedDescription ?? "Autenticazione biometrica non riuscita."
+                            self.alert = SettingsAlert(title: "Biometrics Unavailable", message: message, style: .info)
+                            self.syncSettingsToCloud()
+                        }
+                    }
+                }
             } else {
                 isSyncingFromStore = true
                 biometricAuth = false
                 isSyncingFromStore = false
                 defaults.set(false, forKey: "useFaceID")
-                alert = SettingsAlert(title: "Biometrics Unavailable", message: error?.localizedDescription ?? "Your device does not support Face ID / Touch ID.", style: .info)
+                let laError = error as? LAError
+                let style: SettingsAlert.Style = (laError?.code == .biometryNotEnrolled || laError?.code == .biometryNotAvailable) ? .openSettings : .info
+                let message = error?.localizedDescription ?? "Your device does not support Face ID / Touch ID."
+                alert = SettingsAlert(title: "Biometrics Unavailable", message: message, style: style)
+                syncSettingsToCloud()
             }
         } else {
             defaults.set(false, forKey: "useFaceID")
+            syncSettingsToCloud()
         }
     }
 
@@ -496,9 +519,9 @@ final class SettingsViewModel: NSObject, ObservableObject {
 
         var components: [String] = []
         if levelPercentage >= 0 {
-            components.append("Level: \(levelPercentage)%")
+            components.append(String(format: "Level: %d%%".localized, levelPercentage))
         }
-        components.append(processInfo.isLowPowerModeEnabled ? "Low Power" : "Normal")
+        components.append(processInfo.isLowPowerModeEnabled ? "Low Power".localized : "Normal".localized)
         return components.joined(separator: " · ")
     }
 
@@ -555,6 +578,29 @@ extension SettingsViewModel {
 
     func handleBiometricChange() {
         applyBiometricPreference()
+    }
+
+    func registerPasskey() {
+        Task {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first else {
+                await MainActor.run {
+                    alert = SettingsAlert(title: "Passkey", message: "Passkey not available.".localized, style: .info)
+                }
+                return
+            }
+
+            do {
+                try await passkeyService.registerPasskey(presentationAnchor: window)
+                await MainActor.run {
+                    alert = SettingsAlert(title: "Passkey", message: "Passkey setup completed.".localized, style: .info)
+                }
+            } catch {
+                await MainActor.run {
+                    alert = SettingsAlert(title: "Passkey", message: error.localizedDescription, style: .info)
+                }
+            }
+        }
     }
 
     func handlePrivacyLevelChange() {
