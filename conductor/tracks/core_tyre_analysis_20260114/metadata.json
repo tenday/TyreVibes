@@ -1,0 +1,8 @@
+{
+  "track_id": "core_tyre_analysis_20260114",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-14T11:00:00Z",
+  "updated_at": "2026-01-14T11:00:00Z",
+  "description": "Initialize core data models, persistence service, and LiDAR analysis infrastructure."
+}
