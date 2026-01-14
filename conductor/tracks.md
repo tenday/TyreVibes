@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Initialize Core Tyre Analysis and Data Persistence Layer**
+- [~] **Track: Initialize Core Tyre Analysis and Data Persistence Layer**
   *Link: [./tracks/core_tyre_analysis_20260114/](./tracks/core_tyre_analysis_20260114/)*
