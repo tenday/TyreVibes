@@ -4,7 +4,7 @@
 - [x] Task: Define Swift data models for Tyre and Analysis `[157dab8]`
     - [ ] Create `TyreModel.swift` with properties matching MySQL schema.
     - [ ] Create `TyreAnalysisModel.swift` to track depth and wear patterns.
-- [ ] Task: Implement `RemotePersistenceService` `[ ]`
+- [~] Task: Implement `RemotePersistenceService` `[ ]`
     - [ ] Create `RemotePersistenceService.swift` using `URLSession` to call `server.js` endpoints.
     - [ ] Implement `POST /v1/tyres_vehicles` integration.
     - [ ] Implement `POST /v1/tyre_analyses` integration.
