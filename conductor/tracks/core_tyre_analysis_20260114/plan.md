@@ -1,7 +1,7 @@
 # Implementation Plan - Initialize Core Tyre Analysis and Data Persistence Layer
 
 ## Phase 1: Core Data Models and Persistence Infrastructure
-- [~] Task: Define Swift data models for Tyre and Analysis `[ ]`
+- [x] Task: Define Swift data models for Tyre and Analysis `[157dab8]`
     - [ ] Create `TyreModel.swift` with properties matching MySQL schema.
     - [ ] Create `TyreAnalysisModel.swift` to track depth and wear patterns.
 - [ ] Task: Implement `RemotePersistenceService` `[ ]`
