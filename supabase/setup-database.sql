@@ -146,6 +146,7 @@ ALTER TABLE bollo_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE revision_status ENABLE ROW LEVEL SECURITY;
 
 -- Policy per bollo_status - gli utenti possono vedere solo i propri dati
+DROP POLICY IF EXISTS bollo_status_select_policy ON bollo_status;
 CREATE POLICY bollo_status_select_policy ON bollo_status
     FOR SELECT
     USING (
@@ -157,6 +158,7 @@ CREATE POLICY bollo_status_select_policy ON bollo_status
     );
 
 -- Policy per revision_status - gli utenti possono vedere solo i propri dati
+DROP POLICY IF EXISTS revision_status_select_policy ON revision_status;
 CREATE POLICY revision_status_select_policy ON revision_status
     FOR SELECT
     USING (
@@ -168,11 +170,13 @@ CREATE POLICY revision_status_select_policy ON revision_status
     );
 
 -- Policy per permettere agli Edge Functions di scrivere (service role)
+DROP POLICY IF EXISTS bollo_status_service_policy ON bollo_status;
 CREATE POLICY bollo_status_service_policy ON bollo_status
     FOR ALL
     USING (auth.jwt() ->> 'role' = 'service_role')
     WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
 
+DROP POLICY IF EXISTS revision_status_service_policy ON revision_status;
 CREATE POLICY revision_status_service_policy ON revision_status
     FOR ALL
     USING (auth.jwt() ->> 'role' = 'service_role')

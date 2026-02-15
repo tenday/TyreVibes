@@ -55,6 +55,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     @Published var promotionNotifications: Bool
     @Published var updateNotifications: Bool
     @Published var analysisNotifications: Bool
+    @Published var customNotifications: [CustomNotificationSetting]
 
     // Appearance Settings
     @Published var selectedTheme: AppTheme
@@ -94,7 +95,16 @@ final class SettingsViewModel: NSObject, ObservableObject {
         static let promotionNotifications = "settings_promotion_notifications"
         static let updateNotifications = "settings_update_notifications"
         static let analysisNotifications = "settings_analysis_notifications"
+        static let customNotifications = "settings_custom_notifications"
         static let selectedTheme = "settings_selected_theme"
+    }
+
+    private static func loadCustomNotifications(from defaults: UserDefaults, key: String) -> [CustomNotificationSetting] {
+        guard let data = defaults.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([CustomNotificationSetting].self, from: data) else {
+            return []
+        }
+        return decoded
     }
 
     override init() {
@@ -114,6 +124,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
         promotionNotifications = UserDefaults.standard.object(forKey: Keys.promotionNotifications) as? Bool ?? true
         updateNotifications = UserDefaults.standard.object(forKey: Keys.updateNotifications) as? Bool ?? false
         analysisNotifications = UserDefaults.standard.object(forKey: Keys.analysisNotifications) as? Bool ?? true
+        customNotifications = SettingsViewModel.loadCustomNotifications(from: UserDefaults.standard, key: Keys.customNotifications)
 
         // Load theme settings
         let themeRawValue = UserDefaults.standard.string(forKey: Keys.selectedTheme) ?? AppTheme.system.rawValue
@@ -133,6 +144,9 @@ final class SettingsViewModel: NSObject, ObservableObject {
         refreshPermissionStates()
         refreshStats()
         loadSettingsFromCloud()
+        if notificationsEnabled {
+            rescheduleCustomNotifications()
+        }
     }
 
     func refreshStats() {
@@ -200,6 +214,31 @@ final class SettingsViewModel: NSObject, ObservableObject {
         } catch {
             alert = SettingsAlert(title: "Errore", message: "Impossibile cancellare i file temporanei.", style: .info)
         }
+    }
+
+    // MARK: - Custom Notifications
+
+    func upsertCustomNotification(_ notification: CustomNotificationSetting) {
+        if let index = customNotifications.firstIndex(where: { $0.id == notification.id }) {
+            customNotifications[index] = notification
+        } else {
+            customNotifications.insert(notification, at: 0)
+        }
+        persistCustomNotifications()
+        scheduleCustomNotification(notification)
+    }
+
+    func deleteCustomNotification(_ notification: CustomNotificationSetting) {
+        customNotifications.removeAll { $0.id == notification.id }
+        persistCustomNotifications()
+        notificationManager.cancel(identifier: notification.id)
+    }
+
+    func setCustomNotificationEnabled(_ notificationId: String, isEnabled: Bool) {
+        guard let index = customNotifications.firstIndex(where: { $0.id == notificationId }) else { return }
+        customNotifications[index].isEnabled = isEnabled
+        persistCustomNotifications()
+        scheduleCustomNotification(customNotifications[index])
     }
 
     func requestDataDeletion() {
@@ -673,11 +712,13 @@ extension SettingsViewModel {
                     }
                 }
             }
+            rescheduleCustomNotifications()
         } else {
             // Disable all notification types
             promotionNotifications = false
             updateNotifications = false
             analysisNotifications = false
+            cancelCustomNotifications()
         }
     }
 
@@ -697,6 +738,46 @@ extension SettingsViewModel {
         defaults.set(analysisNotifications, forKey: Keys.analysisNotifications)
         featureFlags.isNotificationsEnabled = promotionNotifications || updateNotifications || analysisNotifications
         syncSettingsToCloud()
+    }
+
+    private func persistCustomNotifications() {
+        if let encoded = try? JSONEncoder().encode(customNotifications) {
+            defaults.set(encoded, forKey: Keys.customNotifications)
+        }
+    }
+
+    private func scheduleCustomNotification(_ notification: CustomNotificationSetting) {
+        notificationManager.cancel(identifier: notification.id)
+        guard notificationsEnabled, notification.isEnabled else { return }
+
+        let config = NotificationManager.NotificationConfig(
+            type: .custom,
+            title: notification.title,
+            body: notification.body,
+            identifier: notification.id,
+            userInfo: ["custom_id": notification.id]
+        )
+
+        Task {
+            do {
+                if notification.repeatsDaily {
+                    try await notificationManager.scheduleDaily(config, at: notification.timeComponents)
+                } else {
+                    let triggerDate = notification.nextTriggerDate()
+                    try await notificationManager.schedule(config, at: triggerDate)
+                }
+            } catch {
+                print("Failed to schedule custom notification: \(error)")
+            }
+        }
+    }
+
+    private func rescheduleCustomNotifications() {
+        customNotifications.forEach { scheduleCustomNotification($0) }
+    }
+
+    private func cancelCustomNotifications() {
+        customNotifications.forEach { notificationManager.cancel(identifier: $0.id) }
     }
 
     private func applyTheme() {

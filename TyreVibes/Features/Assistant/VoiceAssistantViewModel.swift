@@ -35,12 +35,16 @@ struct AssistantContext {
     let upcomingNotifications: [AppNotification]
     let unreadNotifications: [AppNotification]
     let userStats: AssistantUserStats?
+    let highlightedVehicleSummary: String?
+    let nextReminderSummary: String?
 
     static let empty = AssistantContext(
         allNotifications: [],
         upcomingNotifications: [],
         unreadNotifications: [],
-        userStats: nil
+        userStats: nil,
+        highlightedVehicleSummary: nil,
+        nextReminderSummary: nil
     )
 
     var criticalNotifications: [AppNotification] {
@@ -61,10 +65,91 @@ struct AssistantContext {
 }
 
 struct AssistantResponseGenerator {
-    func response(for input: String, context: AssistantContext) -> String {
+    private enum FollowUpTopic {
+        case maintenance
+        case tread
+        case rotation
+        case seasonal
+        case inspection
+        case garage
+        case general
+    }
+
+    private let maintenanceIntros = [
+        "Ecco le priorita piu vicine.",
+        "Questo e l'ordine delle scadenze in arrivo.",
+        "Sto vedendo queste prossime occasioni per agire."
+    ]
+
+    private let treadTips = [
+        "Per il battistrada, sotto i 3 mm conviene pianificare un cambio.",
+        "Usura sotto i 3 mm: meglio prenotare la sostituzione piu avanti.",
+        "Controlla il battistrada ogni 2-3 mesi per evitare sorprese."
+    ]
+
+    private let rotationTips = [
+        "La rotazione aiuta a mantenere l'usura uniforme.",
+        "Ogni 10.000 km e consigliabile ruotare le gomme.",
+        "Guarda il manuale del costruttore per la sequenza giusta, ma la regola generale e 10.000 km."
+    ]
+
+    private let seasonalTips = [
+        "Per il cambio stagionale valuta temperature e normative locali.",
+        "Sotto i 7 gradi conviene passare alle gomme invernali.",
+        "Le quattro stagioni vanno bene in climi miti, ma in inverno estremo preferisci dedicate."
+    ]
+
+    private let inspectionTips = [
+        "Controlla battistrada, spalle, valvole e DOT durante l'ispezione.",
+        "Se il volante vibra, valuta allineamento e bilanciamento.",
+        "Un controllo completo include pressione, usura e possibile danno invisibile."
+    ]
+
+    private let generalIntros = [
+        "Dimmi pure cosa ti serve.",
+        "Sono qui per aiutarti con pneumatici e manutenzione.",
+        "Indicami su quale punto vuoi concentrare l attenzione."
+    ]
+
+    private let followUpPrompts: [FollowUpTopic: [String]] = [
+        .maintenance: [
+            "Vuoi che ti ricordi la prossima scadenza con una notifica?",
+            "Ti serve un promemoria sui dettagli della rotazione?",
+            "Preferisci che ti invii un follow-up quando si avvicina la scadenza?"
+        ],
+        .tread: [
+            "Vuoi che monitori l'usura e ti ricordi di controllare di nuovo entro due mesi?",
+            "Ti interessa una guida su come misurare il battistrada correttamente?"
+        ],
+        .rotation: [
+            "Desideri che ti solidarizzi un reminder per la prossima rotazione?",
+            "Ti aiuto a pianificare il prossimo giro di rotazione?"
+        ],
+        .seasonal: [
+            "Vuoi che ti ricordi il cambio stagionale in anticipo?",
+            "Ti mando un promemoria sul passaggio alle gomme invernali quando serve?"
+        ],
+        .inspection: [
+            "Ti serve che ti segnali un'officina consigliata per il controllo?",
+            "Vuoi che ti guidi passo passo durante l'ispezione?"
+        ],
+        .garage: [
+            "Hai bisogno di assistenza per aggiungere o rimuovere un veicolo?",
+            "Ti serve un promemoria quando sei vicino al limite del piano?"
+        ],
+        .general: [
+            "Vuoi che ti suggerisca qualche azione rapida?",
+            "Ti interessa che ti proponga uno dei nostri suggerimenti?"
+        ]
+    ]
+
+    func response(for input: String, context: AssistantContext) -> AssistantReply {
         let normalized = normalize(input)
         guard !normalized.isEmpty else {
-            return "Non ho sentito bene. Puoi ripetere?"
+            return AssistantReply(
+                text: "Non ho sentito bene. Puoi ripetere?",
+                followUp: randomFollowUp(for: .general)
+            )
         }
 
         let mentionsVehicles = containsAny(normalized, keywords: ["veicol", "auto", "garage"])
@@ -97,68 +182,111 @@ struct AssistantResponseGenerator {
         return generalResponse(context: context)
     }
 
-    func welcomeResponse(context: AssistantContext) -> String {
+    func welcomeResponse(context: AssistantContext) -> AssistantReply {
         generalResponse(context: context)
     }
 
-    private func upcomingMaintenanceResponse(context: AssistantContext) -> String {
+    private func upcomingMaintenanceResponse(context: AssistantContext) -> AssistantReply {
         let upcoming = context.upcomingNotifications.sorted { $0.priority.sortOrder < $1.priority.sortOrder }
         if upcoming.isEmpty {
-            return "Non vedo scadenze imminenti. Ti consiglio un controllo battistrada ogni 2 o 3 mesi."
+            return AssistantReply(
+                text: "Non vedo scadenze imminenti. Ti consiglio un controllo battistrada ogni 2 o 3 mesi.",
+                followUp: randomFollowUp(for: .maintenance)
+            )
         }
 
         let summary = summarizeNotifications(upcoming, limit: 2)
-        return "Ecco le priorita piu vicine. \(summary) Vuoi che entriamo nei dettagli su rotazione, battistrada o cambio stagionale?"
+        let opener = maintenanceIntros.randomElement() ?? "Ecco le priorità più vicine."
+        var text = "\(opener) \(summary) Vuoi che entriamo nei dettagli su rotazione, battistrada o cambio stagionale?"
+        if let vehicleHint = contextVehicleHint(context) {
+            text += " \(vehicleHint)"
+        }
+        return AssistantReply(text: text, followUp: randomFollowUp(for: .maintenance))
     }
 
-    private func treadResponse(context: AssistantContext) -> String {
+    private func treadResponse(context: AssistantContext) -> AssistantReply {
         if let alert = context.replacementReminders.first {
-            return "Ho trovato un promemoria sostituzione. \(alert.message)"
+            return AssistantReply(
+                text: "Ho trovato un promemoria sostituzione. \(alert.message)",
+                followUp: randomFollowUp(for: .tread)
+            )
         }
 
-        return "Per il battistrada, sotto i 3 mm conviene pianificare la sostituzione. Se noti usura irregolare, valuta allineamento e bilanciamento."
+        let tip = treadTips.randomElement() ?? "Per il battistrada, sotto i 3 mm conviene pianificare la sostituzione."
+        return AssistantReply(text: tip, followUp: randomFollowUp(for: .tread))
     }
 
-    private func rotationResponse(context: AssistantContext) -> String {
+    private func rotationResponse(context: AssistantContext) -> AssistantReply {
         if let reminder = context.rotationReminders.first {
-            return "Hai un promemoria rotazione. \(reminder.message)"
+            return AssistantReply(
+                text: "Hai un promemoria rotazione. \(reminder.message)",
+                followUp: randomFollowUp(for: .rotation)
+            )
         }
 
-        return "La rotazione aiuta a mantenere l usura uniforme. Di solito ogni 10.000 km e una buona pratica, salvo indicazioni del costruttore."
+        let tip = rotationTips.randomElement() ?? "La rotazione aiuta a mantenere l usura uniforme."
+        return AssistantReply(text: tip, followUp: randomFollowUp(for: .rotation))
     }
 
-    private func seasonalResponse(context: AssistantContext) -> String {
+    private func seasonalResponse(context: AssistantContext) -> AssistantReply {
         if let reminder = context.seasonalReminders.first {
-            return "C'e un promemoria stagionale. \(reminder.message)"
+            return AssistantReply(
+                text: "C'e un promemoria stagionale. \(reminder.message)",
+                followUp: randomFollowUp(for: .seasonal)
+            )
         }
 
-        return "Per il cambio stagionale, considera le temperature medie e la normativa locale. Se scendi spesso sotto i 7 gradi, le invernali offrono piu sicurezza."
+        let tip = seasonalTips.randomElement() ?? "Per il cambio stagionale, considera le temperature medie."
+        return AssistantReply(text: tip, followUp: randomFollowUp(for: .seasonal))
     }
 
-    private func inspectionResponse(context: AssistantContext) -> String {
+    private func inspectionResponse(context: AssistantContext) -> AssistantReply {
         if let critical = context.criticalNotifications.first {
-            return "Attenzione, ho un avviso critico. \(critical.message) Ti consiglio un controllo in officina appena possibile."
+            return AssistantReply(
+                text: "Attenzione, ho un avviso critico. \(critical.message) Ti consiglio un controllo in officina appena possibile.",
+                followUp: randomFollowUp(for: .inspection)
+            )
         }
 
-        return "Per un check completo: battistrada, spalle del pneumatico, valvole e data DOT. Se il volante vibra, valuta il bilanciamento."
+        let tip = inspectionTips.randomElement() ?? "Per un check completo: battistrada, spalle del pneumatico, valvole e data DOT."
+        return AssistantReply(text: tip, followUp: randomFollowUp(for: .inspection))
     }
 
-    private func generalResponse(context: AssistantContext) -> String {
+    private func generalResponse(context: AssistantContext) -> AssistantReply {
         if let critical = context.criticalNotifications.first {
-            return "C'e una segnalazione critica. \(critical.message) Vuoi che ti guidi passo passo?"
+            let text = "C'e una segnalazione critica. \(critical.message) Vuoi che ti guidi passo passo?"
+            return AssistantReply(text: text, followUp: randomFollowUp(for: .inspection))
         }
 
         if !context.upcomingNotifications.isEmpty {
             let summary = summarizeNotifications(context.upcomingNotifications, limit: 1)
-            return "Posso aiutarti con la manutenzione. Prima cosa: \(summary) Dimmi se vuoi battistrada, rotazione o cambio stagionale."
+            let intro = generalIntros.randomElement() ?? "Posso aiutarti con la manutenzione."
+            let baseText = "\(intro) Prima cosa: \(summary) Dimmi se vuoi battistrada, rotazione o cambio stagionale."
+            var textParts = [baseText]
+            if let vehicleHint = contextVehicleHint(context) {
+                textParts.append(vehicleHint)
+            }
+            return AssistantReply(text: textParts.joined(separator: " "), followUp: randomFollowUp(for: .maintenance))
         }
 
-        return "Dimmi pure cosa ti serve. Posso guidarti su battistrada, rotazione, cambio stagionale e controlli di sicurezza."
+        let intro = generalIntros.randomElement() ?? "Dimmi pure cosa ti serve."
+        let baseText = "\(intro) Posso guidarti su battistrada, rotazione, cambio stagionale e controlli di sicurezza."
+        var textParts = [baseText]
+        if let vehicleHint = contextVehicleHint(context) {
+            textParts.append(vehicleHint)
+        }
+        if let reminderHint = contextReminderHint(context) {
+            textParts.append(reminderHint)
+        }
+        return AssistantReply(text: textParts.joined(separator: " "), followUp: randomFollowUp(for: .general))
     }
 
-    private func garageStatusResponse(context: AssistantContext) -> String {
+    private func garageStatusResponse(context: AssistantContext) -> AssistantReply {
         guard let stats = context.userStats else {
-            return "Non riesco a recuperare i dati del garage in questo momento. Riprova tra poco."
+            return AssistantReply(
+                text: "Non riesco a recuperare i dati del garage in questo momento. Riprova tra poco.",
+                followUp: randomFollowUp(for: .garage)
+            )
         }
 
         var parts: [String] = []
@@ -170,7 +298,8 @@ struct AssistantResponseGenerator {
 
         if stats.isPremium {
             parts.append("Con il piano Premium puoi aggiungerne quanti vuoi.")
-            return parts.joined(separator: " ")
+            let extra = "Fammi sapere se vuoi aggiornare qualcosa."
+            return AssistantReply(text: "\(parts.joined(separator: " ")) \(extra)", followUp: randomFollowUp(for: .garage))
         }
 
         if stats.isPaywallEnabled, let maxVehicles = stats.maxVehicles {
@@ -187,7 +316,12 @@ struct AssistantResponseGenerator {
             parts.append("Al momento non ci sono limiti attivi sul numero di veicoli.")
         }
 
-        return parts.joined(separator: " ")
+        let closing = "Fammi sapere se ti serve aiuto sul garage."
+        var text = "\(parts.joined(separator: " ")) \(closing)"
+        if let vehicleHint = contextVehicleHint(context) {
+            text += " \(vehicleHint)"
+        }
+        return AssistantReply(text: text, followUp: randomFollowUp(for: .garage))
     }
 
     private func summarizeNotifications(_ notifications: [AppNotification], limit: Int) -> String {
@@ -203,12 +337,31 @@ struct AssistantResponseGenerator {
         keywords.contains { text.contains($0) }
     }
 
+    private func randomFollowUp(for topic: FollowUpTopic) -> String? {
+        followUpPrompts[topic]?.randomElement()
+    }
+
+    private func contextVehicleHint(_ context: AssistantContext) -> String? {
+        guard let summary = context.highlightedVehicleSummary else { return nil }
+        return "Sto tenendo d'occhio il tuo \(summary)."
+    }
+
+    private func contextReminderHint(_ context: AssistantContext) -> String? {
+        guard let reminder = context.nextReminderSummary else { return nil }
+        return "Il prossimo promemoria e: \(reminder)"
+    }
+
     private func normalize(_ text: String) -> String {
         let lowered = text.lowercased()
         return lowered.replacingOccurrences(of: "[^a-z0-9 ]", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "  ", with: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
+}
+
+struct AssistantReply {
+    let text: String
+    let followUp: String?
 }
 
 final class SpeechSession {
@@ -300,7 +453,7 @@ enum SpeechSessionError: Error {
 }
 
 @MainActor
-final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     private enum ListeningMode {
         case wakeWord
         case command
@@ -314,17 +467,28 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
     @Published var statusMessage = "Di 'Ehi TyreVibes' per iniziare."
     @Published var errorMessage: String?
     @Published private(set) var userStats: AssistantUserStats?
+    @Published var followUpPrompt: String?
 
     var contextProvider: (() -> AssistantContext)?
 
     private let responseGenerator = AssistantResponseGenerator()
     private let speechSynthesizer = AVSpeechSynthesizer()
-    private let localLLM = LocalLLMService.shared
+    private let deepSeekService: DeepSeekServiceProtocol
     private let localRAG = LocalRAGService.shared
     private let vehicleService = VehicleService.shared
     private let paywallManager = PaywallManager.shared
     private let featureFlags = FeatureFlags.shared
+    private let shouldSpeakResponses: Bool
+    private let refreshUserStatsHandler: (() async -> Void)?
     private var speechSession: SpeechSession?
+    private var remoteAudioPlayer: AVAudioPlayer?
+    var highlightedVehicleSummary: String? {
+        guard let cachedVehicles = vehicleService.getCachedVehicles(),
+              let primary = cachedVehicles.first else {
+            return nil
+        }
+        return primary.vehicle.summaryName
+    }
     private var currentLocale: Locale = .current
     private var hasSpeechPermission = false
     private var hasMicPermission = false
@@ -347,14 +511,28 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
         "trovarlo su"
     ]
 
-    override init() {
+    override convenience init() {
+        self.init(
+            deepSeekService: DeepSeekService.shared,
+            shouldSpeakResponses: true,
+            refreshUserStatsHandler: nil
+        )
+    }
+
+    init(
+        deepSeekService: DeepSeekServiceProtocol,
+        shouldSpeakResponses: Bool,
+        refreshUserStatsHandler: (() async -> Void)?
+    ) {
+        self.deepSeekService = deepSeekService
+        self.shouldSpeakResponses = shouldSpeakResponses
+        self.refreshUserStatsHandler = refreshUserStatsHandler
         super.init()
         speechSynthesizer.delegate = self
     }
 
     func prepare() {
         requestPermissionsIfNeeded()
-        localLLM.prepare()
     }
 
     func activate() {
@@ -366,9 +544,7 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
     func deactivate() {
         isActive = false
         stopListening()
-        if speechSynthesizer.isSpeaking {
-            speechSynthesizer.stopSpeaking(at: .immediate)
-        }
+        stopAllSpeech()
     }
 
     func setChatFocus(_ focused: Bool) {
@@ -392,13 +568,15 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
     func sendWelcomeIfNeeded(context: AssistantContext) {
         guard messages.isEmpty else { return }
         let welcome = responseGenerator.welcomeResponse(context: context)
-        messages.append(AssistantMessage(role: .assistant, text: welcome))
+        messages.append(AssistantMessage(role: .assistant, text: welcome.text))
+        followUpPrompt = welcome.followUp
     }
 
     func toggleListening() {
         if isListening {
             isActive = false
             stopListening()
+            stopAllSpeech()
             statusMessage = "Microfono disattivato."
         } else {
             isActive = true
@@ -554,35 +732,61 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
 
         messages.append(AssistantMessage(role: .user, text: cleaned))
         statusMessage = "Sto preparando la risposta..."
+        followUpPrompt = nil
         isGenerating = true
 
         Task { @MainActor [weak self] in
             guard let self else { return }
-            await self.refreshUserStats()
+            if let refreshUserStatsHandler {
+                await refreshUserStatsHandler()
+            } else {
+                await self.refreshUserStats()
+            }
 
             let context = self.contextProvider?() ?? .empty
-            let fallbackResponse = self.responseGenerator.response(for: cleaned, context: context)
+            let fallbackReply = self.responseGenerator.response(for: cleaned, context: context)
 
-            if self.shouldUseLocalLLM(for: cleaned, fallback: fallbackResponse), self.localLLM.isReady {
+            if self.deepSeekService.isConfigured {
                 let prompt = self.buildPrompt(userInput: cleaned, context: context)
-                if let llmResponse = await self.localLLM.generateResponse(prompt: prompt), !llmResponse.isEmpty {
-                    if self.isLLMResponseAcceptable(llmResponse) {
-                        self.messages.append(AssistantMessage(role: .assistant, text: llmResponse))
-                        self.speak(llmResponse)
+                #if DEBUG
+                print("ℹ️ [VoiceAssistant][DeepSeek] request started")
+                #endif
+                do {
+                    let llmResponse = try await self.deepSeekService.generateResponse(prompt: prompt)
+                    if !llmResponse.isEmpty, self.isLLMResponseAcceptable(llmResponse) {
+                        await self.deliverAssistantMessage(llmResponse, followUp: nil)
                     } else {
-                        self.messages.append(AssistantMessage(role: .assistant, text: fallbackResponse))
-                        self.speak(fallbackResponse)
+                        #if DEBUG
+                        print("⚠️ [VoiceAssistant][DeepSeek] response filtered/empty, using fallback")
+                        #endif
+                        await self.deliverAssistantMessage(fallbackReply.text, followUp: fallbackReply.followUp)
                     }
-                } else {
-                    self.messages.append(AssistantMessage(role: .assistant, text: fallbackResponse))
-                    self.speak(fallbackResponse)
+                } catch {
+                    #if DEBUG
+                    if let deepSeekError = error as? DeepSeekServiceError {
+                        print("⚠️ [VoiceAssistant][DeepSeek] service error: \(deepSeekError.localizedDescription)")
+                    } else {
+                        print("⚠️ [VoiceAssistant][DeepSeek] unexpected error: \(error.localizedDescription)")
+                    }
+                    #endif
+                    await self.deliverAssistantMessage(fallbackReply.text, followUp: fallbackReply.followUp)
                 }
             } else {
-                self.messages.append(AssistantMessage(role: .assistant, text: fallbackResponse))
-                self.speak(fallbackResponse)
+                #if DEBUG
+                print("ℹ️ [VoiceAssistant][DeepSeek] not configured, using fallback")
+                #endif
+                await self.deliverAssistantMessage(fallbackReply.text, followUp: fallbackReply.followUp)
             }
 
             self.isGenerating = false
+        }
+    }
+
+    private func deliverAssistantMessage(_ text: String, followUp: String?) async {
+        messages.append(AssistantMessage(role: .assistant, text: text))
+        followUpPrompt = followUp
+        if shouldSpeakResponses {
+            await speak(text)
         }
     }
 
@@ -613,20 +817,6 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
         }
 
         return nil
-    }
-
-    private func shouldUseLocalLLM(for input: String, fallback: String) -> Bool {
-        let normalized = input.lowercased()
-        let keywords = ["spiega", "approfond", "dettagli", "perche", "consigliami", "diagnosi"]
-        if keywords.contains(where: { normalized.contains($0) }) {
-            return true
-        }
-
-        if fallback.hasPrefix("Dimmi pure") || fallback.hasPrefix("Posso aiutarti") {
-            return true
-        }
-
-        return input.count > 60
     }
 
     private func buildPrompt(userInput: String, context: AssistantContext) -> String {
@@ -701,7 +891,22 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func speak(_ text: String) {
+    private func speak(_ text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        isSpeaking = true
+        statusMessage = "Sto parlando..."
+        stopRemoteAudio()
+
+        speakWithLocalSynthesizer(trimmed)
+    }
+
+    private func speakWithLocalSynthesizer(_ text: String) {
+        if speechSynthesizer.isSpeaking {
+            speechSynthesizer.stopSpeaking(at: .immediate)
+        }
+
         let utterance = AVSpeechUtterance(string: text)
         if let voice = bestVoice(for: currentLocale) {
             utterance.voice = voice
@@ -711,8 +916,36 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
         utterance.preUtteranceDelay = 0.05
         utterance.postUtteranceDelay = 0.08
 
-        isSpeaking = true
         speechSynthesizer.speak(utterance)
+    }
+
+    private func playRemoteAudio(data: Data) throws {
+        stopRemoteAudio()
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers, .allowBluetooth, .defaultToSpeaker])
+        try session.setActive(true)
+
+        let player = try AVAudioPlayer(data: data)
+        player.delegate = self
+        player.prepareToPlay()
+        guard player.play() else {
+            throw NSError(domain: "VoiceAssistantAudio", code: -1)
+        }
+
+        remoteAudioPlayer = player
+    }
+
+    private func stopRemoteAudio() {
+        remoteAudioPlayer?.stop()
+        remoteAudioPlayer = nil
+    }
+
+    private func stopAllSpeech() {
+        stopRemoteAudio()
+        if speechSynthesizer.isSpeaking {
+            speechSynthesizer.stopSpeaking(at: .immediate)
+        }
+        isSpeaking = false
     }
 
     private func bestVoice(for locale: Locale) -> AVSpeechSynthesisVoice? {
@@ -820,6 +1053,35 @@ final class VoiceAssistantViewModel: NSObject, ObservableObject, AVSpeechSynthes
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         Task { @MainActor in
             isSpeaking = false
+        }
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if self.remoteAudioPlayer === player {
+                self.remoteAudioPlayer = nil
+            }
+            self.isSpeaking = false
+            if self.isActive {
+                self.restartListening(mode: .wakeWord)
+            } else {
+                self.statusMessage = "Di 'Ehi TyreVibes' per iniziare."
+            }
+        }
+    }
+
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if self.remoteAudioPlayer === player {
+                self.remoteAudioPlayer = nil
+            }
+            self.isSpeaking = false
+            self.statusMessage = "Errore audio. Provo a riavviare."
+            if self.isActive {
+                self.restartListening(mode: .wakeWord)
+            }
         }
     }
 }

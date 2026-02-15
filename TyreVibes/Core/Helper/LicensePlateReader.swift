@@ -2222,7 +2222,8 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
                 if label == "Revisioni" {
                     Task { @MainActor in
                         print("🔄 Scheduling background retry for revisions due to fetch failure.")
-                        RevisionRetryManager.shared.scheduleBackgroundRetry(for: plate, plateExists: plateData.make == nil)
+                        // In caso di errore scraping revisioni, forza il retry in background.
+                        RevisionRetryManager.shared.scheduleBackgroundRetry(for: plate, plateExists: true)
                         
                     }
                 }
@@ -2361,27 +2362,8 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         }
         plateData.revisioni = parsed
 
-        // 🔄 Se le revisioni sono vuote, schedula retry in background
-        if shouldCalculateRevisions && parsed.isEmpty {
-            print("🔄 [PlateSummary] Nessuna revisione trovata per \(plate), scheduling background retry...")
-            Task { @MainActor in
-                RevisionRetryManager.shared.scheduleBackgroundRetry(
-                    for: plate,
-                    tipoVeicolo: "A",
-                    maxAttempts: 10,
-                    initialDelay: 3.0,
-                    plateExists: exists
-                ) { result in
-                    print("✅ [PlateSummary] Revisioni ottenute in background per \(result.plate): \(result.revisioni.count) revisioni")
-                    // Notifica tramite NotificationCenter per aggiornare l'UI
-                    NotificationCenter.default.post(
-                        name: .revisioniUpdated,
-                        object: nil,
-                        userInfo: ["plate": result.plate, "revisioni": result.revisioni]
-                    )
-                }
-            }
-        }
+        // Se parsed è vuoto, lo consideriamo un risultato valido ("nessuna revisione").
+        // Il retry in background parte solo nel ramo di errore fetch/scraping.
 
         // Fetch immagine veicolo
         if let make = plateData.make, let model = plateData.model {
@@ -2473,6 +2455,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         } catch {
             print("⚠️ Errore nel recupero del token JWT: \(error.localizedDescription)")
         }
+        AuthTokenHelper.addSecurityHeaders(to: &request)
 
         let userId = await AuthService.currentUserId ?? ""
         let body: [String: Any] = [

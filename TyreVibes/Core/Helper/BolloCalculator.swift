@@ -53,6 +53,13 @@ public enum BolloCalculator {
                 .replacingOccurrences(of: "_", with: "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
+            // Support "Euro 7" (and higher) by mapping to the latest available bracket.
+            if let firstDigit = normalized.first(where: { $0.isNumber }),
+               let value = Int(String(firstDigit)),
+               value >= 6 {
+                return .euro6
+            }
+
             if normalized.contains("6") { return .euro6 }
             if normalized.contains("5") { return .euro5 }
             if normalized.contains("4") { return .euro4 }

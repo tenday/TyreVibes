@@ -63,6 +63,12 @@ struct AppNotification: Identifiable, Codable {
         case alignment
         case inspection
         case warranty
+        // Mechanical maintenance reminders
+        case oilChangeReminder
+        case filterReminder
+        case brakeReminder
+        case batteryReminder
+        case generalMaintenanceReminder
 
         var icon: String {
             switch self {
@@ -75,6 +81,11 @@ struct AppNotification: Identifiable, Codable {
             case .alignment: return "align.horizontal.left"
             case .inspection: return "magnifyingglass"
             case .warranty: return "shield.fill"
+            case .oilChangeReminder: return "drop.fill"
+            case .filterReminder: return "aqi.medium"
+            case .brakeReminder: return "brake.signal"
+            case .batteryReminder: return "battery.100"
+            case .generalMaintenanceReminder: return "wrench.and.screwdriver.fill"
             }
         }
 
@@ -89,6 +100,11 @@ struct AppNotification: Identifiable, Codable {
             case .alignment: return Color(red: 0.35, green: 0.34, blue: 0.84)
             case .inspection: return Color(red: 1.0, green: 0.80, blue: 0.0)
             case .warranty: return Color(red: 0.55, green: 0.27, blue: 0.07)
+            case .oilChangeReminder: return Color(red: 0.85, green: 0.65, blue: 0.13)
+            case .filterReminder: return Color(red: 0.47, green: 0.87, blue: 0.47)
+            case .brakeReminder: return Color(red: 0.90, green: 0.30, blue: 0.24)
+            case .batteryReminder: return Color(red: 0.15, green: 0.68, blue: 0.38)
+            case .generalMaintenanceReminder: return Color(red: 0.30, green: 0.69, blue: 0.31)
             }
         }
 
@@ -103,6 +119,11 @@ struct AppNotification: Identifiable, Codable {
             case .alignment: return String(localized: "notification.type.alignment")
             case .inspection: return String(localized: "notification.type.inspection")
             case .warranty: return String(localized: "notification.type.warranty")
+            case .oilChangeReminder: return String(localized: "notification.type.oilChangeReminder")
+            case .filterReminder: return String(localized: "notification.type.filterReminder")
+            case .brakeReminder: return String(localized: "notification.type.brakeReminder")
+            case .batteryReminder: return String(localized: "notification.type.batteryReminder")
+            case .generalMaintenanceReminder: return String(localized: "notification.type.generalMaintenanceReminder")
             }
         }
     }

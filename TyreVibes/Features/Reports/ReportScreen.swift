@@ -25,15 +25,66 @@ struct DocumentItem: Identifiable {
     let tint: Color
 }
 
+enum ReportContentFilter: String, CaseIterable, Identifiable {
+    case all
+    case reports
+    case documents
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "Tutti"
+        case .reports:
+            return "Report"
+        case .documents:
+            return "Documenti"
+        }
+    }
+}
+
 // MARK: - Reports & Documentations View
 struct ReportsDocumentationsView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var searchText = ""
     @State private var showFilterSheet = false
+    @State private var contentFilter: ReportContentFilter = .all
 
     private let reports: [ReportItem] = []
 
     private let documents: [DocumentItem] = []
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isFilteringActive: Bool {
+        contentFilter != .all || !normalizedSearchText.isEmpty
+    }
+
+    private var filteredReports: [ReportItem] {
+        guard contentFilter != .documents else { return [] }
+        let search = normalizedSearchText
+        return reports.filter { report in
+            guard !search.isEmpty else { return true }
+            return report.title.lowercased().contains(search)
+                || report.description.lowercased().contains(search)
+                || report.type.lowercased().contains(search)
+                || report.date.lowercased().contains(search)
+        }
+    }
+
+    private var filteredDocuments: [DocumentItem] {
+        guard contentFilter != .reports else { return [] }
+        let search = normalizedSearchText
+        return documents.filter { document in
+            guard !search.isEmpty else { return true }
+            return document.title.lowercased().contains(search)
+                || document.subtitle.lowercased().contains(search)
+                || document.date.lowercased().contains(search)
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -72,7 +123,7 @@ struct ReportsDocumentationsView: View {
                     
                     // Filter Button
                     Button(action: { showFilterSheet = true }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        Image(systemName: isFilteringActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                             .font(.system(size: 20))
                             .foregroundColor(.white)
                             .frame(width: 48, height: 48)
@@ -86,18 +137,18 @@ struct ReportsDocumentationsView: View {
                 .padding(.top, 12)
                 
                 // Scrollable Content
-                if reports.isEmpty && documents.isEmpty {
+                if filteredReports.isEmpty && filteredDocuments.isEmpty {
                     EmptyStateView(
                         icon: "doc.text.magnifyingglass",
-                        title: "Nessun report disponibile",
-                        subtitle: "Esegui un analisi pneumatici per generare il tuo primo report."
+                        title: isFilteringActive ? "Nessun risultato" : "Nessun report disponibile",
+                        subtitle: isFilteringActive ? "Prova a modificare filtri o ricerca." : "Esegui un analisi pneumatici per generare il tuo primo report."
                     )
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 18, pinnedViews: []) {
-                            ForEach(reports) { report in
+                            ForEach(filteredReports) { report in
                                 ReportCard(
                                     vehicleName: report.title,
                                     description: report.description,
@@ -107,7 +158,7 @@ struct ReportsDocumentationsView: View {
                                 )
                             }
                             
-                            ForEach(documents) { doc in
+                            ForEach(filteredDocuments) { doc in
                                 DocumentCard(
                                     title: doc.title,
                                     subtitle: doc.subtitle,
@@ -127,6 +178,9 @@ struct ReportsDocumentationsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showFilterSheet) {
+            ReportsFilterSheet(filter: $contentFilter)
+        }
     }
 }
 
@@ -417,6 +471,87 @@ enum DepthStatus {
         case .good: return "Good Condition"
         case .medium: return "Monitor Closely"
         case .critical: return "Replace Soon"
+        }
+    }
+}
+
+// MARK: - Reports Filter Sheet
+struct ReportsFilterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var filter: ReportContentFilter
+    @State private var tempFilter: ReportContentFilter
+
+    init(filter: Binding<ReportContentFilter>) {
+        self._filter = filter
+        self._tempFilter = State(initialValue: filter.wrappedValue)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                VStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 36, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.customAzure, .customBlue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+
+                    Text("Filtra i tuoi contenuti")
+                        .font(.customFont(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Mostra")
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    Picker("Mostra", selection: $tempFilter) {
+                        ForEach(ReportContentFilter.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.customFieldColor)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+
+                Spacer()
+            }
+            .padding()
+            .background(Color.customBackgroundColor)
+            .navigationTitle("Filtri")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Annulla") {
+                        dismiss()
+                    }
+                    .foregroundColor(.customAzure)
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Applica") {
+                        filter = tempFilter
+                        dismiss()
+                    }
+                    .foregroundColor(.customAzure)
+                    .fontWeight(.semibold)
+                }
+            }
         }
     }
 }

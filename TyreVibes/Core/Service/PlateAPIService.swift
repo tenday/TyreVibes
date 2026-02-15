@@ -109,17 +109,6 @@ class PlateAPIService {
     private let checkPlateBaseURL = (PlateAPIService.apiConfig["CheckPlateBaseURL"] as? String) ?? ""
     private let manualPlateURL = URL(string: (PlateAPIService.apiConfig["ManualPlateURL"] as? String) ?? "")
 
-    // MARK: - Get Supabase JWT Token
-    private func getAuthToken() async -> String? {
-        do {
-            let session = try await SupabaseManager.client.auth.session
-            return session.accessToken
-        } catch {
-            print("⚠️ [PlateAPIService] Failed to get auth token: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
     static var currentUserToken: String? {
         get async {
             do {
@@ -180,10 +169,7 @@ class PlateAPIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
 
-        // Add JWT token
-        if let token = await getAuthToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        _ = await AuthTokenHelper.addAuthHeader(to: &request)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -280,10 +266,7 @@ class PlateAPIService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Add JWT token
-        if let token = await getAuthToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        _ = await AuthTokenHelper.addAuthHeader(to: &request)
 
         do {
             let encoder = JSONEncoder()
@@ -345,10 +328,7 @@ class PlateAPIService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Add JWT token
-        if let token = await getAuthToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        _ = await AuthTokenHelper.addAuthHeader(to: &request)
 
         let requestBody: [String: Any] = [
             "plate": plate.uppercased(),
@@ -425,10 +405,7 @@ class PlateAPIService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Add JWT token
-        if let token = await getAuthToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        _ = await AuthTokenHelper.addAuthHeader(to: &request)
 
         // Prepara il body della richiesta
         struct RequestBody: Encodable {

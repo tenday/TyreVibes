@@ -51,7 +51,57 @@ CREATE INDEX idx_vehicles_user ON vehicles(user_id);
 CREATE INDEX idx_vehicles_plate ON vehicles(plate_number);
 
 -- ============================================================================
--- 3. TABELLA: tyres_vehicles
+-- 3. TABELLA: completed_maintenance
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS completed_maintenance (
+    id TEXT PRIMARY KEY,  -- UUID
+    vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+
+    title TEXT NOT NULL,
+    note TEXT,
+    maintenance_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    mileage INTEGER CHECK (mileage IS NULL OR mileage >= 0),
+    source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'partner', 'automatic')),
+    partner_appointment_id TEXT,
+    maintenance_type TEXT,                     -- MaintenanceType raw value
+    cost REAL CHECK (cost IS NULL OR cost >= 0),  -- Actual cost in EUR
+    workshop_name TEXT,                        -- Workshop/mechanic name
+    workshop_id TEXT,                          -- Partner workshop ID
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_completed_maintenance_vehicle ON completed_maintenance(vehicle_id);
+CREATE INDEX idx_completed_maintenance_date ON completed_maintenance(maintenance_date DESC);
+CREATE INDEX idx_completed_maintenance_source ON completed_maintenance(source);
+CREATE INDEX idx_completed_maintenance_type ON completed_maintenance(maintenance_type);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_completed_maintenance_partner_appointment
+    ON completed_maintenance(vehicle_id, partner_appointment_id)
+    WHERE partner_appointment_id IS NOT NULL;
+
+-- ============================================================================
+-- 3b. TABELLA: maintenance_intervals
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS maintenance_intervals (
+    id TEXT PRIMARY KEY,
+    vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE CASCADE,
+    maintenance_type TEXT NOT NULL,
+    km_interval INTEGER CHECK (km_interval IS NULL OR km_interval > 0),
+    months_interval INTEGER CHECK (months_interval IS NULL OR months_interval > 0),
+    is_custom INTEGER DEFAULT 0,
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_maintenance_intervals_vehicle ON maintenance_intervals(vehicle_id);
+CREATE INDEX idx_maintenance_intervals_type ON maintenance_intervals(maintenance_type);
+
+-- ============================================================================
+-- 4. TABELLA: tyres_vehicles
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS tyres_vehicles (
@@ -73,7 +123,7 @@ CREATE TABLE IF NOT EXISTS tyres_vehicles (
 CREATE INDEX idx_tyres_vehicle ON tyres_vehicles(vehicle_id);
 
 -- ============================================================================
--- 4. TABELLA: tyre_analyses
+-- 5. TABELLA: tyre_analyses
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS tyre_analyses (
@@ -145,7 +195,7 @@ CREATE INDEX idx_measurements_analysis ON tread_depth_measurements(analysis_id);
 CREATE INDEX idx_measurements_position ON tread_depth_measurements(tyre_position);
 
 -- ============================================================================
--- 6. TABELLA: tyre_lifecycle_projections
+-- 7. TABELLA: tyre_lifecycle_projections
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS tyre_lifecycle_projections (
@@ -164,7 +214,7 @@ CREATE INDEX idx_projections_analysis ON tyre_lifecycle_projections(analysis_id)
 CREATE INDEX idx_projections_km ON tyre_lifecycle_projections(kilometers_from_now);
 
 -- ============================================================================
--- 7. TABELLA: tyre_recommendations
+-- 8. TABELLA: tyre_recommendations
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS tyre_recommendations (
@@ -236,6 +286,14 @@ AFTER UPDATE ON vehicles
 FOR EACH ROW
 BEGIN
     UPDATE vehicles SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Trigger per completed_maintenance
+CREATE TRIGGER completed_maintenance_update_timestamp
+AFTER UPDATE ON completed_maintenance
+FOR EACH ROW
+BEGIN
+    UPDATE completed_maintenance SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- Trigger per users

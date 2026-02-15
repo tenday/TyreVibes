@@ -24,7 +24,7 @@ struct UpcomingMaintenanceView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(Color(red: 0.0, green: 0.48, blue: 1.0))
 
-                Text("Upcoming Maintenance")
+                Text("Manutenzioni in programma")
                     .font(.customFont(size: 16, weight: .semibold))
                     .foregroundColor(.white)
 
@@ -68,11 +68,11 @@ struct UpcomingMaintenanceView: View {
                 .font(.system(size: 40))
                 .foregroundColor(.green)
 
-            Text("All caught up!")
+            Text("Tutto in ordine!")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white)
 
-            Text("No upcoming maintenance scheduled")
+            Text("Nessuna manutenzione in programma")
                 .font(.system(size: 14))
                 .foregroundColor(.gray)
         }
@@ -141,12 +141,23 @@ struct MaintenanceCard: View {
                 .lineLimit(1)
 
             HStack(spacing: 8) {
+                categoryBadge
                 dateBadge
                 if maintenance.priority == .high || maintenance.priority == .critical {
                     priorityBadge
                 }
             }
         }
+    }
+
+    private var categoryBadge: some View {
+        Text(maintenance.type.category.localizedName)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(maintenance.type.color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(maintenance.type.color.opacity(0.15))
+            .cornerRadius(4)
     }
 
     private var dateBadge: some View {
@@ -226,7 +237,7 @@ struct MaintenanceCard: View {
                let targetMileage = metadata.targetMileage {
                 MetadataRow(
                     icon: "speedometer",
-                    label: "Mileage",
+                    label: "Chilometraggio",
                     value: "\(mileage) → \(targetMileage) km"
                 )
             }
@@ -234,7 +245,7 @@ struct MaintenanceCard: View {
             if let treadDepth = metadata.currentTreadDepth {
                 MetadataRow(
                     icon: "ruler",
-                    label: "Tread Depth",
+                    label: "Battistrada",
                     value: String(format: "%.1f mm", treadDepth)
                 )
             }
@@ -242,15 +253,15 @@ struct MaintenanceCard: View {
             if let dueInDays = metadata.dueInDays {
                 MetadataRow(
                     icon: "clock",
-                    label: "Due in",
-                    value: "\(dueInDays) days"
+                    label: "Scadenza tra",
+                    value: "\(dueInDays) giorni"
                 )
             }
 
             if let lastService = metadata.lastServiceDate {
                 MetadataRow(
                     icon: "wrench.and.screwdriver",
-                    label: "Last Service",
+                    label: "Ultimo intervento",
                     value: formattedDate(lastService)
                 )
             }
@@ -263,7 +274,7 @@ struct MaintenanceCard: View {
                 .font(.system(size: 14))
                 .foregroundColor(.green)
 
-            Text("Estimated Cost:")
+            Text("Costo stimato:")
                 .font(.system(size: 13))
                 .foregroundColor(.gray)
 
@@ -284,7 +295,7 @@ struct MaintenanceCard: View {
                 Image(systemName: "calendar.badge.plus")
                     .font(.system(size: 14))
 
-                Text("Schedule Service")
+                Text("Prenota intervento")
                     .font(.system(size: 14, weight: .medium))
             }
             .foregroundColor(.white)

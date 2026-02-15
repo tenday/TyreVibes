@@ -130,6 +130,9 @@ class NetworkManager {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        // Add SecNeo-style integrity headers (if enabled/configured)
+        SecNeoSecurityService.shared.applySecurityHeaders(to: &request)
+
         // Add custom headers (can override Authorization if needed)
         headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
@@ -237,6 +240,9 @@ class NetworkManager {
         if let token = await getAuthToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+
+        // Add SecNeo-style integrity headers (if enabled/configured)
+        SecNeoSecurityService.shared.applySecurityHeaders(to: &request)
 
         headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)

@@ -125,13 +125,15 @@ class BackgroundTaskManager: ObservableObject {
         async let bolloRefresh = refreshBolloData()
         async let revisionRefresh = refreshRevisionData()
         async let notificationsRefresh = refreshNotifications()
+        async let maintenanceRefresh = refreshMaintenanceScheduling()
 
         // Attendi il completamento di tutti i refresh
         let results = await [
             insuranceRefresh,
             bolloRefresh,
             revisionRefresh,
-            notificationsRefresh
+            notificationsRefresh,
+            maintenanceRefresh
         ]
 
         // Verifica se ci sono stati errori
@@ -211,6 +213,44 @@ class BackgroundTaskManager: ObservableObject {
             return nil
         } catch {
             logger.error("❌ Errore refresh notifiche: \(error.localizedDescription)")
+            return error
+        }
+    }
+
+    /// Ricalcola scheduling manutenzione meccanica per tutti i veicoli
+    private func refreshMaintenanceScheduling() async -> Error? {
+        logger.info("🔍 Refresh scheduling manutenzione...")
+
+        do {
+            // Recupera tutti i veicoli dell'utente
+            let vehiclesData = try await SupabaseManager.client
+                .from("vehicles")
+                .select("id, brand, model")
+                .execute()
+
+            struct VehicleBasic: Decodable {
+                let id: Int
+                let brand: String
+                let model: String
+            }
+
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let vehicles = try decoder.decode([VehicleBasic].self, from: vehiclesData.data)
+
+            // Per ogni veicolo, ricalcola scheduling e notifiche
+            for vehicle in vehicles {
+                SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicle.id)
+                NotificationScheduler.shared.scheduleMaintenanceReminders(
+                    vehicleId: vehicle.id,
+                    vehicleName: "\(vehicle.brand) \(vehicle.model)"
+                )
+            }
+
+            logger.info("✅ Scheduling manutenzione aggiornato per \(vehicles.count) veicoli")
+            return nil
+        } catch {
+            logger.error("❌ Errore refresh scheduling manutenzione: \(error.localizedDescription)")
             return error
         }
     }

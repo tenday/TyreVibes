@@ -1134,6 +1134,8 @@ struct CarDetailsView: View {
     @State private var isLoadingRevisioni: Bool = false
     @State private var tyreToDelete: TyreRegistered? = nil
     @State private var showDeleteAlert: Bool = false
+    @State private var mileageInput: String = ""
+    @State private var savedMileage: Int? = nil
 
     private var tyreSets: [[TyreRegistered]] {
         let grouped = Dictionary(grouping: tyreViewModel.registeredTyres) { tyre in
@@ -1251,11 +1253,60 @@ struct CarDetailsView: View {
                                 DetailItem(label: String(localized: "Horsepower"), value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
                                 DetailItem(label: String(localized: "Emission Class"), value: vehicle.vehicle.emissionClass?.uppercased() ?? "-")
                             }
+
+                            Divider()
+                                .background(Color.white.opacity(0.2))
+                                .padding(.top, 4)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Chilometraggio veicolo")
+                                    .font(.customFont(size: 14, weight: .semibold))
+                                    .foregroundColor(.white)
+
+                                HStack(spacing: 10) {
+                                    TextField("Inserisci km attuali", text: $mileageInput)
+                                        .keyboardType(.numberPad)
+                                        .font(.customFont(size: 14, weight: .regular))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .frame(height: 40)
+                                        .background(Color.white.opacity(0.06))
+                                        .cornerRadius(10)
+                                        .onChange(of: mileageInput) { _, newValue in
+                                            let filtered = newValue.filter(\.isNumber)
+                                            if filtered != newValue {
+                                                mileageInput = filtered
+                                            }
+                                        }
+
+                                    Text("km")
+                                        .font(.customFont(size: 13, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.75))
+                                }
+
+                                HStack {
+                                    Text("Valore salvato: \(savedMileage.map { "\($0) km" } ?? "-")")
+                                        .font(.customFont(size: 12, weight: .regular))
+                                        .foregroundColor(.white.opacity(0.65))
+                                    Spacer()
+                                    Button(action: saveMileage) {
+                                        Text("Salva")
+                                            .font(.customFont(size: 12, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 7)
+                                            .background(
+                                                Capsule()
+                                                    .fill(canSaveMileage ? Color(red: 0.95, green: 0.4, blue: 0.34) : Color.white.opacity(0.18))
+                                            )
+                                    }
+                                    .disabled(!canSaveMileage)
+                                }
+                            }
                         }
                         .padding()
                         .background(Color.customFieldColor)
                         .cornerRadius(14)
-
 
                         Text(LocalizedStringKey("Your Tyres"))
                             .font(.customFont(size: 16, weight: .semibold))
@@ -1389,6 +1440,11 @@ struct CarDetailsView: View {
             .onAppear {
                 tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id)
                 paywallManager.updatePremiumStatus()
+                VehicleMileageStore.shared.seedFromRevisions(
+                    vehicleId: vehicle.vehicle.id,
+                    revisions: vehicle.revisions ?? []
+                )
+                loadMileageFromStore()
                 if hasSeenDetailsHint == false {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                         showFirstTimeHint = true
@@ -1548,6 +1604,31 @@ struct CarDetailsView: View {
             }
         }
     }
+
+    private var canSaveMileage: Bool {
+        if mileageInput.isEmpty {
+            return savedMileage != nil
+        }
+
+        guard let parsed = Int(mileageInput), parsed >= 0 else {
+            return false
+        }
+
+        return parsed != savedMileage
+    }
+
+    private func loadMileageFromStore() {
+        let mileage = VehicleMileageStore.shared.mileage(for: vehicle.vehicle.id)
+        savedMileage = mileage
+        mileageInput = mileage.map(String.init) ?? ""
+    }
+
+    private func saveMileage() {
+        let mileage = mileageInput.isEmpty ? nil : Int(mileageInput)
+        VehicleMileageStore.shared.setMileage(mileage, for: vehicle.vehicle.id)
+        savedMileage = mileage
+    }
+
 }
 
 
@@ -1863,6 +1944,7 @@ struct AdvancedInfoSheet: View {
             String(localized: "Revisions"),
             String(localized: "Supported Tyres"),
             String(localized: "Insurances"),
+            String(localized: "Storico Manutenzioni"),
             String(localized: "Bollo")
         ]
     }
@@ -2085,8 +2167,11 @@ struct AdvancedInfoSheet: View {
                 )
                 .tag(3)
 
-                BolloEstimateView(vehicle: vehicle)
+                MaintenanceManagementView(vehicleId: vehicle.vehicle.id, vin: vehicle.vehicle.vin)
                     .tag(4)
+
+                BolloEstimateView(vehicle: vehicle)
+                    .tag(5)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(SpringAnimation.fluid, value: currentTab)
@@ -2114,7 +2199,8 @@ struct AdvancedInfoSheet: View {
         case 1: return "wrench.and.screwdriver"
         case 2: return "tyreIcon"
         case 3: return "shield.lefthalf.filled"
-        case 4:
+        case 4: return "maintenanceHistoryIcon"
+        case 5:
             return "eurosign.circle.fill"
         default:
             return nil
@@ -2122,7 +2208,7 @@ struct AdvancedInfoSheet: View {
     }
 
     private func isCustomIcon(_ iconName: String) -> Bool {
-        return iconName == "tyreIcon" || iconName == "bolloIcon"
+        return iconName == "tyreIcon" || iconName == "bolloIcon" || iconName == "maintenanceHistoryIcon"
     }
 
     private func tabGradientColors(for index: Int) -> [Color] {
@@ -2131,7 +2217,8 @@ struct AdvancedInfoSheet: View {
         case 1: return [.green, .mint]
         case 2: return [.orange, .yellow]
         case 3: return [.purple, .pink]
-        case 4: return [.teal, .blue]
+        case 4: return [.indigo, .cyan]
+        case 5: return [.teal, .blue]
         default: return [.gray, .gray]
         }
     }
@@ -2154,7 +2241,10 @@ struct AdvancedInfoSheet: View {
             successGenerator.notificationOccurred(.success)
         }
     }
+
 }
+
+// MARK: - Maintenance views extracted to Features/Maintenance/
 
 // MARK: - Vehicle Specifications View
 struct VehicleSpecificationsView: View {
@@ -3240,12 +3330,6 @@ struct TyreRow: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("Tyre #\(index + 1)")
-                                .font(.customFont(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
                             // Size badge
                             Text(tyreSize)
                                 .font(.customFont(size: 12, weight: .bold))
@@ -3254,6 +3338,12 @@ struct TyreRow: View {
                                 .padding(.vertical, 4)
                                 .background(Color.blue.opacity(0.3))
                                 .cornerRadius(8)
+
+                            Text("")
+                                .font(.customFont(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                            
+                            Spacer()
                         }
                         
                         HStack(spacing: 12) {

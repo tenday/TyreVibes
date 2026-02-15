@@ -18,5 +18,21 @@
 	<string>https://jbcbrnegmqraivdfmlsn.supabase.co</string>
 	<key>SUPABASE_KEY</key>
 	<string>sb_publishable_j45ieNq6Q9Tyz0qyib5PPA_pEuCNzDc</string>
+	<key>DEEPSEEK_BASE_URL</key>
+	<string>https://api.deepseek.com/chat/completions</string>
+	<key>DEEPSEEK_API_KEY</key>
+	<string>sk-86d2e6c8736942ffbb16daf5ac303327</string>
+	<key>DEEPSEEK_MODEL</key>
+	<string>deepseek-chat</string>
+	<key>SECNEO_ENABLED</key>
+	<false/>
+	<key>SECNEO_APP_KEY</key>
+	<string></string>
+	<key>SECNEO_TOKEN</key>
+	<string></string>
+	<key>SECNEO_SHARED_SECRET</key>
+	<string></string>
+	<key>VEHICLE_DATABASES_API_KEY</key>
+	<string></string>
 </dict>
 </plist>

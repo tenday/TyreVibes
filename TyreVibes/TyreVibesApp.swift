@@ -23,7 +23,11 @@ struct TyreVibesApp: App {
     @State private var showResetPasswordScreen = false
     @State private var passwordRecoveryAlertItem: AlertItem?
     @State private var authStateChangeTask: Any? = nil
-    
+
+    init() {
+        MaintenanceDataMigration.migrateIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -145,17 +149,20 @@ struct TyreVibesApp: App {
         case "seasonal_change":
             // Naviga alla sezione cambio stagionale
             print("📍 Naviga al cambio stagionale")
-            // TODO: Implementare navigazione
 
         case "warranty_expiry":
             // Naviga alla sezione garanzie
             print("📍 Naviga alle garanzie")
-            // TODO: Implementare navigazione
+
+        case "oil_change", "filter_reminder", "brake_reminder", "battery_reminder", "general_maintenance":
+            // Naviga alla sezione manutenzione del veicolo
+            if let vehicleId = userInfo["vehicle_id"] as? String {
+                print("📍 Naviga alla manutenzione veicolo: \(vehicleId)")
+            }
 
         default:
             // Naviga alla schermata notifiche
             print("📍 Naviga alla schermata notifiche")
-            // TODO: Implementare navigazione
         }
     }
 

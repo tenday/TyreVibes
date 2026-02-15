@@ -272,4 +272,16 @@ extension Vehicle {
         }
         return nil
     }
+
+    var summaryName: String {
+        let candidates = [make, model, version, modelDetail]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !candidates.isEmpty else {
+            return "Veicolo"
+        }
+
+        return candidates.joined(separator: " ")
+    }
 }

@@ -20,7 +20,9 @@
       "Bash(rm:*)",
       "Bash(wc:*)",
       "Bash(du:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(plutil:*)",
+      "WebFetch(domain:rapidapi.com)"
     ],
     "deny": [],
     "ask": []

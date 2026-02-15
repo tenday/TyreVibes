@@ -382,6 +382,90 @@ class NotificationScheduler: ObservableObject {
         scheduledCount = notifications.count
     }
 
+    // MARK: - Mechanical Maintenance Scheduling
+
+    /// Schedule maintenance reminders for all mechanical types based on SmartMaintenanceScheduler
+    func scheduleMaintenanceReminders(vehicleId: Int, vehicleName: String) {
+        // Evaluate and update schedule store
+        SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
+
+        // Read the updated schedules from the store
+        let schedules = MaintenanceScheduleStore.shared.schedules(for: vehicleId)
+        var notifications: [AppNotification] = []
+
+        for schedule in schedules {
+            let daysUntil = Calendar.current.dateComponents([.day], from: Date(), to: schedule.scheduledDate).day ?? 0
+
+            // Determine notification type based on maintenance category
+            let notificationType: AppNotification.NotificationType
+            switch schedule.type.category {
+            case .engine:
+                notificationType = schedule.type == .oilChange ? .oilChangeReminder : .generalMaintenanceReminder
+            case .filters:
+                notificationType = .filterReminder
+            case .brakes:
+                notificationType = .brakeReminder
+            case .fluids:
+                notificationType = .generalMaintenanceReminder
+            case .tyres:
+                continue // Tyre notifications handled by existing methods
+            case .other:
+                notificationType = schedule.type == .battery ? .batteryReminder : .generalMaintenanceReminder
+            }
+
+            // Priority escalation
+            let priority: AppNotification.Priority
+            if daysUntil < 0 && abs(daysUntil) > 30 {
+                priority = .critical
+            } else if daysUntil < 0 {
+                priority = .high
+            } else if daysUntil <= 7 {
+                priority = .medium
+            } else {
+                priority = .low
+            }
+
+            // Only create notifications for items within 60 days or overdue
+            guard daysUntil <= 60 else { continue }
+
+            let notification = AppNotification(
+                type: notificationType,
+                title: schedule.title,
+                message: schedule.description,
+                timestamp: Date(),
+                isRead: false,
+                vehicleId: String(vehicleId),
+                priority: priority,
+                actionRequired: daysUntil <= 7,
+                scheduledDate: schedule.scheduledDate,
+                predictedDate: schedule.scheduledDate,
+                metadata: AppNotification.NotificationMetadata(
+                    treadDepth: nil,
+                    pressurePSI: nil,
+                    mileage: schedule.metadata?.currentMileage,
+                    lastServiceDate: schedule.metadata?.lastServiceDate,
+                    nextServiceDate: schedule.scheduledDate,
+                    estimatedCost: schedule.estimatedCost,
+                    warrantyExpiryDate: nil,
+                    seasonalChangeDate: nil,
+                    rotationDueKm: nil,
+                    replacementDueMonths: nil
+                )
+            )
+            notifications.append(notification)
+        }
+
+        // Merge with existing tyre notifications (don't overwrite)
+        let tyreTypes: Set<AppNotification.NotificationType> = [
+            .pressureAlert, .seasonalReminder, .tyreReplacement, .rotation, .alignment, .inspection, .warranty
+        ]
+        let existingTyreNotifications = upcomingNotifications.filter { tyreTypes.contains($0.type) }
+
+        upcomingNotifications = existingTyreNotifications + notifications
+        saveScheduledNotifications()
+        scheduledCount = upcomingNotifications.count
+    }
+
     // MARK: - Persistence
 
     private func saveScheduledNotifications() {

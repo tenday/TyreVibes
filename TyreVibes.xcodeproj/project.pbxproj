@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1F0915E745E37DB26C16773 /* Pods_TyreVibes.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E844522E4035093E3705305D /* Pods_TyreVibes.framework */; };
 		E913FB712E2D2D2B005FB7C0 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB702E2D2D2B005FB7C0 /* Auth */; };
 		E913FB732E2D2D2B005FB7C0 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB722E2D2D2B005FB7C0 /* Functions */; };
 		E913FB752E2D2D2B005FB7C0 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB742E2D2D2B005FB7C0 /* PostgREST */; };
@@ -14,30 +15,16 @@
 		E913FB792E2D2D2B005FB7C0 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB782E2D2D2B005FB7C0 /* Storage */; };
 		E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB7A2E2D2D8B005FB7C0 /* Supabase */; };
 		E917BAFA2E61A5320070D53B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E917BAF92E61A5320070D53B /* GoogleService-Info.plist */; };
-		E9F1A1002F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */; };
-		E9F1A1012F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E9F8D0C12E53814A00C572B1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E9F8D0C02E53814A00C572B1 /* GoogleSignIn */; };
 		E9F8D0C32E53814A00C572B1 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E9F8D0C22E53814A00C572B1 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		E9F1A1022F0B111100ABCD00 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				E9F1A1012F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
+		6EC99CB1CB2965C1677D4FFF /* Pods-TyreVibes.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TyreVibes.release.xcconfig"; path = "Target Support Files/Pods-TyreVibes/Pods-TyreVibes.release.xcconfig"; sourceTree = "<group>"; };
+		E793CD87505B9B83168F64DB /* Pods-TyreVibes.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TyreVibes.debug.xcconfig"; path = "Target Support Files/Pods-TyreVibes/Pods-TyreVibes.debug.xcconfig"; sourceTree = "<group>"; };
+		E844522E4035093E3705305D /* Pods_TyreVibes.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TyreVibes.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E902A1112DD011CB00E6E298 /* TyreVibes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TyreVibes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E917BAF92E61A5320070D53B /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LLM/Frameworks/llama.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -73,7 +60,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E9F1A1002F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework in Frameworks */,
 				E913FB752E2D2D2B005FB7C0 /* PostgREST in Frameworks */,
 				E913FB732E2D2D2B005FB7C0 /* Functions in Frameworks */,
 				E913FB7B2E2D2D8B005FB7C0 /* Supabase in Frameworks */,
@@ -82,19 +68,30 @@
 				E913FB792E2D2D2B005FB7C0 /* Storage in Frameworks */,
 				E913FB772E2D2D2B005FB7C0 /* Realtime in Frameworks */,
 				E9F8D0C12E53814A00C572B1 /* GoogleSignIn in Frameworks */,
+				A1F0915E745E37DB26C16773 /* Pods_TyreVibes.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		131BCEDC6E3ABDB839D99920 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				E793CD87505B9B83168F64DB /* Pods-TyreVibes.debug.xcconfig */,
+				6EC99CB1CB2965C1677D4FFF /* Pods-TyreVibes.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		E902A1082DD011CB00E6E298 = {
 			isa = PBXGroup;
 			children = (
 				E902A1132DD011CB00E6E298 /* TyreVibes */,
-				E9F1A0FE2F0B111100ABCD00 /* LLM/Frameworks/llama.xcframework */,
 				E902A1122DD011CB00E6E298 /* Products */,
 				E917BAF92E61A5320070D53B /* GoogleService-Info.plist */,
+				131BCEDC6E3ABDB839D99920 /* Pods */,
+				F60CB5BC51C7C493FD55AB85 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -106,6 +103,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		F60CB5BC51C7C493FD55AB85 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E844522E4035093E3705305D /* Pods_TyreVibes.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -113,10 +118,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = E902A11C2DD011CC00E6E298 /* Build configuration list for PBXNativeTarget "TyreVibes" */;
 			buildPhases = (
+				1B3607FCE6070D1181C9D024 /* [CP] Check Pods Manifest.lock */,
 				E902A10D2DD011CB00E6E298 /* Sources */,
 				E902A10E2DD011CB00E6E298 /* Frameworks */,
 				E902A10F2DD011CB00E6E298 /* Resources */,
-				E9F1A1022F0B111100ABCD00 /* Embed Frameworks */,
+				3AE7A0803FBB64682E508B85 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -190,6 +196,52 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		1B3607FCE6070D1181C9D024 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-TyreVibes-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3AE7A0803FBB64682E508B85 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-TyreVibes/Pods-TyreVibes-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-TyreVibes/Pods-TyreVibes-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TyreVibes/Pods-TyreVibes-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		E902A10D2DD011CB00E6E298 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -261,7 +313,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -321,7 +373,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
@@ -330,6 +382,7 @@
 		};
 		E902A11D2DD011CC00E6E298 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E793CD87505B9B83168F64DB /* Pods-TyreVibes.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -366,6 +419,7 @@
 		};
 		E902A11E2DD011CC00E6E298 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 6EC99CB1CB2965C1677D4FFF /* Pods-TyreVibes.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

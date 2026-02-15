@@ -12,7 +12,11 @@ struct VoiceAssistantScreen: View {
         "Prossima manutenzione",
         "Rotazione gomme",
         "Battistrada",
-        "Cambio stagionale"
+        "Cambio stagionale",
+        "Consigli per la guida",
+        "Suggerimenti per la sicurezza",
+        "Domande frequenti sui pneumatici",
+        "Come migliorare l'efficienza del carburante"
     ]
 
     var body: some View {
@@ -214,6 +218,13 @@ struct VoiceAssistantScreen: View {
                 .font(.customFont(size: 13, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
 
+            if let followUp = viewModel.followUpPrompt {
+                Text("Suggerimento: \(followUp)")
+                    .font(.customFont(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.top, 2)
+            }
+
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.customFont(size: 12, weight: .medium))
@@ -246,11 +257,15 @@ struct VoiceAssistantScreen: View {
         let all = notificationStore.getAllNotifications()
         let upcoming = notificationStore.getUpcomingNotifications(withinDays: 30)
         let unread = notificationStore.getUnreadNotifications()
+        let upcomingReminderSummary = upcoming.first?.message
+        let vehicleSummary = viewModel.highlightedVehicleSummary
         return AssistantContext(
             allNotifications: all,
             upcomingNotifications: upcoming,
             unreadNotifications: unread,
-            userStats: viewModel.userStats
+            userStats: viewModel.userStats,
+            highlightedVehicleSummary: vehicleSummary,
+            nextReminderSummary: upcomingReminderSummary
         )
     }
 

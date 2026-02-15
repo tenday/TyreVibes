@@ -58,19 +58,6 @@ class TireOCRManager: NSObject, ObservableObject {
     private var textRecognitionRequest: VNRecognizeTextRequest!
     
     // Static data to avoid memory allocation on each call
-    private static let primaryBrands: Set<String> = [
-        "MICHELIN", "BRIDGESTONE", "PIRELLI", "CONTINENTAL", "GOODYEAR",
-        "DUNLOP", "YOKOHAMA", "HANKOOK", "KUMHO", "TOYO", "NOKIAN",
-        "FALKEN", "COOPER", "MAXXIS", "NEXEN", "UNIROYAL", "GENERAL",
-        "BF GOODRICH", "FIRESTONE", "VREDESTEIN", "GISLAVED", "SEMPERIT",
-        "BARUM", "FULDA", "AVON", "METZELER", "NORAUTO"
-    ]
-    
-    private static let brandAbbreviations: [String: String] = [
-        "MICH": "MICHELIN", "BRIDGE": "BRIDGESTONE", "CONT": "CONTINENTAL",
-        "GOOD": "GOODYEAR", "YOKO": "YOKOHAMA", "HANK": "HANKOOK",
-        "BFG": "BF GOODRICH", "FIRE": "FIRESTONE"
-    ]
 
     private static let knownModelsByBrand: [String: [String]] = [
         "MICHELIN": [
@@ -167,25 +154,13 @@ class TireOCRManager: NSObject, ObservableObject {
                     entries.append((compact, model, brand))
                 }
             }
-
-
-// MARK: - SwiftUI Preview
-#if DEBUG
-struct TyreRegistrationView_Previews: PreviewProvider {
-    static var previews: some View {
-        TyreRegistrationView(
-            onConfirmCompletion: {},
-            vehicleid: 123,
-            scanContext: "Scan the tire sidewall to automatically detect size, brand, DOT and ratings."
-        )
-        .preferredColorScheme(.dark)
-        .previewDisplayName("Tyre Registration – Dark")
-    }
-}
-#endif
         }
         return entries
     }()
+    
+    private static let fallbackSimilarityBrands: [String] = [
+        "MICHELIN", "BRIDGESTONE", "PIRELLI", "CONTINENTAL", "GOODYEAR"
+    ]
 
     // Metodo per resettare i dati catturati
     func resetExtractedData() {
@@ -871,38 +846,29 @@ struct TyreRegistrationView_Previews: PreviewProvider {
     private func extractBrand(from text: String) -> String? {
         // Quick exit for very long text
         guard text.count <= 100 else { return nil }
-        
-        // Quick check for exact matches first (most efficient)
-        for brand in Self.primaryBrands {
-            if text.contains(brand) {
-                return brand
-            }
+
+        if let detected = TireBrandCollector.shared.detectBrand(in: text) {
+            return detected
         }
-        
-        // Check abbreviations
-        for (abbrev, fullName) in Self.brandAbbreviations {
-            if text.contains(abbrev) {
-                return fullName
-            }
-        }
-        
+
         // Simple fuzzy matching for short text only
         guard text.count <= 30 else { return nil }
-        
+
         let words = text.split(separator: " ", maxSplits: 5)
         for word in words.prefix(5) {
             let cleanWord = String(word).trimmingCharacters(in: .punctuationCharacters)
             guard cleanWord.count >= 4 && cleanWord.count <= 15 else { continue }
-            
-            // Simple similarity check - just compare with top 5 brands
-            for brand in Self.primaryBrands.prefix(5) {
+
+            for brand in Self.fallbackSimilarityBrands {
                 let similarity = simpleStringSimilarity(brand, cleanWord)
-                if similarity >= 0.75 {
+
+                let threshold = calculateDynamicThreshold(brand: brand, word: cleanWord)
+                if similarity >= threshold {
                     return brand
                 }
             }
         }
-        
+
         return nil
     }
     
@@ -1271,7 +1237,7 @@ struct TyreRegistrationView_Previews: PreviewProvider {
 
         var contextBrand = requestedBrand
         if contextBrand.isEmpty {
-            for candidate in Self.primaryBrands {
+            for candidate in TireBrandCollector.shared.canonicalBrandNames() {
                 if upperText.contains(candidate) {
                     contextBrand = candidate
                     break

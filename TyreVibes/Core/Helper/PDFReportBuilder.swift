@@ -69,17 +69,30 @@ class PDFReportBuilder {
     // MARK: - Cover Page
 
     private func drawCoverPage(context: CGContext, report: TyreAnalysisReport) {
-        // App logo/title
+        // App logo + title
+        let logoSize: CGFloat = 50
         let titleText = "TYREVIBES"
         let titleAttrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 48, weight: .bold),
             .foregroundColor: UIColor(hex: "FF6B6B")
         ]
         let titleSize = titleText.size(withAttributes: titleAttrs)
-        titleText.draw(
-            at: CGPoint(x: (pageSize.width - titleSize.width) / 2, y: 80),
-            withAttributes: titleAttrs
-        )
+        let totalWidth = logoSize + 12 + titleSize.width
+        let startX = (pageSize.width - totalWidth) / 2
+
+        if let logo = UIImage(named: "LogoImage") {
+            let logoRect = CGRect(x: startX, y: 80, width: logoSize, height: logoSize)
+            logo.draw(in: logoRect)
+            titleText.draw(
+                at: CGPoint(x: startX + logoSize + 12, y: 80 + (logoSize - titleSize.height) / 2),
+                withAttributes: titleAttrs
+            )
+        } else {
+            titleText.draw(
+                at: CGPoint(x: (pageSize.width - titleSize.width) / 2, y: 80),
+                withAttributes: titleAttrs
+            )
+        }
 
         currentY = 160
 
@@ -526,11 +539,24 @@ class PDFReportBuilder {
             .foregroundColor: UIColor.gray
         ]
 
+        let logoFooterSize: CGFloat = 14
         let footerSize = footerText.size(withAttributes: footerAttrs)
-        footerText.draw(
-            at: CGPoint(x: (pageSize.width - footerSize.width) / 2, y: footerY),
-            withAttributes: footerAttrs
-        )
+        let totalFooterWidth = logoFooterSize + 6 + footerSize.width
+        let footerStartX = (pageSize.width - totalFooterWidth) / 2
+
+        if let logo = UIImage(named: "LogoImage") {
+            let logoRect = CGRect(x: footerStartX, y: footerY, width: logoFooterSize, height: logoFooterSize)
+            logo.draw(in: logoRect)
+            footerText.draw(
+                at: CGPoint(x: footerStartX + logoFooterSize + 6, y: footerY + (logoFooterSize - footerSize.height) / 2),
+                withAttributes: footerAttrs
+            )
+        } else {
+            footerText.draw(
+                at: CGPoint(x: (pageSize.width - footerSize.width) / 2, y: footerY),
+                withAttributes: footerAttrs
+            )
+        }
     }
 
     private func drawInfoBox(context: CGContext, title: String, content: String, color: UIColor) {

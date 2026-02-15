@@ -33,7 +33,13 @@ enum AuthTokenHelper {
             return false
         }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        addSecurityHeaders(to: &request)
         return true
+    }
+
+    /// Aggiunge gli header di sicurezza SecNeo se abilitati da configurazione.
+    static func addSecurityHeaders(to request: inout URLRequest) {
+        SecNeoSecurityService.shared.applySecurityHeaders(to: &request)
     }
 
     /// Verifica se l'utente ha una sessione attiva.

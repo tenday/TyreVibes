@@ -6,6 +6,7 @@ struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @EnvironmentObject private var notificationStore: NotificationStore
     @State private var showNotifications = false
+    @State private var showCustomNotifications = false
 
     var body: some View {
         NavigationStack {
@@ -60,7 +61,8 @@ struct SettingsView: View {
                             notificationsEnabled: $viewModel.notificationsEnabled,
                             promotionNotifications: $viewModel.promotionNotifications,
                             updateNotifications: $viewModel.updateNotifications,
-                            analysisNotifications: $viewModel.analysisNotifications
+                            analysisNotifications: $viewModel.analysisNotifications,
+                            onCustomNotifications: { showCustomNotifications = true }
                         )
                         .padding(.top, 24)
 
@@ -92,6 +94,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $viewModel.isPresentingShareSheet, onDismiss: { viewModel.dismissShareSheet() }) {
                 ShareSheet(items: viewModel.shareItems)
+            }
+            .sheet(isPresented: $showCustomNotifications) {
+                CustomNotificationsSheet(viewModel: viewModel)
             }
             .alert(item: $viewModel.alert) { alert in
                 switch alert.style {
@@ -263,23 +268,28 @@ struct PerformanceSection: View {
             )
 
             GlassCard(height: 72) {
-                HStack {
+                HStack(spacing: 12) {
                     Text("Image Quality".localized)
                         .font(.custom("Sora-SemiBold", size: 16))
                         .foregroundColor(.white)
-
-                    Spacer()
+                        .lineLimit(2)
+                        .frame(maxWidth: 140, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Slider(value: $imageQuality, in: 0...1)
-                        .frame(width: 130)
+                        .frame(minWidth: 70, maxWidth: .infinity)
                         .tint(Color(hex: "5CEBFF"))
 
                     Text(imageQualityLabel.localized)
                         .font(.custom("Sora-Regular", size: 14))
                         .foregroundColor(.white)
+                        .frame(width: 72, alignment: .trailing)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 .padding(.horizontal, 18)
             }
+            .frame(maxWidth: .infinity)
 
             ToggleCard(
                 title: "Image Cache Management".localized,
@@ -713,6 +723,7 @@ struct NotificationsSection: View {
     @Binding var promotionNotifications: Bool
     @Binding var updateNotifications: Bool
     @Binding var analysisNotifications: Bool
+    let onCustomNotifications: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -743,6 +754,27 @@ struct NotificationsSection: View {
                         subtitle: "Receive an alert when tyre analysis is done".localized,
                         isOn: $analysisNotifications
                     )
+
+                    Button(action: onCustomNotifications) {
+                        GlassCard(height: 62, borderColor: Color(hex: "2FB8FF")) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "bell.badge")
+                                    .foregroundColor(Color(hex: "5CEBFF"))
+
+                                Text("Notifiche personalizzate")
+                                    .font(.custom("Sora-SemiBold", size: 16))
+                                    .foregroundColor(.white)
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
+                            .padding(.horizontal, 18)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
                 .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity.combined(with: .move(edge: .bottom))))
                 .animation(.default, value: notificationsEnabled)

@@ -991,6 +991,9 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
     case tyres
     case emergency
     case premium
+    case mechanics
+    case bodyShop
+    case oilChange
 
     var id: Self { self }
 
@@ -1004,6 +1007,12 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
             return "Soccorso 24H"
         case .premium:
             return "Premium"
+        case .mechanics:
+            return "Meccanico"
+        case .bodyShop:
+            return "Carrozzeria"
+        case .oilChange:
+            return "Cambio olio"
         }
     }
 
@@ -1017,6 +1026,12 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
             return "bolt.fill"
         case .premium:
             return "star.fill"
+        case .mechanics:
+            return "engine.combustion"
+        case .bodyShop:
+            return "car.side"
+        case .oilChange:
+            return "drop.fill"
         }
     }
 
@@ -1030,6 +1045,12 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
             return "soccorso stradale"
         case .premium:
             return "officina premium"
+        case .mechanics:
+            return "officina meccanico auto"
+        case .bodyShop:
+            return "carrozzeria auto"
+        case .oilChange:
+            return "cambio olio auto"
         }
     }
 
@@ -1043,6 +1064,12 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
             return "aperto 24 ore"
         case .premium:
             return "recensioni alte lusso"
+        case .mechanics:
+            return "riparazione motore freni"
+        case .bodyShop:
+            return "riparazione carrozzeria verniciatura"
+        case .oilChange:
+            return "tagliando cambio olio filtri"
         }
     }
 
@@ -1056,6 +1083,12 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
             return [.customBitterSweet, .customSandyBrown]
         case .premium:
             return [.customPurple, .customAzure]
+        case .mechanics:
+            return [.customSandyBrown, .customBitterSweet]
+        case .bodyShop:
+            return [.customAzure, .customBlue]
+        case .oilChange:
+            return [.customSandyBrown, .customBlue]
         }
     }
 
@@ -1069,6 +1102,12 @@ private enum MapSearchCategory: CaseIterable, Identifiable {
             return .customBitterSweet.opacity(0.35)
         case .premium:
             return .customPurple.opacity(0.35)
+        case .mechanics:
+            return .customSandyBrown.opacity(0.35)
+        case .bodyShop:
+            return .customAzure.opacity(0.35)
+        case .oilChange:
+            return .customSandyBrown.opacity(0.35)
         }
     }
 }

@@ -57,7 +57,64 @@ CREATE TABLE IF NOT EXISTS vehicles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 3. TABELLA: tyres_vehicles
+-- 3. TABELLA: completed_maintenance
+-- Storico manutenzioni completate per veicolo
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS completed_maintenance (
+    id VARCHAR(36) PRIMARY KEY,  -- UUID
+    vehicle_id INT NOT NULL,
+
+    title VARCHAR(255) NOT NULL,
+    note TEXT,
+    maintenance_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mileage INT,
+    source VARCHAR(20) NOT NULL DEFAULT 'manual', -- manual | partner | automatic
+    partner_appointment_id VARCHAR(120),
+    maintenance_type VARCHAR(50),              -- MaintenanceType raw value
+    cost DECIMAL(10,2),                        -- Actual cost in EUR
+    workshop_name VARCHAR(255),                -- Workshop/mechanic name
+    workshop_id VARCHAR(120),                  -- Partner workshop ID
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
+    CONSTRAINT chk_completed_maintenance_mileage CHECK (mileage IS NULL OR mileage >= 0),
+    CONSTRAINT chk_completed_maintenance_source CHECK (source IN ('manual', 'partner', 'automatic')),
+    CONSTRAINT chk_completed_maintenance_cost CHECK (cost IS NULL OR cost >= 0),
+    UNIQUE KEY uq_completed_maintenance_partner_appointment (vehicle_id, partner_appointment_id),
+    INDEX idx_completed_maintenance_vehicle (vehicle_id),
+    INDEX idx_completed_maintenance_date (maintenance_date),
+    INDEX idx_completed_maintenance_source (source),
+    INDEX idx_completed_maintenance_type (maintenance_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- 3b. TABELLA: maintenance_intervals
+-- Intervalli programmati per manutenzione veicolo
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS maintenance_intervals (
+    id VARCHAR(36) PRIMARY KEY,
+    vehicle_id INT,
+    maintenance_type VARCHAR(50) NOT NULL,
+    km_interval INT,
+    months_interval INT,
+    is_custom BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
+    CONSTRAINT chk_interval_km CHECK (km_interval IS NULL OR km_interval > 0),
+    CONSTRAINT chk_interval_months CHECK (months_interval IS NULL OR months_interval > 0),
+    INDEX idx_maintenance_intervals_vehicle (vehicle_id),
+    INDEX idx_maintenance_intervals_type (maintenance_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- 4. TABELLA: tyres_vehicles
 -- Pneumatici registrati per i veicoli
 -- ============================================================================
 
@@ -85,7 +142,7 @@ CREATE TABLE IF NOT EXISTS tyres_vehicles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 4. TABELLA: tyre_analyses
+-- 5. TABELLA: tyre_analyses
 -- Analisi complete dei pneumatici
 -- ============================================================================
 
@@ -340,6 +397,14 @@ END//
 -- Trigger per vehicles
 CREATE TRIGGER vehicles_update_timestamp
 BEFORE UPDATE ON vehicles
+FOR EACH ROW
+BEGIN
+    SET NEW.updated_at = CURRENT_TIMESTAMP;
+END//
+
+-- Trigger per completed_maintenance
+CREATE TRIGGER completed_maintenance_update_timestamp
+BEFORE UPDATE ON completed_maintenance
 FOR EACH ROW
 BEGIN
     SET NEW.updated_at = CURRENT_TIMESTAMP;

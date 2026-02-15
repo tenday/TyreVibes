@@ -49,6 +49,186 @@ if (!SUPABASE_JWT_SECRET) {
   console.warn("⚠️  ATTENZIONE: SUPABASE_JWT_SECRET non configurato! Usa una variabile d'ambiente.");
 }
 
+const parseBoolEnv = (value, fallback = false) => {
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return fallback;
+};
+
+const parseCsvSet = (value) => {
+  if (!value) return new Set();
+  return new Set(
+    String(value)
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  );
+};
+
+const SECNEO_CONFIG = {
+  enabled: parseBoolEnv(process.env.SECNEO_ENABLED, false),
+  strict: parseBoolEnv(process.env.SECNEO_STRICT, false),
+  verifyUrl: process.env.SECNEO_VERIFY_URL || "",
+  verifyTimeoutMs: Number(process.env.SECNEO_VERIFY_TIMEOUT_MS || 3500),
+  allowedAppKeys: parseCsvSet(process.env.SECNEO_ALLOWED_APP_KEYS),
+  allowedTokens: parseCsvSet(process.env.SECNEO_ALLOWED_TOKENS),
+  sharedSecret: process.env.SECNEO_SHARED_SECRET || ""
+};
+
+const verifySecNeoRemotely = async (payload) => {
+  if (!SECNEO_CONFIG.verifyUrl) {
+    return { valid: true, mode: "local-only" };
+  }
+
+  if (typeof fetch !== "function") {
+    return { valid: false, reason: "fetch-non-disponibile" };
+  }
+
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), SECNEO_CONFIG.verifyTimeoutMs);
+  try {
+    const response = await fetch(SECNEO_CONFIG.verifyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return { valid: false, reason: `verify-http-${response.status}` };
+    }
+
+    const json = await response.json().catch(() => null);
+    const valid = json?.valid === true || json?.ok === true || json?.result === "pass";
+    return valid ? { valid: true, mode: "remote-verified" } : { valid: false, reason: "verify-negative" };
+  } catch (error) {
+    return { valid: false, reason: error?.name === "AbortError" ? "verify-timeout" : "verify-exception" };
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+};
+
+const authenticateSecNeo = async (req, res, next) => {
+  if (!SECNEO_CONFIG.enabled) {
+    return next();
+  }
+
+  if (req.path === "/v1" || req.path === "/v1/health") {
+    return next();
+  }
+
+  const appKey = (req.headers["x-secneo-app-key"] || "").toString().trim();
+  const token = (req.headers["x-secneo-token"] || "").toString().trim();
+  const timestamp = (req.headers["x-secneo-timestamp"] || "").toString().trim();
+  const nonce = (req.headers["x-secneo-nonce"] || "").toString().trim();
+  const signature = (req.headers["x-secneo-signature"] || "").toString().trim();
+
+  const enforceFailure = (message) => {
+    if (SECNEO_CONFIG.strict) {
+      return res.status(403).json({ error: "SecNeo verification failed", reason: message });
+    }
+    console.warn(`[SECNEO] Warning: ${message} ${req.method} ${req.originalUrl}`);
+    return null;
+  };
+
+  if (!appKey) {
+    const fail = enforceFailure("missing-app-key");
+    if (fail) return fail;
+    return next();
+  }
+
+  if (!token) {
+    const fail = enforceFailure("missing-token");
+    if (fail) return fail;
+    return next();
+  }
+
+  if (SECNEO_CONFIG.allowedAppKeys.size > 0 && !SECNEO_CONFIG.allowedAppKeys.has(appKey)) {
+    const fail = enforceFailure("invalid-app-key");
+    if (fail) return fail;
+    return next();
+  }
+
+  if (SECNEO_CONFIG.allowedTokens.size > 0 && !SECNEO_CONFIG.allowedTokens.has(token)) {
+    const fail = enforceFailure("invalid-token");
+    if (fail) return fail;
+    return next();
+  }
+
+  if (SECNEO_CONFIG.sharedSecret) {
+    if (!timestamp || !nonce || !signature) {
+      const fail = enforceFailure("missing-signature-headers");
+      if (fail) return fail;
+      return next();
+    }
+
+    const requestTimestamp = Number(timestamp);
+    if (!Number.isFinite(requestTimestamp)) {
+      const fail = enforceFailure("invalid-timestamp");
+      if (fail) return fail;
+      return next();
+    }
+
+    const skewMs = Math.abs(Date.now() - requestTimestamp);
+    if (skewMs > 5 * 60 * 1000) {
+      const fail = enforceFailure("timestamp-skew");
+      if (fail) return fail;
+      return next();
+    }
+
+    const canonicalPaths = new Set([
+      req.path,
+      (req.originalUrl || "").split("?")[0]
+    ]);
+    const expectedSignatures = Array.from(canonicalPaths)
+      .filter(Boolean)
+      .map((path) =>
+        crypto
+          .createHmac("sha256", SECNEO_CONFIG.sharedSecret)
+          .update(`${req.method}|${path}|${timestamp}|${nonce}`)
+          .digest("hex")
+      );
+    const providedBuffer = Buffer.from(signature, "utf8");
+    const isSignatureValid = expectedSignatures.some((expected) => {
+      const expectedBuffer = Buffer.from(expected, "utf8");
+      return expectedBuffer.length === providedBuffer.length &&
+        crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+    });
+
+    if (!isSignatureValid) {
+      const fail = enforceFailure("invalid-signature");
+      if (fail) return fail;
+      return next();
+    }
+  }
+
+  const remoteVerification = await verifySecNeoRemotely({
+    appKey,
+    token,
+    timestamp,
+    nonce,
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+    userAgent: req.headers["user-agent"] || null
+  });
+
+  if (!remoteVerification.valid) {
+    const fail = enforceFailure(remoteVerification.reason || "remote-verification-failed");
+    if (fail) return fail;
+  }
+
+  req.secneo = {
+    valid: remoteVerification.valid,
+    mode: remoteVerification.mode || "fallback",
+    appKey
+  };
+
+  return next();
+};
+
 // Middleware per verificare JWT token di Supabase
 const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -508,6 +688,7 @@ const parseToDate = (value) => {
 
   // ===== Router comune =====
   const router = express.Router();
+  router.use("/v1", authenticateSecNeo);
 
   // GET v1
   router.get("/v1", (_req, res) => {
