@@ -120,6 +120,16 @@ struct ACISPIDWebView: View {
     }
 }
 
+// MARK: - Weak Script Message Handler (evita retain cycle WebView ↔ coordinator)
+
+private class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var delegate: WKScriptMessageHandler?
+    init(_ delegate: WKScriptMessageHandler) { self.delegate = delegate }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        delegate?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 // MARK: - WebView Representable
 
 struct SPIDWebViewRepresentable: UIViewRepresentable {
@@ -138,6 +148,43 @@ struct SPIDWebViewRepresentable: UIViewRepresentable {
         // Abilita media playback e altre features
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+
+        // Interceptor fetch/XHR: cattura la risposta di /api/v2/vehicle chiamata dall'Angular app
+        // senza dover gestire manualmente ssoid, fase0, fase1 o reCAPTCHA
+        let interceptorJS = """
+        (function() {
+            var orig = window.fetch;
+            window.fetch = function(input, init) {
+                var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+                return orig.apply(this, arguments).then(function(res) {
+                    if (url.indexOf('/api/v2/vehicle') !== -1) {
+                        res.clone().text().then(function(body) {
+                            try { window.webkit.messageHandlers.vehicleData.postMessage(body); } catch(e) {}
+                        });
+                    }
+                    return res;
+                });
+            };
+            var origOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url) {
+                this.__tvUrl = url;
+                return origOpen.apply(this, arguments);
+            };
+            var origSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function() {
+                if (this.__tvUrl && this.__tvUrl.indexOf('/api/v2/vehicle') !== -1) {
+                    var xhr = this;
+                    xhr.addEventListener('load', function() {
+                        try { window.webkit.messageHandlers.vehicleData.postMessage(xhr.responseText); } catch(e) {}
+                    });
+                }
+                return origSend.apply(this, arguments);
+            };
+        })();
+        """
+        let userScript = WKUserScript(source: interceptorJS, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        config.userContentController.addUserScript(userScript)
+        config.userContentController.add(WeakScriptMessageHandler(context.coordinator), name: "vehicleData")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -179,7 +226,7 @@ struct SPIDWebViewRepresentable: UIViewRepresentable {
 // MARK: - WebView Coordinator
 
 @MainActor
-class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
+class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMessageHandler {
     @Published var isLoading = false
     @Published var canGoBack = false
     @Published var authSuccess = false
@@ -291,51 +338,17 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
 
         if !didNavigateToVehicleEndpoint && urlString.contains(authCompletedPattern) {
             print("✅ [ACISPIDWebView] Autenticazione SPID completata su IAM ACI!")
-            print("📋 [ACISPIDWebView] Navigazione all'endpoint vehicle...")
-
-            // Marca che abbiamo completato l'autenticazione SPID
-            didNavigateToVehicleEndpoint = true
-
-            // Nascondi la WebView per non mostrare la pagina di caricamento all'utente
-            Task { @MainActor in
-                self.hideWebView = true
-            }
-
-            // Aspetta 1 secondo per stabilizzare i cookie, poi naviga direttamente alla pagina di login ACI
-            // che reindirizza automaticamente all'endpoint vehicle con il parametro purl
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                guard let self = self, let webView = self.webView else {
-                    print("❌ [ACISPIDWebView] WebView non disponibile per navigare a vehicle")
-                    return
-                }
-
-                // Naviga al login ACI che gestisce automaticamente il redirect a vehicle
-                // Questo approccio permette alla pagina web di gestire reCAPTCHA tramite JavaScript
-                var components = URLComponents(string: "https://login.aci.it/index.php/")
-                components?.queryItems = [
-                    URLQueryItem(name: "do", value: "loginSpid"),
-                    URLQueryItem(name: "application_key", value: "bollonet"),
-                    URLQueryItem(name: "purl", value: "https://bollo.aci.it/api/v2/vehicle")
-                ]
-
-                guard let loginURL = components?.url else {
-                    print("❌ [ACISPIDWebView] Impossibile costruire URL di login")
-                    return
-                }
-
-                print("🌐 [ACISPIDWebView] Navigazione a: \(loginURL.absoluteString)")
-                print("📋 [ACISPIDWebView] Questo reindirizza automaticamente a vehicle con i cookie di sessione")
-
-                DispatchQueue.main.async {
-                    webView.load(URLRequest(url: loginURL))
-                }
-            }
+            print("📋 [ACISPIDWebView] Il WebView rimane visibile: l'utente deve interagire con login.aci.it")
+            // NON nascondiamo il WebView qui: dopo IAM il browser torna su login.aci.it
+            // dove l'utente deve premere un bottone per completare il redirect a bollo.aci.it.
+            // Il WebView viene nascosto in decidePolicyFor quando rileva la navigazione a bollo.aci.it.
             return
         }
 
         // Controlla se la pagina contiene un JSON di risposta dall'API vehicle
-        // Questo viene chiamato per ogni pagina caricata, incluso l'endpoint vehicle
-        if didNavigateToVehicleEndpoint && !authCompleted {
+        // Chiamato SOLO quando siamo effettivamente sull'endpoint vehicle, non su pagine intermedie
+        // (es. login.aci.it che gestisce reCAPTCHA via JS e poi redirige a vehicle)
+        if didNavigateToVehicleEndpoint && !authCompleted && urlString.contains("bollo.aci.it/api/v2/vehicle") {
             checkForAuthResponse(in: webView)
         }
     }
@@ -370,6 +383,19 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
             return
         }
 
+        // Rileva il redirect verso bollo.aci.it (pagina principale, non le API).
+        // Questo avviene dopo che l'utente ha premuto il bottone su login.aci.it post-SPID.
+        // Da qui l'Angular app gira in background e l'interceptor cattura GET /vehicle.
+        if !didNavigateToVehicleEndpoint
+            && urlString.contains("bollo.aci.it")
+            && !urlString.contains("/api/v2/") {
+            print("🎯 [ACISPIDWebView] Redirect a bollo.aci.it rilevato - nascondo WebView")
+            didNavigateToVehicleEndpoint = true
+            Task { @MainActor in
+                self.hideWebView = true
+            }
+        }
+
         // Permetti TUTTE le altre navigazioni
         decisionHandler(.allow)
     }
@@ -389,6 +415,31 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
         }
 
         decisionHandler(.allow)
+    }
+
+    // MARK: - WKScriptMessageHandler
+
+    /// Riceve la risposta di /api/v2/vehicle intercettata dall'iniettore fetch/XHR
+    nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "vehicleData",
+              let body = message.body as? String,
+              let data = body.data(using: .utf8) else { return }
+
+        do {
+            let response = try JSONDecoder().decode(BolloAPIResponse.self, from: data)
+            print("✅ [ACISPIDWebView] Vehicle data intercettata via fetch/XHR!")
+            print("🚗 [ACISPIDWebView] Veicoli trovati: \(response.veicoli?.count ?? 0)")
+
+            Task { @MainActor in
+                guard !self.authCompleted else { return }
+                self.authCompleted = true
+                self.vehicleResponse = response
+                self.authSuccess = true
+                self.onVehicleData?(response)
+            }
+        } catch {
+            print("⚠️ [ACISPIDWebView] vehicleData message ricevuto ma non decodificabile: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Helper Methods
@@ -516,8 +567,13 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
                     }
                 }
             } else {
-                print("⏭️ [ACISPIDWebView] Nessun JSON trovato in questa pagina, continua navigazione...")
-                self.requestVehicleData()
+                // Nessun JSON sull'endpoint vehicle: la pagina potrebbe richiedere POST o altri parametri.
+                // Il flusso normale passa per login.aci.it che risolve reCAPTCHA via JS e redirige qui.
+                print("⚠️ [ACISPIDWebView] Endpoint vehicle raggiunto ma senza JSON - risposta inattesa")
+                Task { @MainActor in
+                    self.authError = ACIAuthError.invalidResponse
+                    self.onAuthFailure?(ACIAuthError.invalidResponse)
+                }
             }
         }
     }
@@ -647,7 +703,7 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate {
 // MARK: - Preview
 
 #Preview {
-    if let url = URL(string: "https://login.aci.it/index.php/?do=loginSpidMobile&application_key=bollonet&purl=https%3A%2F%2Fbollo.aci.it%2Fapi%2Fv2%2Fvehicle") {
+    if let url = URL(string: "https://login.aci.it/index.php?do=genNotAuth&id=login&application_key=bollonet") {
         ACISPIDWebView(
             loginURL: url,
             onVehicleData: { response in

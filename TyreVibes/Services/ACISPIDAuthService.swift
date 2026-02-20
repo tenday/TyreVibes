@@ -16,11 +16,14 @@ class ACISPIDAuthService: ObservableObject {
     private init() {}
 
     private var loginURL: URL? {
-        var components = URLComponents(string: "https://login.aci.it/index.php/")
+        // Pagina di login ACI: l'utente vede il bottone SPID, lo preme,
+        // e il redirect naturale post-SPID porta a bollo.aci.it con il ssoid.
+        // L'app Angular di bollo.aci.it gestisce da sola: POST /user → /fase0 → /fase1 → GET /vehicle.
+        var components = URLComponents(string: "https://login.aci.it/index.php")
         components?.queryItems = [
-            URLQueryItem(name: "do", value: "loginSpidMobile"),
-            URLQueryItem(name: "application_key", value: "bollonet"),
-            URLQueryItem(name: "purl", value: "https://bollo.aci.it/api/v2/vehicle")
+            URLQueryItem(name: "do", value: "genNotAuth"),
+            URLQueryItem(name: "id", value: "login"),
+            URLQueryItem(name: "application_key", value: "bollonet")
         ]
         return components?.url
     }

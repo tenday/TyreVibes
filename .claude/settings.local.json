@@ -22,7 +22,10 @@
       "Bash(du:*)",
       "Bash(ls:*)",
       "Bash(plutil:*)",
-      "WebFetch(domain:rapidapi.com)"
+      "WebFetch(domain:rapidapi.com)",
+      "WebFetch(domain:bollo.aci.it)",
+      "Bash(python3:*)",
+      "WebFetch(domain:login.aci.it)"
     ],
     "deny": [],
     "ask": []

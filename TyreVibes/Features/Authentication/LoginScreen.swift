@@ -32,8 +32,7 @@ struct LoginScreen: View {
                     // Background
                     Color.customBackgroundColor
                         .ignoresSafeArea()
-                    
-                    
+
                     VStack(spacing: 26) {
                         // Header
                         HStack {
@@ -210,8 +209,7 @@ struct LoginScreen: View {
                             }
                             .disabled(viewModel.email.isEmpty || viewModel.password.isEmpty || viewModel.isLoading)
                             .opacity(viewModel.email.isEmpty || viewModel.password.isEmpty ? 0.6 : 1.0)
-                            .padding(.bottom, layoutHeight * -0.03)
-                            .padding(.top, layoutHeight * 0.25)
+                            .padding(.top, layoutHeight * 0.08)
                             
                             // Or Continue With
                             HStack {
@@ -229,74 +227,52 @@ struct LoginScreen: View {
                                     .frame(width: screenWidth * 0.25, height: 0.5)
                             }
                             .padding(.vertical, layoutHeight * 0.02)
-                            .padding(.bottom, layoutHeight * -0.03)
                             
                             
                             // Social Login Buttons
-                            VStack(spacing: screenWidth * 0.04) {
-                                HStack(spacing: screenWidth * 0.04) {
-                                    Button(action: {
-                                        viewModel.signInWithGoogle()
-                                    }) {
-                                        HStack {
-                                            Image("GoogleIcon")
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: iconSize, height: iconSize)
-
-                                            Text("Google")
-                                                .font(.customFont(size: socialButtonFontSize, weight: .semibold))
-                                                .foregroundColor(.white)
-                                        }
-                                    }
-                                    .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
-                                    .accessibilityLabel("Accedi con Google")
-                                    .accessibilityHint("Usa il tuo account Google per accedere")
-
-                                    Button(action: {
-                                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                                           let window = windowScene.windows.first {
-                                            viewModel.signInWithApple(presentationAnchor: window)
-                                        }
-                                    }) {
-                                        HStack {
-                                            Image("AppleIcon")
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: iconSize, height: iconSize)
-
-                                            Text("Apple")
-                                                .font(.customFont(size: socialButtonFontSize, weight: .semibold))
-                                                .foregroundColor(.white)
-                                        }
-                                    }
-                                    .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
-                                    .accessibilityLabel("Accedi con Apple")
-                                    .accessibilityHint("Usa il tuo Apple ID per accedere")
-                                }
-
+                            HStack(spacing: screenWidth * 0.04) {
                                 Button(action: {
-                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                                       let window = windowScene.windows.first {
-                                        viewModel.signInWithPasskey(presentationAnchor: window)
-                                    }
+                                    viewModel.signInWithGoogle()
                                 }) {
                                     HStack {
-                                        Image(systemName: "key.fill")
-                                            .font(.system(size: iconSize))
-                                            .foregroundColor(.white)
+                                        Image("GoogleIcon")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: iconSize, height: iconSize)
 
-                                        Text("Passkey")
+                                        Text("Google")
                                             .font(.customFont(size: socialButtonFontSize, weight: .semibold))
                                             .foregroundColor(.white)
                                     }
                                 }
                                 .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
-                                .accessibilityLabel("Accedi con passkey")
-                                .accessibilityHint("Usa una passkey per accedere più velocemente")
+                                .accessibilityLabel("Accedi con Google")
+                                .accessibilityHint("Usa il tuo account Google per accedere")
+
+                                Button(action: {
+                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let window = windowScene.windows.first {
+                                        viewModel.signInWithApple(presentationAnchor: window)
+                                    }
+                                }) {
+                                    HStack {
+                                        Image("AppleIcon")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: iconSize, height: iconSize)
+
+                                        Text("Apple")
+                                            .font(.customFont(size: socialButtonFontSize, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                                .buttonStyle(SocialLoginButtonStyle(height: socialButtonHeight, cornerRadius: screenWidth * 0.075))
+                                .accessibilityLabel("Accedi con Apple")
+                                .accessibilityHint("Usa il tuo Apple ID per accedere")
                             }
                         }
                         .padding(.horizontal, 20)
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 16))
                     }
                 }
                 .onAppear {
