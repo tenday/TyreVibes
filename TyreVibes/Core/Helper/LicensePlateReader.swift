@@ -1865,18 +1865,6 @@ private static func preprocessCaptchaVariants(from cgImage: CGImage) -> [CGImage
         kCIInputEVKey: 0.6
     ])
 
-    // Variante 4: morfologia (erode + dilate) per ispessire/assottigliare
-   // let v4 = v1
-   //     .applyingFilter("CIMorphologyMinimum", parameters: [
-   //         kCIInputRadiusKey: 0.9
-   //     ])
-   //     .applyingFilter("CIMorphologyMaximum", parameters: [
-   //         kCIInputRadiusKey: 1.0
-   //     ])
-    
-   
-
-
     // Converte CIImage -> CGImage
     var out: [CGImage] = []
     for ci in [v1, v2, v3, vLens,
