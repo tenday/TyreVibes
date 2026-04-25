@@ -98,7 +98,6 @@ class TyreCacheManager {
         if let encoded = try? encoder.encode(tyres) {
             defaults.set(encoded, forKey: cachePrefix + "\(vehicleId)")
             defaults.set(Date().timeIntervalSince1970, forKey: timestampPrefix + "\(vehicleId)")
-            print("💾 Cache salvata per veicolo \(vehicleId): \(tyres.count) pneumatici")
         }
     }
 

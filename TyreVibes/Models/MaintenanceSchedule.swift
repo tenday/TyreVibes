@@ -130,6 +130,15 @@ struct MaintenanceSchedule: Identifiable, Codable {
             }
         }
 
+        var assetIconName: String? {
+            switch self {
+            case .brakePads:
+                return "brakePadsIcon"
+            default:
+                return nil
+            }
+        }
+
         var color: Color {
             switch self {
             case .rotation: return Color(red: 0.0, green: 0.48, blue: 1.0)

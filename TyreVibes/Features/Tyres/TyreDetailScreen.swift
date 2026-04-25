@@ -69,6 +69,11 @@ struct TyreDetailView: View {
         }
     }
 
+    var tyreInsights: [TyreInsightDisplay] {
+        guard let tyre else { return [] }
+        return makeTyreInsights(from: [tyre])
+    }
+
     @ViewBuilder
     private var analysisNotice: some View {
         switch viewModel.analysisStatus {
@@ -127,6 +132,26 @@ struct TyreDetailView: View {
                         .padding(.bottom, 30)
 
                         analysisNotice
+
+                        if !tyreInsights.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text("Tyre Smart Insights")
+                                        .font(.customFont(size: 18, weight: .semibold))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 20)
+
+                                VStack(spacing: 12) {
+                                    ForEach(tyreInsights) { insight in
+                                        TyreInsightRow(insight: insight)
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                            .padding(.bottom, 30)
+                        }
 
                         // Tread depth measurements
                         if viewModel.hasAnalysis, let treadData = viewModel.treadDepthData {

@@ -1587,6 +1587,57 @@ const parseToDate = (value) => {
     }
   });
 
+router.patch("/v1/vehicles/:id/user/:userId/mileage", authenticateJWT, async (req, res) => {
+  const { id, userId } = req.params;
+  const { currentMileage } = req.body || {};
+
+  if (!id || !userId) {
+    return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
+  }
+
+  if (currentMileage !== null && currentMileage !== undefined) {
+    const parsedMileage = Number(currentMileage);
+    if (!Number.isInteger(parsedMileage) || parsedMileage < 0) {
+      return res.status(400).json({ message: "currentMileage deve essere un intero maggiore o uguale a 0." });
+    }
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    const [associationRows] = await conn.execute(
+      `SELECT 1 FROM user_vehicles WHERE vehicle_id = ? AND user_id = ? LIMIT 1`,
+      [id, userId]
+    );
+
+    if (associationRows.length === 0) {
+      return res.status(404).json({ message: "Associazione veicolo-utente non trovata." });
+    }
+
+    const normalizedMileage = currentMileage === undefined ? null : currentMileage;
+
+    const [result] = await conn.execute(
+      `UPDATE vehicles
+       SET current_mileage = ?
+       WHERE id = ?`,
+      [normalizedMileage, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Veicolo non trovato." });
+    }
+
+    res.status(200).json({
+      message: "Chilometraggio veicolo aggiornato con successo",
+      currentMileage: normalizedMileage
+    });
+  } catch (err) {
+    console.error("Errore PATCH /v1/vehicles/:id/user/:userId/mileage:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 router.post("/v1/vehicles/:id/user/:userId", authenticateJWT, async (req, res) => {
   const { id, userId } = req.params;
   // Extract color and potential image data from the body

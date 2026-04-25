@@ -62,6 +62,24 @@ private func extractCleanEngine(from engine: String) -> String? {
     return nil
 }
 
+private func normalizedGarageSearchValue(_ value: String) -> String {
+    value
+        .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        .components(separatedBy: .whitespacesAndNewlines)
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
+}
+
+private func condensedGarageSearchValue(_ value: String) -> String {
+    normalizedGarageSearchValue(value)
+        .replacingOccurrences(of: " ", with: "")
+}
+
+private func trimmingLeadingGarageSearchWhitespace(_ value: String) -> String {
+    let trimmed = value.drop(while: { $0.isWhitespace || $0.isNewline })
+    return String(trimmed)
+}
+
 struct GarageScreen: View {
     @StateObject private var viewModelLogin = LoginViewModel()
     @StateObject private var paywallManager = PaywallManager.shared
@@ -83,8 +101,10 @@ struct GarageScreen: View {
     @StateObject private var viewModel = GarageViewModel()
     
     var filteredCars: [VehicleResponse] {
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return viewModel.vehicles }
+        let normalizedQuery = normalizedGarageSearchValue(searchText)
+        let condensedQuery = condensedGarageSearchValue(searchText)
+        guard !normalizedQuery.isEmpty else { return viewModel.vehicles }
+
         return Array(viewModel.vehicles).filter { vehicle in
             let haystacks: [String] = [
                 vehicle.plate?.plateNumber,
@@ -98,7 +118,14 @@ struct GarageScreen: View {
                 vehicle.vehicle.fuelType,
                 vehicle.vehicle.color,
             ].compactMap { $0 }
-            return haystacks.contains { $0.localizedCaseInsensitiveContains(q) }
+
+            return haystacks.contains { candidate in
+                let normalizedCandidate = normalizedGarageSearchValue(candidate)
+                let condensedCandidate = condensedGarageSearchValue(candidate)
+
+                return normalizedCandidate.contains(normalizedQuery)
+                    || condensedCandidate.contains(condensedQuery)
+            }
         }
     }
     
@@ -276,6 +303,12 @@ struct GarageScreen: View {
                             .foregroundColor(.white.opacity(0.6))
                             .offset(x: 16)
                             .autocapitalization(.none)
+                            .onChange(of: searchText) { _, newValue in
+                                let sanitized = trimmingLeadingGarageSearchWhitespace(newValue)
+                                if sanitized != newValue {
+                                    searchText = sanitized
+                                }
+                            }
                             .accessibilityLabel("Cerca veicoli")
                             .accessibilityHint("Inserisci marca, modello o targa per cercare")
 

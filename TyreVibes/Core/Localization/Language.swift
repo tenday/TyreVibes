@@ -36,9 +36,11 @@ enum Language: String, CaseIterable, Identifiable {
     }
 
     static func resolve(from storedValue: String?) -> Language {
-        guard let storedValue, let language = Language(rawValue: storedValue) else {
-            return .english
+        if let storedValue, let language = Language(rawValue: storedValue) {
+            return language
         }
-        return language
+
+        let preferredLanguage = Locale.preferredLanguages.first?.lowercased() ?? ""
+        return preferredLanguage.hasPrefix(Language.italian.rawValue) ? .italian : .english
     }
 }

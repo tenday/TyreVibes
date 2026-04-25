@@ -492,6 +492,7 @@ extension VehicleResponse {
                 saleEnd: nil,
                 color: "Red",
                 vin: "WVWZZZAUZLP000001",
+                currentMileage: nil,
                 createdAt: "2024-01-01T12:00:00Z"
             ),
             plate: Plate(

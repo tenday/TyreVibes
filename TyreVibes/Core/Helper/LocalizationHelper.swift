@@ -5,12 +5,27 @@ import SwiftUI
 extension String {
     /// Restituisce la stringa localizzata
     var localized: String {
-        return NSLocalizedString(self, comment: "")
+        let localizedValue = NSLocalizedString(self, comment: "")
+
+        if Self.shouldUseItalianFallback(key: self, localizedValue: localizedValue) {
+            return L10n.translations[self] ?? localizedValue
+        }
+
+        return localizedValue
     }
 
     /// Restituisce la stringa localizzata con parametri
     func localized(_ arguments: CVarArg...) -> String {
         return String(format: self.localized, arguments: arguments)
+    }
+
+    private static func shouldUseItalianFallback(key: String, localizedValue: String) -> Bool {
+        let isItalian = Locale.preferredLanguages.contains { language in
+            language.hasPrefix("it")
+        }
+
+        guard isItalian else { return false }
+        return localizedValue == key || localizedValue.contains("Ã")
     }
 }
 
@@ -169,6 +184,7 @@ extension L10n {
         "Tire Lifecycle": "Ciclo di Vita Pneumatico",
         "Compatible Tire Dimensions": "Dimensioni Pneumatici Compatibili",
         "Tire Condition": "Condizione Pneumatico",
+        "Tire Analysis": "Analisi del pneumatico",
         "Tread Depth": "Profondità Battistrada",
         "Recommended": "Consigliato",
         "No analysis yet": "Nessuna analisi disponibile",

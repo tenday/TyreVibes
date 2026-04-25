@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
     year INT,
     plate_number VARCHAR(20),
     vin VARCHAR(17),
+    current_mileage INT,
 
     -- Dati assicurazione e revisione
     insurance_expiry DATE,

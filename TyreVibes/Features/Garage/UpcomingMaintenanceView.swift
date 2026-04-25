@@ -127,9 +127,7 @@ struct MaintenanceCard: View {
                 .fill(maintenance.type.color.opacity(0.15))
                 .frame(width: 48, height: 48)
 
-            Image(systemName: maintenance.type.icon)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(maintenance.type.color)
+            MaintenanceTypeIconView(type: maintenance.type, color: maintenance.type.color, size: 20)
         }
     }
 

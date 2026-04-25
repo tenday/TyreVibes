@@ -3324,6 +3324,9 @@
         }
       }
     },
+    "Chilometraggio Veicolo" : {
+
+    },
     "Chiudi" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8493,7 +8496,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Loading registered tires..."
+            "value" : "Caricamento pneumatici registrati..."
           }
         }
       }
@@ -9687,6 +9690,9 @@
         }
       }
     },
+    "Mappa intelligente per officine e servizi vicini" : {
+
+    },
     "Mappa Zone" : {
       "comment" : "The title of the section that lists the depth measurements for each zone.",
       "extractionState" : "manual",
@@ -10491,7 +10497,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No registered tires found for this vehicle."
+            "value" : "Nessun pneumatico registrato trovato per questo veicolo."
           }
         }
       }
@@ -13824,6 +13830,9 @@
         }
       }
     },
+    "Se non inserisci un chilometraggio manualmente, usiamo come valore iniziale i km rilevati dall'ultima revisione disponibile." : {
+
+    },
     "Search country" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14048,7 +14057,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select Tire"
+            "value" : "Seleziona pneumatico"
           }
         }
       }
@@ -14065,7 +14074,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select Vehicle"
+            "value" : "Seleziona veicolo"
           }
         }
       }
@@ -14634,7 +14643,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Manutenzioni fatte"
+            "value" : "Maintenance History"
           }
         },
         "it" : {
@@ -15228,7 +15237,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tire Analysis"
+            "value" : "Analisi del pneumatico"
           }
         }
       }
@@ -16487,7 +16496,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You can add a set from the vehicle details screen."
+            "value" : "Puoi aggiungere un set dalla schermata dettagli del veicolo."
           }
         }
       }

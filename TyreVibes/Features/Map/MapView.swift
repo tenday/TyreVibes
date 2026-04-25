@@ -17,6 +17,7 @@ struct MapView: View {
     @State private var showSearchHistory = false
     @Namespace private var categoryAnimation
     @FocusState private var isSearchFieldFocused: Bool
+    private let topInset: CGFloat
 
     enum CustomMapStyle: String, CaseIterable {
         case standard = "Standard"
@@ -24,7 +25,8 @@ struct MapView: View {
         case imagery = "Satellite"
     }
 
-    init() {
+    init(topInset: CGFloat = 52) {
+        self.topInset = topInset
         let center = CLLocationCoordinate2D(latitude: 41.9028, longitude: 12.4964) // Rome
         _cameraPosition = State(initialValue: .region(MKCoordinateRegion(center: center, latitudinalMeters: 250_000, longitudinalMeters: 250_000)))
     }
@@ -41,7 +43,7 @@ struct MapView: View {
                 categoryStrip
             }
             .padding(.horizontal)
-            .padding(.top, 52)
+            .padding(.top, topInset)
 
             // Map Controls Overlay
             VStack {
@@ -61,6 +63,11 @@ struct MapView: View {
         }
         .overlay(alignment: .bottom) {
             bottomPanel
+        }
+        .overlay(alignment: .bottomTrailing) {
+            zoomControls
+                .padding(.trailing, 16)
+                .padding(.bottom, 156)
         }
         .sheet(isPresented: $showFilterSheet) {
             FilterSheet(filter: $mapManager.currentFilter)
@@ -188,9 +195,6 @@ struct MapView: View {
         .mapControls {
             MapCompass()
             MapPitchToggle()
-        }
-        .overlay(alignment: .bottomTrailing) {
-            zoomControls
         }
         .overlay(alignment: .bottomLeading) {
             VStack(spacing: 12) {
@@ -333,14 +337,15 @@ struct MapView: View {
                 }
                 .accessibilityLabel("Avvia ricerca")
             }
-            .padding(16)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(.ultraThinMaterial)
                     .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 18)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [

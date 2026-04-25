@@ -88,9 +88,15 @@ struct MaintenanceDetailSheet: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: displayIcon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(displayColor)
+            Group {
+                if let type = entry.maintenanceType {
+                    MaintenanceTypeIconView(type: type, color: displayColor, size: 18)
+                } else {
+                    Image(systemName: displayIcon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(displayColor)
+                }
+            }
                 .frame(width: 42, height: 42)
                 .background(displayColor.opacity(0.18), in: Circle())
 

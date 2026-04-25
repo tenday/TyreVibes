@@ -10,6 +10,24 @@ extension String {
     }
 }
 
+private func normalizedTyreSearchValue(_ value: String) -> String {
+    value
+        .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        .components(separatedBy: .whitespacesAndNewlines)
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
+}
+
+private func condensedTyreSearchValue(_ value: String) -> String {
+    normalizedTyreSearchValue(value)
+        .replacingOccurrences(of: " ", with: "")
+}
+
+private func trimmingLeadingTyreSearchWhitespace(_ value: String) -> String {
+    let trimmed = value.drop(while: { $0.isWhitespace || $0.isNewline })
+    return String(trimmed)
+}
+
 private struct BolloEstimateView: View {
     let vehicle: VehicleResponse
     @State private var referenceDate: Date
@@ -797,7 +815,7 @@ fileprivate func formatVIN(_ vin: String?) -> String? {
     return groups.joined(separator: " ")
 }
 
-fileprivate struct TyreInsightDisplay: Identifiable {
+struct TyreInsightDisplay: Identifiable {
     let id = UUID()
     let title: String
     let message: String
@@ -808,7 +826,7 @@ fileprivate struct TyreInsightDisplay: Identifiable {
     let icon: String
 }
 
-fileprivate enum TyreSeasonType {
+enum TyreSeasonType {
     case winter
     case summer
     case allSeason
@@ -832,7 +850,7 @@ fileprivate enum TyreSeasonType {
     }
 }
 
-fileprivate func parseDOTDate(_ dotString: String?) -> Date? {
+func parseDOTDate(_ dotString: String?) -> Date? {
     guard let raw = dotString?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
         return nil
     }
@@ -860,7 +878,7 @@ fileprivate func parseDOTDate(_ dotString: String?) -> Date? {
     return calendar.date(from: components)
 }
 
-fileprivate func makeTyreInsights(from tyres: [TyreRegistered]) -> [TyreInsightDisplay] {
+func makeTyreInsights(from tyres: [TyreRegistered]) -> [TyreInsightDisplay] {
     guard !tyres.isEmpty else { return [] }
 
     var insights: [TyreInsightDisplay] = []
@@ -1134,8 +1152,6 @@ struct CarDetailsView: View {
     @State private var isLoadingRevisioni: Bool = false
     @State private var tyreToDelete: TyreRegistered? = nil
     @State private var showDeleteAlert: Bool = false
-    @State private var mileageInput: String = ""
-    @State private var savedMileage: Int? = nil
 
     private var tyreSets: [[TyreRegistered]] {
         let grouped = Dictionary(grouping: tyreViewModel.registeredTyres) { tyre in
@@ -1252,56 +1268,6 @@ struct CarDetailsView: View {
                                 DetailItem(label: String(localized: "Alimentazione"), value: vehicle.vehicle.fuelType?.uppercased() ?? "-")
                                 DetailItem(label: String(localized: "Horsepower"), value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
                                 DetailItem(label: String(localized: "Emission Class"), value: vehicle.vehicle.emissionClass?.uppercased() ?? "-")
-                            }
-
-                            Divider()
-                                .background(Color.white.opacity(0.2))
-                                .padding(.top, 4)
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Chilometraggio veicolo")
-                                    .font(.customFont(size: 14, weight: .semibold))
-                                    .foregroundColor(.white)
-
-                                HStack(spacing: 10) {
-                                    TextField("Inserisci km attuali", text: $mileageInput)
-                                        .keyboardType(.numberPad)
-                                        .font(.customFont(size: 14, weight: .regular))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .frame(height: 40)
-                                        .background(Color.white.opacity(0.06))
-                                        .cornerRadius(10)
-                                        .onChange(of: mileageInput) { _, newValue in
-                                            let filtered = newValue.filter(\.isNumber)
-                                            if filtered != newValue {
-                                                mileageInput = filtered
-                                            }
-                                        }
-
-                                    Text("km")
-                                        .font(.customFont(size: 13, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.75))
-                                }
-
-                                HStack {
-                                    Text("Valore salvato: \(savedMileage.map { "\($0) km" } ?? "-")")
-                                        .font(.customFont(size: 12, weight: .regular))
-                                        .foregroundColor(.white.opacity(0.65))
-                                    Spacer()
-                                    Button(action: saveMileage) {
-                                        Text("Salva")
-                                            .font(.customFont(size: 12, weight: .semibold))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 7)
-                                            .background(
-                                                Capsule()
-                                                    .fill(canSaveMileage ? Color(red: 0.95, green: 0.4, blue: 0.34) : Color.white.opacity(0.18))
-                                            )
-                                    }
-                                    .disabled(!canSaveMileage)
-                                }
                             }
                         }
                         .padding()
@@ -1444,7 +1410,6 @@ struct CarDetailsView: View {
                     vehicleId: vehicle.vehicle.id,
                     revisions: vehicle.revisions ?? []
                 )
-                loadMileageFromStore()
                 if hasSeenDetailsHint == false {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                         showFirstTimeHint = true
@@ -1603,30 +1568,6 @@ struct CarDetailsView: View {
                 tyreViewModel.fetchTyres(vehicleId: vehicle.vehicle.id, forceRefresh: true)
             }
         }
-    }
-
-    private var canSaveMileage: Bool {
-        if mileageInput.isEmpty {
-            return savedMileage != nil
-        }
-
-        guard let parsed = Int(mileageInput), parsed >= 0 else {
-            return false
-        }
-
-        return parsed != savedMileage
-    }
-
-    private func loadMileageFromStore() {
-        let mileage = VehicleMileageStore.shared.mileage(for: vehicle.vehicle.id)
-        savedMileage = mileage
-        mileageInput = mileage.map(String.init) ?? ""
-    }
-
-    private func saveMileage() {
-        let mileage = mileageInput.isEmpty ? nil : Int(mileageInput)
-        VehicleMileageStore.shared.setMileage(mileage, for: vehicle.vehicle.id)
-        savedMileage = mileage
     }
 
 }
@@ -2249,6 +2190,9 @@ struct AdvancedInfoSheet: View {
 // MARK: - Vehicle Specifications View
 struct VehicleSpecificationsView: View {
     let vehicle: VehicleResponse
+    @State private var mileageInput: String = ""
+    @State private var savedMileage: Int? = nil
+    @State private var isSavingMileage = false
 
     var body: some View {
         ScrollView {
@@ -2269,6 +2213,91 @@ struct VehicleSpecificationsView: View {
                         ("Data Immatricolazione", formatVehicleInfoDate(vehicle.plate?.registrationDate))
                     ]
                 )
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.cyan.opacity(0.2))
+                                .frame(width: 44, height: 44)
+
+                            Image(systemName: "speedometer")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.cyan)
+                        }
+
+                        Text("Chilometraggio Veicolo")
+                            .font(.customFont(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+
+                        Spacer()
+                    }
+
+                    VStack(spacing: 0) {
+                        SpecificationRow(label: "Valore salvato", value: formattedSavedMileage)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.black.opacity(0.25))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+
+                    Text("Se non inserisci un chilometraggio manualmente, usiamo come valore iniziale i km rilevati dall'ultima revisione disponibile.")
+                        .font(.customFont(size: 12, weight: .regular))
+                        .foregroundColor(.white.opacity(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "speedometer")
+                                .foregroundColor(.white.opacity(0.5))
+
+                            TextField("Inserisci km attuali", text: $mileageInput)
+                                .keyboardType(.numberPad)
+                                .font(.customFont(size: 14, weight: .regular))
+                                .foregroundColor(.white)
+                                .onChange(of: mileageInput) { _, newValue in
+                                    let filtered = newValue.filter(\.isNumber)
+                                    if filtered != newValue {
+                                        mileageInput = filtered
+                                    }
+                                }
+
+                            Text("km")
+                                .font(.customFont(size: 13, weight: .medium))
+                                .foregroundColor(.white.opacity(0.75))
+                        }
+                        .padding(.horizontal, 12)
+                        .frame(height: 40)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(10)
+
+                        Button(action: saveMileage) {
+                            Group {
+                                if isSavingMileage {
+                                    ProgressView()
+                                        .tint(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 7)
+                                } else {
+                                    Text("Salva")
+                                        .font(.customFont(size: 12, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 7)
+                                }
+                            }
+                            .background(
+                                Capsule()
+                                    .fill(canSaveMileage && !isSavingMileage ? Color(red: 0.95, green: 0.4, blue: 0.34) : Color.white.opacity(0.18))
+                            )
+                        }
+                        .disabled(!canSaveMileage || isSavingMileage)
+                    }
+                }
 
                 // Engine & Performance Section
                 SpecificationSection(
@@ -2321,6 +2350,52 @@ struct VehicleSpecificationsView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
+        }
+        .onAppear(perform: loadMileageFromStore)
+    }
+
+    private var canSaveMileage: Bool {
+        if mileageInput.isEmpty {
+            return savedMileage != nil
+        }
+
+        guard let parsed = Int(mileageInput), parsed >= 0 else {
+            return false
+        }
+
+        return parsed != savedMileage
+    }
+
+    private var formattedSavedMileage: String {
+        savedMileage.map { "\($0) km" } ?? "-"
+    }
+
+    private func loadMileageFromStore() {
+        let mileage = vehicle.vehicle.currentMileage ?? VehicleMileageStore.shared.mileage(for: vehicle.vehicle.id)
+        savedMileage = mileage
+        mileageInput = mileage.map(String.init) ?? ""
+    }
+
+    private func saveMileage() {
+        let mileage = mileageInput.isEmpty ? nil : Int(mileageInput)
+
+        Task {
+            isSavingMileage = true
+            defer { isSavingMileage = false }
+
+            guard let userId = await AuthService.currentUserId else { return }
+
+            do {
+                try await VehicleService.shared.updateVehicleMileage(
+                    vehicleId: vehicle.vehicle.id,
+                    userId: userId,
+                    mileage: mileage
+                )
+                VehicleMileageStore.shared.setMileage(mileage, for: vehicle.vehicle.id)
+                savedMileage = mileage
+            } catch {
+                print("❌ [VehicleSpecificationsView] Failed to persist mileage: \(error.localizedDescription)")
+            }
         }
     }
 }
@@ -2769,10 +2844,6 @@ struct AdvancedTyresTable: View {
     @State private var tyreToDelete: VehicleTyre? = nil
     @State private var showDeleteAlert: Bool = false
 
-    private var tyreInsights: [TyreInsightDisplay] {
-        makeTyreInsights(from: registeredTyres)
-    }
-
     enum TyreSortOption: String, CaseIterable {
         case diameter = "Diametro"
         case width = "Larghezza"
@@ -2812,6 +2883,12 @@ struct AdvancedTyresTable: View {
                         .textFieldStyle(PlainTextFieldStyle())
                         .font(.customFont(size: 14, weight: .medium))
                         .foregroundColor(.white)
+                        .onChange(of: searchText) { _, newValue in
+                            let sanitized = trimmingLeadingTyreSearchWhitespace(newValue)
+                            if sanitized != newValue {
+                                searchText = sanitized
+                            }
+                        }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -3018,9 +3095,15 @@ struct AdvancedTyresTable: View {
                         let filtered = tyres.enumerated().filter { (_, tyre) in
                             // Search filter
                             if !searchText.isEmpty {
-                                let searchLower = searchText.lowercased()
-                                let tyreDescription = "\(tyre.width ?? 0)/\(tyre.ratio ?? 0) R\(tyre.diameter ?? 0) \(tyre.speedIndex ?? "") \(tyre.loadIndex ?? "")".lowercased()
-                                if !tyreDescription.contains(searchLower) {
+                                let normalizedQuery = normalizedTyreSearchValue(searchText)
+                                let condensedQuery = condensedTyreSearchValue(searchText)
+                                let tyreDescription = "\(tyre.width ?? 0)/\(tyre.ratio ?? 0) R\(tyre.diameter ?? 0) \(tyre.speedIndex ?? "") \(tyre.loadIndex ?? "")"
+                                let normalizedDescription = normalizedTyreSearchValue(tyreDescription)
+                                let condensedDescription = condensedTyreSearchValue(tyreDescription)
+
+                                if !normalizedQuery.isEmpty
+                                    && !normalizedDescription.contains(normalizedQuery)
+                                    && !condensedDescription.contains(condensedQuery) {
                                     return false
                                 }
                             }
@@ -3118,23 +3201,6 @@ struct AdvancedTyresTable: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
-            }
-
-            if !tyreInsights.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Tyre Smart Insights")
-                        .font(.customFont(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
-                        .padding(.horizontal, 20)
-
-                    VStack(spacing: 12) {
-                        ForEach(tyreInsights) { insight in
-                            TyreInsightRow(insight: insight)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .padding(.top, 12)
             }
         }
         .alert(String(localized: "Delete"), isPresented: $showDeleteAlert) {
@@ -3414,7 +3480,7 @@ struct TyreRow: View {
 }
 
 struct TyreInsightRow: View {
-    fileprivate let insight: TyreInsightDisplay
+    let insight: TyreInsightDisplay
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

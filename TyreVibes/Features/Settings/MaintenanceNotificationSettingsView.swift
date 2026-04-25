@@ -29,7 +29,10 @@ struct MaintenanceNotificationSettingsView: View {
                     Section(group.category.rawValue) {
                         ForEach(group.types, id: \.self) { type in
                             Toggle(isOn: binding(for: type)) {
-                                Label(type.localizedName, systemImage: type.icon)
+                                HStack(spacing: 8) {
+                                    MaintenanceTypeIconView(type: type, color: type.color, size: 16)
+                                    Text(type.localizedName)
+                                }
                             }
                             .tint(type.color)
                         }

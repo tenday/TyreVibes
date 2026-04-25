@@ -23,6 +23,7 @@ struct Vehicle: Identifiable, Codable, Hashable {
     let saleEnd: String?
     let color: String?
     let vin: String?
+    let currentMileage: Int?
     let createdAt: String?
 
     enum CodingKeys: String, CodingKey {
@@ -48,6 +49,7 @@ struct Vehicle: Identifiable, Codable, Hashable {
         case saleEnd = "sale_end"
         case color
         case vin
+        case currentMileage = "current_mileage"
         case createdAt = "created_at"
     }
 }

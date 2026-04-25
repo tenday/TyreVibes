@@ -13,6 +13,7 @@ struct TireAnalysisSelectionView: View {
     @State private var selectedVehicle: VehicleResponse?
     @State private var selectedTyre: TyreRegistered?
     @State private var navigateToAnalysis = false
+    private let isLiDARAvailable = LiDARTreadMeasurementService.shared.isLiDARAvailable
     @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
@@ -28,11 +29,34 @@ struct TireAnalysisSelectionView: View {
                             Text(LocalizedStringKey("Tire Analysis"))
                                 .font(.customFont(size: 28, weight: .bold))
                                 .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
+                                .layoutPriority(1)
 
                             Spacer()
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
+
+                        if !isLiDARAvailable {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(LocalizedStringKey("LiDAR Non Disponibile"))
+                                    .font(.customFont(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+
+                                Text(LocalizedStringKey("Questa funzionalità richiede un dispositivo con sensore LiDAR (iPhone 12 Pro o successivo)"))
+                                    .font(.customFont(size: 13, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(Color.customFieldColor)
+                            )
+                            .padding(.horizontal, 24)
+                        }
 
                         // Vehicle Selection Section
                         VStack(alignment: .leading, spacing: 10) {
@@ -143,7 +167,7 @@ struct TireAnalysisSelectionView: View {
 
                     if !garageViewModel.vehicles.isEmpty {
                         Button(action: {
-                            if selectedVehicle != nil && selectedTyre != nil {
+                            if isLiDARAvailable, selectedVehicle != nil && selectedTyre != nil {
                                 navigateToAnalysis = true
                             }
                         }) {
@@ -153,8 +177,8 @@ struct TireAnalysisSelectionView: View {
                                 .frame(width: 212, height: 62)
                                 .background(Color.customBitterSweet)
                         }
-                        .disabled(selectedVehicle == nil || selectedTyre == nil)
-                        .opacity(selectedVehicle == nil || selectedTyre == nil ? 0.5 : 1)
+                        .disabled(selectedVehicle == nil || selectedTyre == nil || !isLiDARAvailable)
+                        .opacity(selectedVehicle == nil || selectedTyre == nil || !isLiDARAvailable ? 0.5 : 1)
                         .cornerRadius(100)
                         .padding(.horizontal, 24)
                     }
@@ -202,6 +226,10 @@ struct VehicleCard: View {
     let isSelected: Bool
     let action: () -> Void
 
+    private let cardWidth: CGFloat = 132
+    private let cardHeight: CGFloat = 168
+    private let imagePanelHeight: CGFloat = 96
+
     private var vehicleDisplayName: String {
         let make = vehicle.vehicle.make ?? ""
         let modelText = vehicle.vehicle.smartModelDescription ?? vehicle.vehicle.model ?? ""
@@ -215,61 +243,63 @@ struct VehicleCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 0) {
-                // Vehicle Image Card
-                ZStack(alignment: .bottom) {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.customFieldColor)
-                        .frame(width: 124, height: 125)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(
-                                    isSelected
-                                        ? LinearGradient(
-                                            colors: [Color(hex: "F36656"), Color(hex: "F36656")],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                        : LinearGradient(
-                                            colors: [Color.clear, Color.clear],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                    lineWidth: isSelected ? 2 : 0
-                                )
-                        )
-                        .scaleEffect(isSelected ? 1.10 : 1.05)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-
-                    VStack(spacing: usesCompactLayout ? 6 : 8) {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.2))
-                            .frame(width: 116, height: 90)
-                            .overlay {
-                                if let imageBase64 = vehicle.image?.imageBase64,
-                                   let uiImage = imageBase64.toUIImage() {
-                                    Image(uiImage: uiImage.trimmedTransparentPixels(threshold: 5))
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 110, height: 100)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                } else {
-                                    Image(systemName: "car.fill")
-                                        .font(.system(size: 40))
-                                        .foregroundColor(.white.opacity(0.5))
-                                }
-                            }
-
-                        Text(vehicleDisplayName)
-                            .font(.customFont(size: 12, weight: .semibold))
-                            .foregroundColor(.white)
-                            .lineLimit(2)
-                            .frame(width: 116)
-                            .padding(.bottom, usesCompactLayout ? 0 : 8)
+            VStack(spacing: usesCompactLayout ? 8 : 10) {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.2))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: imagePanelHeight)
+                    .overlay {
+                        if let imageBase64 = vehicle.image?.imageBase64,
+                           let uiImage = imageBase64.toUIImage() {
+                            Image(uiImage: uiImage.trimmedTransparentPixels(threshold: 5))
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 4)
+                        } else {
+                            Image(systemName: "car.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
                     }
-                }
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Text(vehicleDisplayName)
+                    .font(.customFont(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(8)
+            .frame(width: cardWidth, height: cardHeight, alignment: .top)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.customFieldColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        isSelected
+                            ? LinearGradient(
+                                colors: [Color(hex: "F36656"), Color(hex: "F36656")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [Color.clear, Color.clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                        lineWidth: isSelected ? 2 : 0
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
+        .buttonStyle(.plain)
         .scaleEffect(isSelected ? 1.05 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
@@ -280,6 +310,9 @@ struct RegisteredTyreCard: View {
     let tyre: TyreRegistered
     let isSelected: Bool
     let action: () -> Void
+
+    private let cardWidth: CGFloat = 124
+    private let cardHeight: CGFloat = 174
 
     var body: some View {
         Button(action: action) {
@@ -297,7 +330,7 @@ struct RegisteredTyreCard: View {
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 16)
             .fill(Color.customFieldColor)
-            .frame(width: 124, height: 155)
+            .frame(width: cardWidth, height: cardHeight)
             .overlay(cardBorder)
             .scaleEffect(isSelected ? 1.10 : 1.05)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
@@ -323,7 +356,7 @@ struct RegisteredTyreCard: View {
     }
 
     private var cardContent: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             tyreImageView
             tyreBrand
             tyreSeason
@@ -353,10 +386,13 @@ struct RegisteredTyreCard: View {
     }
 
     private var tyreSeason: some View {
-        Text(tyre.season.uppercased())
+        Text(localizedSeason)
             .font(.customFont(size: 11, weight: .bold))
             .foregroundColor(.black.opacity(0.8))
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
             .padding(.horizontal, 10)
+            .padding(.vertical, 4)
             .background(
                 Capsule()
                 .fill(seasonColor(for: tyre.season))
@@ -367,8 +403,25 @@ struct RegisteredTyreCard: View {
         let parts = tyre.size.components(separatedBy: "R")
         return parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : "-"
     }
-    
-    
+
+    private var localizedSeason: String {
+        let lower = tyre.season.lowercased()
+
+        if lower.contains("winter") || lower.contains("invern") {
+            return "INVERNALE"
+        }
+
+        if lower.contains("summer") || lower.contains("estiv") {
+            return "ESTIVO"
+        }
+
+        if lower.contains("all") || lower.contains("4") {
+            return "QUATTRO\nSTAGIONI"
+        }
+
+        return tyre.season.uppercased()
+    }
+
     private func seasonColor(for season: String) -> Color {
             let lower = season.lowercased()
             if lower.contains("winter") || lower.contains("invern") { return Color.blue.opacity(0.6) }

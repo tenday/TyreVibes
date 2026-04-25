@@ -6,6 +6,7 @@ enum VehicleServiceError: LocalizedError {
     case fetchFailed(String)
     case deleteFailed(String)
     case associationFailed(String)
+    case mileageUpdateFailed(String)
     case invalidUserId
 
     var errorDescription: String? {
@@ -18,6 +19,8 @@ enum VehicleServiceError: LocalizedError {
             return "Errore nell'eliminazione del veicolo: \(message)"
         case .associationFailed(let message):
             return "Errore nell'associazione del veicolo: \(message)"
+        case .mileageUpdateFailed(let message):
+            return "Errore nell'aggiornamento del chilometraggio: \(message)"
         case .invalidUserId:
             return "ID utente non valido"
         }
@@ -133,6 +136,25 @@ class VehicleService {
     func getVehicleDetails(vehicleId: Int, userId: String) async throws -> VehicleResponse? {
         let vehicles = try await fetchVehicles(for: userId)
         return vehicles.first(where: { $0.vehicle.id == vehicleId })
+    }
+
+    // MARK: - Update Vehicle Mileage
+    func updateVehicleMileage(vehicleId: Int, userId: String, mileage: Int?) async throws {
+        struct RequestBody: Encodable {
+            let currentMileage: Int?
+        }
+
+        do {
+            try await networkManager.requestWithoutResponse(
+                endpoint: "/v1/vehicles/\(vehicleId)/user/\(userId)/mileage",
+                method: .patch,
+                body: try JSONEncoder().encode(RequestBody(currentMileage: mileage))
+            )
+            print("✅ [VehicleService] Updated mileage for vehicle \(vehicleId): \(mileage.map(String.init) ?? "nil")")
+        } catch {
+            print("❌ [VehicleService] Failed to update mileage: \(error.localizedDescription)")
+            throw VehicleServiceError.mileageUpdateFailed(error.localizedDescription)
+        }
     }
 
     // MARK: - Cache Management

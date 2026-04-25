@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
     year INTEGER,
     plate_number TEXT,
     vin TEXT,
+    current_mileage INTEGER CHECK (current_mileage IS NULL OR current_mileage >= 0),
 
     insurance_expiry DATE,
     revision_expiry DATE,

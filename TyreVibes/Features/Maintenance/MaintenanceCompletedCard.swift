@@ -45,9 +45,15 @@ struct MaintenanceCompletedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Image(systemName: displayIcon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(displayColor)
+                Group {
+                    if let type = entry.maintenanceType {
+                        MaintenanceTypeIconView(type: type, color: displayColor, size: 13)
+                    } else {
+                        Image(systemName: displayIcon)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(displayColor)
+                    }
+                }
                     .frame(width: 30, height: 30)
                     .background(displayColor.opacity(0.18), in: Circle())
 

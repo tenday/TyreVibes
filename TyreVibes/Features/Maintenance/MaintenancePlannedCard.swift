@@ -21,9 +21,7 @@ struct MaintenancePlannedCard: View {
                     Circle()
                         .fill(item.type.color.opacity(0.18))
                         .frame(width: 34, height: 34)
-                    Image(systemName: item.type.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(item.type.color)
+                    MaintenanceTypeIconView(type: item.type, color: item.type.color, size: 14)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {

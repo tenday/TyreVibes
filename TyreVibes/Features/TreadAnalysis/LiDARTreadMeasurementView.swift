@@ -311,21 +311,41 @@ struct LiDARTreadMeasurementView: View {
     // MARK: - Unavailable View
 
     private var unavailableView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "iphone.slash")
-                .font(.system(size: 64))
-                .foregroundColor(.gray)
+        VStack {
+            HStack {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "iphone.slash")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.orange.opacity(0.9))
 
-            Text("LiDAR Non Disponibile")
-                .font(.customFont(size: 24, weight: .bold))
+                        Text("LiDAR Non Disponibile")
+                            .font(.customFont(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                    }
 
-            Text("Questa funzionalità richiede un dispositivo con sensore LiDAR (iPhone 12 Pro o successivo)")
-                .font(.customFont(size: 16, weight: .regular))
-                .multilineTextAlignment(.center)
-                .foregroundColor(.gray)
-                .padding(.horizontal, 40)
+                    Text("Questa funzionalità richiede un dispositivo con sensore LiDAR (iPhone 12 Pro o successivo)")
+                        .font(.customFont(size: 15, weight: .regular))
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 20)
+            .frame(maxWidth: 560)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color.customFieldColor.opacity(0.92))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+            )
+
+            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.top, 96)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.customBackgroundColor)
     }
 }
@@ -667,7 +687,7 @@ struct MeasurementResultView: View {
     private var actionButtons: some View {
         VStack(spacing: 12) {
             Button(action: {
-                // TODO: Salva su Supabase
+                                // TODO: Salva su Supabase
             }) {
                 HStack {
                     Image(systemName: "square.and.arrow.down")

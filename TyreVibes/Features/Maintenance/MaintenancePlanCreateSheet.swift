@@ -24,7 +24,10 @@ struct MaintenancePlanCreateSheet: View {
                         ForEach(MaintenanceSchedule.MaintenanceType.groupedByCategory, id: \.category) { group in
                             Section(group.category.localizedName) {
                                 ForEach(group.types, id: \.self) { maintenanceType in
-                                    Label(maintenanceType.localizedName, systemImage: maintenanceType.icon)
+                                    HStack(spacing: 8) {
+                                        MaintenanceTypeIconView(type: maintenanceType, size: 16)
+                                        Text(maintenanceType.localizedName)
+                                    }
                                         .tag(maintenanceType)
                                 }
                             }

@@ -25,7 +25,10 @@
       "WebFetch(domain:rapidapi.com)",
       "WebFetch(domain:bollo.aci.it)",
       "Bash(python3:*)",
-      "WebFetch(domain:login.aci.it)"
+      "WebFetch(domain:login.aci.it)",
+      "Bash(git diff:*)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)"
     ],
     "deny": [],
     "ask": []
