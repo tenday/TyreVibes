@@ -2339,7 +2339,9 @@ struct VehicleSpecificationsView: View {
                     items: [
                         ("Inizio Vendita", vehicle.vehicle.saleStart ?? "N/A"),
                         ("Fine Vendita", vehicle.vehicle.saleEnd ?? "N/A"),
+                        #if DEBUG
                         ("Data Creazione Record", vehicle.vehicle.createdAt ?? "N/A")
+                        #endif
                     ]
                 )
 
