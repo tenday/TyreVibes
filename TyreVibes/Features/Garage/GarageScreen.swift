@@ -93,7 +93,6 @@ struct GarageScreen: View {
     @State private var tapCount = 0
     @State private var showProfileScreen: Bool = false
     @State private var showNotificationScreen: Bool = false
-    @State private var showVoiceAssistant: Bool = false
 
 
     private let sheetSpacing: CGFloat = 20
@@ -197,44 +196,6 @@ struct GarageScreen: View {
                             }
                             .accessibilityLabel("Notifiche")
                             .accessibilityHint("Apri il centro notifiche")
-                        }
-                        .frame(width: 48, height: 48)
-
-                        HStack(alignment: .center) {
-                            Button(action: {
-                                showVoiceAssistant = true
-                            }) {
-                                Image(systemName: "mic.fill")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 22, height: 22)
-                                    .foregroundColor(.white)
-                                    .padding(12)
-                                    .background(
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.customBackgroundColor)
-                                            Circle()
-                                                .stroke(Color.white.opacity(0.22), lineWidth: 1.5)
-                                                .blur(radius: 1)
-                                                .offset(x: 0.3, y: 1)
-                                                .mask(
-                                                    Circle().fill(LinearGradient(
-                                                        gradient: Gradient(colors: [.black, .black]),
-                                                        startPoint: .top,
-                                                        endPoint: .bottom)
-                                                    )
-                                                )
-                                            VisualEffectBlur(blurStyle:.systemUltraThinMaterial)
-                                                .clipShape(Circle())
-                                                .padding(12)
-                                                .blur(radius: 40)
-                                                .opacity(0.8)
-                                        }
-                                    )
-                            }
-                            .accessibilityLabel("Assistente vocale")
-                            .accessibilityHint("Apri assistente per la manutenzione")
                         }
                         .frame(width: 48, height: 48)
                         
@@ -561,9 +522,6 @@ struct GarageScreen: View {
                     }
                     .fullScreenCover(isPresented: $showNotificationScreen) {
                         NotificationScreen()
-                    }
-                    .fullScreenCover(isPresented: $showVoiceAssistant) {
-                        VoiceAssistantScreen()
                     }
                     
                     

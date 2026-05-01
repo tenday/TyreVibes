@@ -118,7 +118,7 @@ struct TirePlaceholderView: View {
 struct TireAnalysisScreen_Previews: PreviewProvider {
     static var previews: some View {
         // A mock vehicle is used for the preview.
-        let mockVehicle = Vehicle(id: 1, modelDetail: "Test", engine: "Test", make: "Test", model: "Test", version: "Test", fuelType: "Test", displacementCC: 1, powerCV: 1, powerKW: "1", emissionClass: "1", gearbox: "1", maxSpeed: "1", bodyType: "1", doors: "1", seats: "1", consumption: "1", traction: "1", saleStart: "1", saleEnd: "1", color: "1", vin: "1", createdAt: "1")
+        let mockVehicle = Vehicle(id: 1, modelDetail: "Test", engine: "Test", make: "Test", model: "Test", version: "Test", fuelType: "Test", displacementCC: 1, powerCV: 1, powerKW: "1", emissionClass: "1", gearbox: "1", maxSpeed: "1", bodyType: "1", doors: "1", seats: "1", consumption: "1", traction: "1", saleStart: "1", saleEnd: "1", color: "1", vin: "1", currentMileage: nil, createdAt: "1")
 
         NavigationView {
             TireAnalysisScreen(vehicle: mockVehicle)

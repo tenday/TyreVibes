@@ -2194,6 +2194,19 @@ struct VehicleSpecificationsView: View {
     @State private var savedMileage: Int? = nil
     @State private var isSavingMileage = false
 
+    private var productionSalesItems: [(String, String)] {
+        var items: [(String, String)] = [
+            ("Inizio Vendita", vehicle.vehicle.saleStart ?? "N/A"),
+            ("Fine Vendita", vehicle.vehicle.saleEnd ?? "N/A")
+        ]
+
+        #if DEBUG
+        items.append(("Data Creazione Record", vehicle.vehicle.createdAt ?? "N/A"))
+        #endif
+
+        return items
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 20) {
@@ -2336,13 +2349,7 @@ struct VehicleSpecificationsView: View {
                     title: "Produzione e Vendita",
                     icon: "calendar.badge.clock",
                     color: .green,
-                    items: [
-                        ("Inizio Vendita", vehicle.vehicle.saleStart ?? "N/A"),
-                        ("Fine Vendita", vehicle.vehicle.saleEnd ?? "N/A"),
-                        #if DEBUG
-                        ("Data Creazione Record", vehicle.vehicle.createdAt ?? "N/A")
-                        #endif
-                    ]
+                    items: productionSalesItems
                 )
 
                 // Tyres Summary (if available)

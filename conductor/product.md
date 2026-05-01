@@ -1,5 +1,5 @@
 # Initial Concept
-The user wants to build TyreVibes, an iOS application for automated vehicle maintenance tracking and tire analysis using LiDAR, CoreML, and local AI assistance.
+The user wants to build TyreVibes, an iOS application for automated vehicle maintenance tracking and tire analysis using LiDAR and CoreML.
 
 # Product Definition - TyreVibes
 
@@ -15,12 +15,9 @@ The user wants to build TyreVibes, an iOS application for automated vehicle main
 - Manual data entry for users without advanced hardware support.
 - Historical tracking of tire wear with predictive replacement alerts.
 
-## AI Assistant Capabilities
-- Provide real-time answers to vehicle maintenance questions based on user data.
+## Maintenance Guidance
 - Proactively notify the user about upcoming deadlines and recommended actions.
-- Act as a voice-controlled interface for hands-free vehicle check-ins.
-- Use local RAG (Retrieval-Augmented Generation) to analyze car manuals and service history.
 
 ## Data Privacy & Processing
-- **Privacy-first:** All AI processing and tire analysis happen locally on the device.
+- **Privacy-first:** Tire analysis happens locally on the device.
 - **Hybrid:** Local processing for privacy, cloud sync for cross-device access and backup (via Supabase).

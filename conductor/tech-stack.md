@@ -15,9 +15,7 @@
 - **Serverless/Auth:** Supabase (PostgreSQL) - Handles user authentication and edge function triggers.
 
 ## AI & Machine Learning
-- **Local LLM:** llama.cpp (running Qwen2.5-1.5B-Instruct-GGUF)
 - **On-Device Vision:** CoreML for license plate and tire recognition.
-- **RAG:** Local Retrieval-Augmented Generation for manual analysis.
 
 ## Infrastructure & Tools
 - **Image Processing:** Sharp (Node.js) for adaptive image compression.
