@@ -14,6 +14,7 @@ class KeychainHelper {
     
     static let service = "com.tyrevibes.loginservice" // Usa un identificatore unico per la tua app
     static let account = "userCredentials"
+    private static let accessibility = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
     static func save(email: String, password: String) throws {
         let credentials = ["email": email, "password": password]
@@ -23,6 +24,7 @@ class KeychainHelper {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+            kSecAttrAccessible as String: accessibility,
             kSecValueData as String: data
         ]
         
@@ -40,6 +42,7 @@ class KeychainHelper {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+            kSecAttrAccessible as String: accessibility,
             kSecReturnData as String: kCFBooleanTrue!,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]

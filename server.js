@@ -256,6 +256,31 @@ const authenticateJWT = (req, res, next) => {
   });
 };
 
+const authenticatedUserId = (req) => req.user?.id ? String(req.user.id) : null;
+
+const rejectUserMismatch = (req, res, userId) => {
+  const tokenUserId = authenticatedUserId(req);
+  if (!tokenUserId) {
+    res.status(401).json({ message: "Utente non autenticato." });
+    return true;
+  }
+
+  if (userId != null && String(userId) !== tokenUserId) {
+    res.status(403).json({ message: "Accesso non autorizzato." });
+    return true;
+  }
+
+  return false;
+};
+
+const ensureVehicleOwnership = async (conn, userId, vehicleId) => {
+  const [rows] = await conn.execute(
+    `SELECT 1 FROM user_vehicles WHERE user_id = ? AND vehicle_id = ? LIMIT 1`,
+    [userId, vehicleId]
+  );
+  return rows.length > 0;
+};
+
 const parseToDate = (value) => {
   if (!value) return null;
 
@@ -724,10 +749,11 @@ const parseToDate = (value) => {
   // POST v1/manual_plate - Inserimento manuale targa con validazione
   router.post("/v1/manual_plate", authenticateJWT, async (req, res) => {
     const data = req.body;
+    const userId = authenticatedUserId(req);
 
     // Validazione campi obbligatori
-    if (!data.userId) {
-      return res.status(400).json({ message: "userId è obbligatorio" });
+    if (rejectUserMismatch(req, res, data.userId)) {
+      return;
     }
     if (!data.plate || data.plate.trim().length === 0) {
       return res.status(400).json({ message: "plate_number è obbligatorio" });
@@ -769,7 +795,7 @@ const parseToDate = (value) => {
 
         const [userVehicleCheck] = await conn.execute(
           `SELECT 1 FROM user_vehicles WHERE user_id = ? AND vehicle_id = ? LIMIT 1`,
-          [data.userId, vehicleId]
+          [userId, vehicleId]
         );
 
         if (userVehicleCheck.length > 0) {
@@ -783,7 +809,7 @@ const parseToDate = (value) => {
 
         await conn.execute(
           `INSERT INTO user_vehicles (user_id, vehicle_id) VALUES (?, ?)`,
-          [data.userId, vehicleId]
+          [userId, vehicleId]
         );
 
         await conn.commit();
@@ -840,7 +866,7 @@ const parseToDate = (value) => {
       // Associa veicolo all'utente
       await conn.execute(
         `INSERT INTO user_vehicles (user_id, vehicle_id) VALUES (?, ?)`,
-        [data.userId, vehicleId]
+        [userId, vehicleId]
       );
 
       // Inserisci assicurazione se fornita
@@ -889,9 +915,10 @@ const parseToDate = (value) => {
   // POST v1/save_plate
   router.post("/v1/save_plate", authenticateJWT, async (req, res) => {
     const data = req.body;
+    const userId = authenticatedUserId(req);
 
-    if (data.userId == null) {
-      return res.status(400).json({ message: "Utente non esistente" });
+    if (rejectUserMismatch(req, res, data.userId)) {
+      return;
     }
 
     const registrationDate = parseToDate(data.registrationDate);
@@ -1011,7 +1038,7 @@ const parseToDate = (value) => {
         await conn.execute(
           `INSERT INTO user_vehicles (user_id, vehicle_id, color) VALUES (?, ?, ?)
            ON DUPLICATE KEY UPDATE color = VALUES(color)`,
-          [data.userId, existingVehicleId, data.color || ""]
+          [userId, existingVehicleId, data.color || ""]
         );
 
         await conn.commit();
@@ -1147,7 +1174,7 @@ const parseToDate = (value) => {
 
       await conn.execute(
         `INSERT IGNORE INTO user_vehicles (user_id, vehicle_id, color) VALUES (?, ?, ?)`,
-        [data.userId, vehicleId, data.color.trim().toLowerCase() || ""]
+        [userId, vehicleId, (data.color || "").trim().toLowerCase()]
       );
 
       await conn.execute(
@@ -1299,12 +1326,12 @@ const parseToDate = (value) => {
             pi.rca_insurance_present
         FROM plates p
         INNER JOIN vehicles v ON p.vehicle_id = v.id
-        LEFT JOIN user_vehicles uv ON uv.vehicle_id = v.id
+        LEFT JOIN user_vehicles uv ON uv.vehicle_id = v.id AND uv.user_id = ?
         LEFT JOIN vehicle_images vi ON vi.vehicle_id = v.id
         LEFT JOIN plate_insurance pi ON pi.plate_id = p.id
         WHERE p.plate_number = ? and vi.is_primary = 1 and vi.angle = '23'
         LIMIT 1`,
-        [plate]
+        [userId, plate]
       );
 
       if (userId && rows.length > 0) {
@@ -1383,14 +1410,20 @@ const parseToDate = (value) => {
 
   router.post("/v1/check_plate", authenticateJWT, async (req, res) => {
     const { plate, userId } = req.body;
-    const result = await handleCheckPlate((plate || "").toUpperCase(), userId);
+    if (rejectUserMismatch(req, res, userId)) {
+      return;
+    }
+    const result = await handleCheckPlate((plate || "").toUpperCase(), authenticatedUserId(req));
     res.status(result.status).json(result.body);
   });
 
   router.get("/v1/check_plate", authenticateJWT, async (req, res) => {
     const plate = (req.query.plate || "").toUpperCase();
-    const userId = req.query.userId ? Number(req.query.userId) : undefined;
-    const result = await handleCheckPlate(plate, userId);
+    const userId = req.query.userId;
+    if (rejectUserMismatch(req, res, userId)) {
+      return;
+    }
+    const result = await handleCheckPlate(plate, authenticatedUserId(req));
     res.status(result.status).json(result.body);
   });
 
@@ -1399,6 +1432,9 @@ const parseToDate = (value) => {
 
     if (!userId) {
       return res.status(400).json({ message: "userId è richiesto." });
+    }
+    if (rejectUserMismatch(req, res, userId)) {
+      return;
     }
 
     const conn = await pool.getConnection();
@@ -1448,9 +1484,9 @@ const parseToDate = (value) => {
         `SELECT vi.id, vi.vehicle_id, vi.mime_type, vi.color, vi.file_name, vi.file_size, vi.image_data
         FROM vehicle_images vi
         INNER JOIN user_vehicles uv ON uv.vehicle_id = vi.vehicle_id
-        WHERE vi.vehicle_id IN ${imageIn.clause} AND vi.is_primary = 0 AND vi.angle = '12' and LOWER(uv.color) = LOWER(vi.color)
+        WHERE vi.vehicle_id IN ${imageIn.clause} AND uv.user_id = ? AND vi.is_primary = 0 AND vi.angle = '12' and LOWER(uv.color) = LOWER(vi.color)
         ORDER BY vi.id`,
-        imageIn.params
+        [...imageIn.params, userId]
       ) : [[], []];
 
       const imagesByVehicle = new Map();
@@ -1566,6 +1602,9 @@ const parseToDate = (value) => {
     if (!id || !userId) {
       return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
     }
+    if (rejectUserMismatch(req, res, userId)) {
+      return;
+    }
 
     const conn = await pool.getConnection();
     try {
@@ -1593,6 +1632,9 @@ router.patch("/v1/vehicles/:id/user/:userId/mileage", authenticateJWT, async (re
 
   if (!id || !userId) {
     return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
+  }
+  if (rejectUserMismatch(req, res, userId)) {
+    return;
   }
 
   if (currentMileage !== null && currentMileage !== undefined) {
@@ -1648,6 +1690,9 @@ router.post("/v1/vehicles/:id/user/:userId", authenticateJWT, async (req, res) =
 
   if (!id || !userId) {
     return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
+  }
+  if (rejectUserMismatch(req, res, userId)) {
+    return;
   }
   
   if (!color) {
@@ -1773,6 +1818,11 @@ router.post("/v1/tyres_vehicles", authenticateJWT, async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
+    const ownsVehicle = await ensureVehicleOwnership(conn, authenticatedUserId(req), vehicle_id);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
     await conn.beginTransaction();
     const [result] = await conn.execute(
       `INSERT INTO tyres_vehicles (vehicle_id, brand, model, size_label, dot, load_index, speed_rating, season, set_name, set_position, created_at, updated_at)
@@ -1819,6 +1869,11 @@ router.get("/v1/tyres_vehicles/vehicle/:vehicleId", authenticateJWT, async (req,
 
   const conn = await pool.getConnection();
   try {
+    const ownsVehicle = await ensureVehicleOwnership(conn, authenticatedUserId(req), vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
     const tyresFormatted = await fetchRegisteredTyres(conn, vehicleId);
     res.status(200).json(tyresFormatted);
   } catch (err) {
@@ -1839,6 +1894,11 @@ router.get("/v1/tyres_vehicles/vehicle/:vehicleId/sets", authenticateJWT, async 
 
   const conn = await pool.getConnection();
   try {
+    const ownsVehicle = await ensureVehicleOwnership(conn, authenticatedUserId(req), vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
     const tyres = await fetchRegisteredTyres(conn, vehicleId);
     const groups = new Map();
 
@@ -1925,6 +1985,11 @@ router.delete("/v1/tyres_vehicles/vehicle/:vehicleId/set", authenticateJWT, asyn
 
   const conn = await pool.getConnection();
   try {
+    const ownsVehicle = await ensureVehicleOwnership(conn, authenticatedUserId(req), vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
     const tyres = await fetchRegisteredTyres(conn, vehicleId);
     const idsToDelete = tyres
       .filter(tyre => {
@@ -1972,6 +2037,19 @@ router.delete("/v1/tyres_vehicles/:tyreId", authenticateJWT, async (req, res) =>
 
   const conn = await pool.getConnection();
   try {
+    const [allowedRows] = await conn.execute(
+      `SELECT 1
+       FROM tyres_vehicles tv
+       INNER JOIN user_vehicles uv ON uv.vehicle_id = tv.vehicle_id
+       WHERE tv.id = ? AND uv.user_id = ?
+       LIMIT 1`,
+      [tyreId, authenticatedUserId(req)]
+    );
+
+    if (allowedRows.length === 0) {
+      return res.status(404).json({ message: "Pneumatico non trovato." });
+    }
+
     const [result] = await conn.execute(
       `DELETE FROM tyres_vehicles WHERE id = ?`,
       [tyreId]
@@ -2006,7 +2084,7 @@ router.post("/v1/tyre_analyses", authenticateJWT, async (req, res) => {
     return res.status(400).json({ message: "tyre_id, vehicle_id e user_id sono obbligatori." });
   }
 
-  if (bodyUserId && tokenUserId && bodyUserId !== tokenUserId) {
+  if (bodyUserId && tokenUserId && String(bodyUserId) !== String(tokenUserId)) {
     return res.status(403).json({ message: "user_id non valido per il token fornito." });
   }
 
@@ -2019,6 +2097,19 @@ router.post("/v1/tyre_analyses", authenticateJWT, async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    const [tyreRows] = await conn.execute(
+      `SELECT 1 FROM tyres_vehicles WHERE id = ? AND vehicle_id = ? LIMIT 1`,
+      [tyreId, vehicleId]
+    );
+    if (tyreRows.length === 0) {
+      return res.status(404).json({ message: "Pneumatico non trovato per il veicolo indicato." });
+    }
+
     await conn.beginTransaction();
 
     await conn.execute(
@@ -2406,8 +2497,8 @@ router.get("/v1/user_analysis_stats/:userId", authenticateJWT, async (req, res) 
     return res.status(400).json({ message: "userId è richiesto." });
   }
 
-  if (req.user?.id && req.user.id !== userId) {
-    return res.status(403).json({ message: "Accesso non autorizzato." });
+  if (rejectUserMismatch(req, res, userId)) {
+    return;
   }
 
   const conn = await pool.getConnection();
@@ -2428,6 +2519,11 @@ router.get("/v1/user_analysis_stats/:userId", authenticateJWT, async (req, res) 
 // POST v1/bug-reports - Segnalazione bug da parte degli utenti
 router.post("/v1/bug-reports", authenticateJWT, async (req, res) => {
   const { user_id, description, screenshot, device_info, timestamp } = req.body;
+  const userId = authenticatedUserId(req);
+
+  if (rejectUserMismatch(req, res, user_id)) {
+    return;
+  }
 
   // Validazione: description è obbligatorio
   if (!description || description.trim().length === 0) {
@@ -2480,7 +2576,7 @@ router.post("/v1/bug-reports", authenticateJWT, async (req, res) => {
         device_info, report_timestamp, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
-        user_id || null,
+        userId,
         description.trim(),
         screenshotBuffer,
         screenshotSize,
@@ -2495,7 +2591,7 @@ router.post("/v1/bug-reports", authenticateJWT, async (req, res) => {
 
     await conn.commit();
 
-    console.log(`[BUG-REPORT] Nuova segnalazione #${bugReportId} da user ${user_id || 'anonimo'}`);
+    console.log(`[BUG-REPORT] Nuova segnalazione #${bugReportId} da user ${userId}`);
 
     res.status(201).json({
       id: bugReportId,
