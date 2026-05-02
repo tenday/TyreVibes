@@ -166,9 +166,14 @@ struct ScanReceiptSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: "191919"))
         .onAppear {
-            withAnimation(reduceMotion ? nil : AppMotion.subtlePulse) {
+            capturePulse = false
+            if reduceMotion { return }
+            withAnimation(AppMotion.subtlePulse) {
                 capturePulse = true
             }
+        }
+        .onDisappear {
+            capturePulse = false
         }
     }
 
@@ -222,9 +227,14 @@ struct ScanReceiptSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: "191919"))
         .onAppear {
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+            processingSweep = false
+            if reduceMotion { return }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                 processingSweep = true
             }
+        }
+        .onDisappear {
+            processingSweep = false
         }
     }
 
