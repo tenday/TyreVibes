@@ -8,21 +8,29 @@ struct TireData1 {
 }
 
 struct ReportItem: Identifiable {
-    let id = UUID()
+    enum ExportKind {
+        case maintenancePDF(vehicleId: Int?)
+        case maintenanceCSV(vehicleId: Int?)
+        case tyreTechnicalPDF(measurementId: UUID)
+    }
+
+    let id: String
     let title: String
     let description: String
     let type: String
     let date: String
     let data: TireData1
+    let exportKind: ExportKind
 }
 
 struct DocumentItem: Identifiable {
-    let id = UUID()
+    let id: String
     let title: String
     let subtitle: String
     let date: String
     let icon: String
     let tint: Color
+    let attachment: AttachmentManager.Attachment
 }
 
 enum ReportContentFilter: String, CaseIterable, Identifiable {
@@ -47,13 +55,62 @@ enum ReportContentFilter: String, CaseIterable, Identifiable {
 // MARK: - Reports & Documentations View
 struct ReportsDocumentationsView: View {
     @Environment(\.presentationMode) var presentationMode
+    @StateObject private var historyStore = MaintenanceHistoryStore.shared
+    @StateObject private var attachmentManager = AttachmentManager.shared
+
     @State private var searchText = ""
     @State private var showFilterSheet = false
     @State private var contentFilter: ReportContentFilter = .all
+    @State private var shareURL: URL?
+    @State private var previewURL: URL?
+    @State private var previewTitle = ""
+    @State private var showShareSheet = false
+    @State private var showReportPreview = false
+    @State private var selectedAttachment: AttachmentManager.Attachment?
+    @State private var showAttachmentViewer = false
+    @State private var exportErrorMessage: String?
+    @State private var treadMeasurements: [TreadDepthMeasurement] = []
 
-    private let reports: [ReportItem] = []
+    private var reports: [ReportItem] {
+        let entries = historyStore.entries
+        let technicalReports = treadMeasurements.map(makeTyreTechnicalReport)
+        guard !entries.isEmpty else { return technicalReports }
 
-    private let documents: [DocumentItem] = []
+        let groupedEntries = Dictionary(grouping: entries, by: \.vehicleId)
+        let vehicleReports = groupedEntries.keys.sorted().flatMap { vehicleId -> [ReportItem] in
+            let vehicleEntries = groupedEntries[vehicleId, default: []]
+            return [
+                makeMaintenanceReport(vehicleId: vehicleId, entries: vehicleEntries, format: .pdf),
+                makeMaintenanceReport(vehicleId: vehicleId, entries: vehicleEntries, format: .csv)
+            ]
+        }
+
+        guard groupedEntries.count > 1 else { return technicalReports + vehicleReports }
+
+        return technicalReports + [
+            makeMaintenanceReport(vehicleId: nil, entries: entries, format: .pdf),
+            makeMaintenanceReport(vehicleId: nil, entries: entries, format: .csv)
+        ] + vehicleReports
+    }
+
+    private var documents: [DocumentItem] {
+        let entriesById = Dictionary(uniqueKeysWithValues: historyStore.entries.map { ($0.id, $0) })
+
+        return attachmentManager.attachments
+            .sorted { $0.createdAt > $1.createdAt }
+            .map { attachment in
+                let entry = entriesById[attachment.entryId]
+                return DocumentItem(
+                    id: attachment.id,
+                    title: entry?.title ?? (attachment.type == .pdf ? "Documento manutenzione" : "Foto manutenzione"),
+                    subtitle: documentSubtitle(for: attachment, entry: entry),
+                    date: formattedDate(attachment.createdAt),
+                    icon: attachment.type == .pdf ? "doc.richtext" : "photo",
+                    tint: attachment.type == .pdf ? .customAzure : .customBlue,
+                    attachment: attachment
+                )
+            }
+    }
 
     private var normalizedSearchText: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -154,7 +211,10 @@ struct ReportsDocumentationsView: View {
                                     description: report.description,
                                     reportType: report.type,
                                     date: report.date,
-                                    tireData: report.data
+                                    tireData: report.data,
+                                    onPreview: { preview(report) },
+                                    onShare: { export(report) },
+                                    onDownload: { export(report) }
                                 )
                             }
                             
@@ -164,7 +224,10 @@ struct ReportsDocumentationsView: View {
                                     subtitle: doc.subtitle,
                                     date: doc.date,
                                     iconColor: doc.tint,
-                                    icon: doc.icon
+                                    icon: doc.icon,
+                                    onOpen: { open(doc) },
+                                    onShare: { share(doc) },
+                                    onDownload: { share(doc) }
                                 )
                             }
                         }
@@ -181,6 +244,247 @@ struct ReportsDocumentationsView: View {
         .sheet(isPresented: $showFilterSheet) {
             ReportsFilterSheet(filter: $contentFilter)
         }
+        .sheet(isPresented: $showShareSheet) {
+            if let shareURL {
+                ShareSheet(items: [shareURL])
+            }
+        }
+        .sheet(isPresented: $showReportPreview) {
+            if let previewURL {
+                ReportFilePreviewView(
+                    title: previewTitle,
+                    url: previewURL
+                )
+            }
+        }
+        .sheet(isPresented: $showAttachmentViewer) {
+            if let selectedAttachment {
+                AttachmentViewerView(attachment: selectedAttachment)
+            }
+        }
+        .alert("Export non riuscito", isPresented: Binding(
+            get: { exportErrorMessage != nil },
+            set: { if !$0 { exportErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { exportErrorMessage = nil }
+        } message: {
+            Text(exportErrorMessage ?? "Riprova tra poco.")
+        }
+        .onAppear {
+            loadTreadMeasurements()
+        }
+    }
+
+    private enum MaintenanceReportFileFormat {
+        case pdf
+        case csv
+    }
+
+    private func makeMaintenanceReport(
+        vehicleId: Int?,
+        entries: [CompletedMaintenanceEntry],
+        format: MaintenanceReportFileFormat
+    ) -> ReportItem {
+        let sortedEntries = entries.sorted { $0.date > $1.date }
+        let totalCost = sortedEntries.compactMap(\.cost).reduce(0, +)
+        let attachmentCount = sortedEntries.reduce(0) { count, entry in
+            count + attachmentManager.attachments(for: entry.id).count
+        }
+        let recentCount = sortedEntries.filter {
+            Calendar.current.dateComponents([.day], from: $0.date, to: Date()).day ?? 0 <= 365
+        }.count
+        let dateText = sortedEntries.first.map { formattedDate($0.date) } ?? formattedDate(Date())
+        let scopeTitle = vehicleId.map { "Veicolo #\($0)" } ?? "Archivio completo"
+        let extensionText = format == .pdf ? "PDF" : "CSV"
+        let totalCostBucket = min(Int(totalCost / 100), 100)
+
+        return ReportItem(
+            id: "\(extensionText.lowercased())-\(vehicleId.map(String.init) ?? "all")",
+            title: "\(scopeTitle) - manutenzioni",
+            description: "\(sortedEntries.count) interventi registrati. Totale \(currencyText(totalCost)).",
+            type: "Manutenzione \(extensionText)",
+            date: dateText,
+            data: TireData1(
+                frontLeft: min(sortedEntries.count, 100),
+                frontRight: totalCostBucket,
+                rearLeft: min(attachmentCount, 100),
+                rearRight: min(recentCount, 100)
+            ),
+            exportKind: format == .pdf ? .maintenancePDF(vehicleId: vehicleId) : .maintenanceCSV(vehicleId: vehicleId)
+        )
+    }
+
+    private func makeTyreTechnicalReport(_ measurement: TreadDepthMeasurement) -> ReportItem {
+        let remainingPercent = estimatedRemainingPercentage(for: measurement)
+        let confidence = min(Int(measurement.confidenceScore.rounded()), 100)
+
+        return ReportItem(
+            id: "tyre-analysis-\(measurement.id.uuidString)",
+            title: "Analisi pneumatico",
+            description: "\(measurement.treadStatus.displayName). Profondità media \(String(format: "%.2f", measurement.averageDepth)) mm, minima \(String(format: "%.2f", measurement.minDepth)) mm.",
+            type: "Analisi pneumatico PDF",
+            date: formattedDate(measurement.timestamp),
+            data: TireData1(
+                frontLeft: min(Int(measurement.averageDepth * 10), 100),
+                frontRight: remainingPercent,
+                rearLeft: confidence,
+                rearRight: min(Int(measurement.standardDeviation * 20), 100)
+            ),
+            exportKind: .tyreTechnicalPDF(measurementId: measurement.id)
+        )
+    }
+
+    private func export(_ report: ReportItem) {
+        Task {
+            guard let url = await prepareReportURL(report) else {
+                exportErrorMessage = "Non sono riuscito a preparare \(report.type)."
+                return
+            }
+
+            shareURL = url
+            showShareSheet = true
+        }
+    }
+
+    private func preview(_ report: ReportItem) {
+        Task {
+            guard let url = await prepareReportURL(report) else {
+                exportErrorMessage = "Non sono riuscito a preparare l'anteprima di \(report.type)."
+                return
+            }
+
+            previewURL = url
+            previewTitle = report.title
+            showReportPreview = true
+        }
+    }
+
+    private func prepareReportURL(_ report: ReportItem) async -> URL? {
+        switch report.exportKind {
+        case .maintenancePDF(let vehicleId):
+            return MaintenancePDFReportBuilder.generateReport(
+                entries: maintenanceEntries(for: vehicleId),
+                vehicleId: vehicleId ?? 0
+            )
+        case .maintenanceCSV(let vehicleId):
+            return MaintenanceCSVExporter.exportToFile(entries: maintenanceEntries(for: vehicleId))
+        case .tyreTechnicalPDF(let measurementId):
+            guard let measurement = treadMeasurements.first(where: { $0.id == measurementId }) else {
+                return nil
+            }
+            let snapshot = await vehicleSnapshot(for: measurement)
+            return TyreTechnicalPDFReportBuilder.generateReport(measurement: measurement, vehicleSnapshot: snapshot)
+        }
+    }
+
+    private func vehicleSnapshot(for measurement: TreadDepthMeasurement) async -> UIImage? {
+        guard let vehicle = cachedVehicle(for: measurement),
+              let make = vehicle.vehicle.make?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let model = vehicle.vehicle.model?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !make.isEmpty,
+              !model.isEmpty else {
+            return nil
+        }
+
+        let modelFamily = model
+            .lowercased()
+            .components(separatedBy: .whitespacesAndNewlines)
+            .first ?? model.lowercased()
+        let year = vehicle.plate?.year.map(String.init)
+            ?? vehicle.vehicle.saleStart?.components(separatedBy: CharacterSet(charactersIn: "-/")).first
+            ?? Calendar.current.component(.year, from: Date()).description
+        let paintId = vehicle.vehicle.color?.uppercased() ?? "BLACK"
+
+        return await withCheckedContinuation { continuation in
+            VehicleImageService.fetchVehicleImage(
+                make: make.lowercased(),
+                modelFamily: modelFamily,
+                year: year,
+                paintId: paintId,
+                angle: 12,
+                plate: vehicle.plate?.plateNumber ?? ""
+            ) { result in
+                switch result {
+                case .success(let image):
+                    continuation.resume(returning: image)
+                case .failure:
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
+    private func cachedVehicle(for measurement: TreadDepthMeasurement) -> VehicleResponse? {
+        guard let data = UserDefaults.standard.data(forKey: "cachedVehicles"),
+              let vehicles = try? JSONDecoder().decode([VehicleResponse].self, from: data),
+              !vehicles.isEmpty else {
+            return nil
+        }
+
+        // TreadDepthMeasurement currently stores tyreId as UUID, while garage tyres use Int ids.
+        // Until the scan model carries vehicleId or a shared tyre identifier, use the cached primary vehicle.
+        return vehicles.first
+    }
+
+    private func open(_ document: DocumentItem) {
+        selectedAttachment = document.attachment
+        showAttachmentViewer = true
+    }
+
+    private func share(_ document: DocumentItem) {
+        shareURL = attachmentManager.fileURL(for: document.attachment)
+        showShareSheet = true
+    }
+
+    private func maintenanceEntries(for vehicleId: Int?) -> [CompletedMaintenanceEntry] {
+        guard let vehicleId else { return historyStore.entries }
+        return historyStore.entries(for: vehicleId)
+    }
+
+    private func loadTreadMeasurements() {
+        guard let data = UserDefaults.standard.data(forKey: "tread_measurement_history") else {
+            treadMeasurements = []
+            return
+        }
+
+        let decoder = JSONDecoder()
+        treadMeasurements = (try? decoder.decode([TreadDepthMeasurement].self, from: data)) ?? []
+    }
+
+    private func estimatedRemainingPercentage(for measurement: TreadDepthMeasurement) -> Int {
+        let legalLimit = 1.6
+        let referenceNewDepth = 8.0
+        let usableDepth = max(referenceNewDepth - legalLimit, 0.1)
+        let remaining = max(min((measurement.minDepth - legalLimit) / usableDepth, 1.0), 0.0)
+        return Int((remaining * 100).rounded())
+    }
+
+    private func documentSubtitle(
+        for attachment: AttachmentManager.Attachment,
+        entry: CompletedMaintenanceEntry?
+    ) -> String {
+        let size = ByteCountFormatter.string(fromByteCount: Int64(attachment.fileSize), countStyle: .file)
+        let type = attachment.type == .pdf ? "PDF" : "Foto"
+        if let entry {
+            return "\(type) • \(entry.maintenanceType?.localizedName ?? entry.source.label) • \(size)"
+        }
+        return "\(type) • \(size)"
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    private func currencyText(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? "€0"
     }
 }
 
@@ -191,6 +495,9 @@ struct ReportCard: View {
     let reportType: String
     let date: String
     let tireData: TireData1
+    var onPreview: () -> Void = {}
+    var onShare: () -> Void = {}
+    var onDownload: () -> Void = {}
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -207,14 +514,21 @@ struct ReportCard: View {
                 Spacer()
                 
                 HStack(spacing: 14) {
-                    Button(action: {}) {
+                    Button(action: onPreview) {
+                        Image(systemName: "eye")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onShare) {
                         Image(systemName: "paperplane")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                     }
                     .buttonStyle(.plain)
                     
-                    Button(action: {}) {
+                    Button(action: onDownload) {
                         Image(systemName: "arrow.down.to.line")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
@@ -292,6 +606,59 @@ struct TireDataRow: View {
     }
 }
 
+// MARK: - Report File Preview
+struct ReportFilePreviewView: View {
+    let title: String
+    let url: URL
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showShareSheet = false
+
+    private var isPDF: Bool {
+        url.pathExtension.lowercased() == "pdf"
+    }
+
+    private var fileText: String {
+        (try? String(contentsOf: url, encoding: .utf8)) ?? "Anteprima non disponibile."
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isPDF {
+                    PDFViewer(url: url)
+                } else {
+                    ScrollView([.horizontal, .vertical]) {
+                        Text(fileText)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(.white)
+                            .padding(20)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .background(Color.black)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Chiudi") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showShareSheet = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+            .sheet(isPresented: $showShareSheet) {
+                ShareSheet(items: [url])
+            }
+        }
+    }
+}
+
 // MARK: - Document Card Component
 struct DocumentCard: View {
     let title: String
@@ -299,6 +666,9 @@ struct DocumentCard: View {
     let date: String
     let iconColor: Color
     let icon: String
+    var onOpen: () -> Void = {}
+    var onShare: () -> Void = {}
+    var onDownload: () -> Void = {}
     
     var body: some View {
         HStack(spacing: 14) {
@@ -337,14 +707,14 @@ struct DocumentCard: View {
             Spacer()
             
             VStack(spacing: 12) {
-                Button(action: {}) {
+                Button(action: onShare) {
                     Image(systemName: "paperplane")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
                 
-                Button(action: {}) {
+                Button(action: onDownload) {
                     Image(systemName: "arrow.down.to.line")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
@@ -357,6 +727,8 @@ struct DocumentCard: View {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(hex: "212121"))
         )
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture(perform: onOpen)
     }
 }
 

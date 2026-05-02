@@ -7,6 +7,8 @@ struct SettingsView: View {
     @EnvironmentObject private var notificationStore: NotificationStore
     @State private var showNotifications = false
     @State private var showCustomNotifications = false
+    @State private var showMaintenanceNotifications = false
+    @State private var showDeleteAccountConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -62,17 +64,15 @@ struct SettingsView: View {
                             promotionNotifications: $viewModel.promotionNotifications,
                             updateNotifications: $viewModel.updateNotifications,
                             analysisNotifications: $viewModel.analysisNotifications,
+                            onMaintenanceNotifications: { showMaintenanceNotifications = true },
                             onCustomNotifications: { showCustomNotifications = true }
                         )
                         .padding(.top, 24)
 
-                        AppearanceSection(selectedTheme: $viewModel.selectedTheme)
-                            .padding(.top, 24)
-
                         AccountSection(
                             onLogout: { viewModel.isPresentingLogoutConfirmation = true },
                             onExportData: { viewModel.exportMyData() },
-                            onDeleteAccount: { viewModel.requestDataDeletion() }
+                            onDeleteAccount: { showDeleteAccountConfirmation = true }
                         )
                         .padding(.top, 24)
 
@@ -87,6 +87,9 @@ struct SettingsView: View {
             }
             .navigationDestination(isPresented: $showNotifications) {
                 NotificationScreen()
+            }
+            .navigationDestination(isPresented: $showMaintenanceNotifications) {
+                MaintenanceNotificationSettingsView()
             }
             .sheet(isPresented: $viewModel.isPresentingDataProtection) {
                 DataProtectionSheet(viewModel: viewModel)
@@ -131,6 +134,18 @@ struct SettingsView: View {
             } message: {
                 Text("Sei sicuro di voler effettuare il logout? Dovrai accedere nuovamente per utilizzare l'app.".localized)
             }
+            .confirmationDialog(
+                "Elimina account".localized,
+                isPresented: $showDeleteAccountConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Elimina account".localized, role: .destructive) {
+                    viewModel.requestDataDeletion()
+                }
+                Button("Annulla".localized, role: .cancel) {}
+            } message: {
+                Text("Questa azione eliminerà il tuo account e i dati associati. Non potrà essere annullata.".localized)
+            }
             .task {
                 viewModel.onAppear()
             }
@@ -147,7 +162,6 @@ struct SettingsView: View {
             .onChange(of: viewModel.promotionNotifications) { oldValue, newValue in viewModel.handlePromotionNotificationsChange() }
             .onChange(of: viewModel.updateNotifications) { oldValue, newValue in viewModel.handleUpdateNotificationsChange() }
             .onChange(of: viewModel.analysisNotifications) { oldValue, newValue in viewModel.handleAnalysisNotificationsChange() }
-            .onChange(of: viewModel.selectedTheme) { oldValue, newValue in viewModel.handleThemeChange() }
         }
     }
 }
@@ -723,6 +737,7 @@ struct NotificationsSection: View {
     @Binding var promotionNotifications: Bool
     @Binding var updateNotifications: Bool
     @Binding var analysisNotifications: Bool
+    let onMaintenanceNotifications: () -> Void
     let onCustomNotifications: () -> Void
 
     var body: some View {
@@ -755,6 +770,32 @@ struct NotificationsSection: View {
                         isOn: $analysisNotifications
                     )
 
+                    Button(action: onMaintenanceNotifications) {
+                        GlassCard(height: 62, borderColor: Color(hex: "2FB8FF")) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "wrench.and.screwdriver")
+                                    .foregroundColor(Color(hex: "5CEBFF"))
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Notifiche manutenzione".localized)
+                                        .font(.custom("Sora-SemiBold", size: 16))
+                                        .foregroundColor(.white)
+                                    Text("Configura promemoria e tipi di intervento".localized)
+                                        .font(.custom("Sora-Regular", size: 12))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
+                            .padding(.horizontal, 18)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     Button(action: onCustomNotifications) {
                         GlassCard(height: 62, borderColor: Color(hex: "2FB8FF")) {
                             HStack(spacing: 12) {
@@ -780,50 +821,6 @@ struct NotificationsSection: View {
                 .animation(.default, value: notificationsEnabled)
             }
         }
-    }
-}
-
-struct AppearanceSection: View {
-    @Binding var selectedTheme: AppTheme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Appearance".localized)
-                .font(.custom("Sora-SemiBold", size: 22))
-                .foregroundColor(.white)
-
-            HStack(spacing: 16) {
-                ForEach(AppTheme.allCases, id: \.self) {
-                    theme in
-                    ThemeButton(
-                        theme: theme,
-                        isSelected: selectedTheme == theme
-                    ) {
-                        selectedTheme = theme
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct ThemeButton: View {
-    let theme: AppTheme
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            GlassCard(
-                height: 62,
-                borderColor: isSelected ? Color(hex: "2FB8FF") : Color(hex: "5CEBFF").opacity(0.4)
-            ) {
-                Text(theme.rawValue.localized)
-                    .font(.custom(isSelected ? "Sora-Bold" : "Sora-Regular", size: 16))
-                    .foregroundColor(.white)
-            }
-        }
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -1038,12 +1035,6 @@ struct AboutButton: View {
 }
 
 // MARK: - Models
-
-enum AppTheme: String, CaseIterable {
-    case system = "System"
-    case light = "Light"
-    case dark = "Dark"
-}
 
 enum PrivacyLevel: String, CaseIterable {
     case basic = "Basic"

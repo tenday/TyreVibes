@@ -2,3 +2,9 @@
 runs/
 output/ml/
 yolo*.pt
+xcuserdata/
+*.xcuserstate
+
+# Local Codex/cPanel MCP tooling. Keep server code and credentials off GitHub.
+.agents/
+plugins/tyrevibes-cpanel-mcp/

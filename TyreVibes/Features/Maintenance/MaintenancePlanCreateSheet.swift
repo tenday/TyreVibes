@@ -82,6 +82,7 @@ struct MaintenancePlanCreateSheet: View {
             priority: priority,
             dueMileage: dueMileage
         )
+        NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
         dismiss()
     }
 }

@@ -4,6 +4,7 @@ import UIKit
 // MARK: - Vista Principale della Barra di Navigazione
 struct BottomNavigationView: View {
     @State private var selectedIndex: Int = 0
+    @State private var previousIndex: Int = 0
 
     // Aggiunto un namespace per l'animazione
     @Namespace private var animationNamespace
@@ -43,7 +44,7 @@ struct BottomNavigationView: View {
                 // AREA CONTENUTO
                 contentView(for: selectedIndex)
                     .id(selectedIndex)
-                    .transition(.opacity)
+                    .transition(contentTransition)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.customBackgroundColor.ignoresSafeArea())
                     .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -81,9 +82,7 @@ struct BottomNavigationView: View {
                     HStack(spacing: 0) {
                         // Left side - Garage
                         Button(action: {
-                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
-                                selectedIndex = 0
-                            }
+                            selectTab(0)
                         }) {
                             TabItem(iconName: iconNames[0], isSelected: selectedIndex == 0, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
@@ -96,9 +95,7 @@ struct BottomNavigationView: View {
 
                         // Reports
                         Button(action: {
-                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
-                                selectedIndex = 1
-                            }
+                            selectTab(1)
                         }) {
                             TabItem(iconName: iconNames[1], isSelected: selectedIndex == 1, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
@@ -115,9 +112,7 @@ struct BottomNavigationView: View {
 
                         // Right side - Store
                         Button(action: {
-                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
-                                selectedIndex = 2
-                            }
+                            selectTab(2)
                         }) {
                             TabItem(iconName: iconNames[2], isSelected: selectedIndex == 2, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
@@ -130,9 +125,7 @@ struct BottomNavigationView: View {
 
                         // Settings
                         Button(action: {
-                            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
-                                selectedIndex = 3
-                            }
+                            selectTab(3)
                         }) {
                             TabItem(iconName: iconNames[3], isSelected: selectedIndex == 3, namespace: animationNamespace, reduceMotion: reduceMotion)
                                 .frame(width: width * 0.2, height: 60)
@@ -147,9 +140,7 @@ struct BottomNavigationView: View {
 
                     // Central floating button - positioned precisely
                     Button(action: {
-                        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) {
-                            selectedIndex = 4
-                        }
+                        selectTab(4)
                     }) {
                         TabItem(iconName: "Archi", isSelected: selectedIndex == 4, namespace: animationNamespace, reduceMotion: reduceMotion)
                             .frame(width: 80, height: 80)
@@ -169,6 +160,27 @@ struct BottomNavigationView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
+
+    private var contentTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+
+        let insertionEdge: Edge = selectedIndex >= previousIndex ? .trailing : .leading
+        let removalEdge: Edge = selectedIndex >= previousIndex ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: insertionEdge).combined(with: .opacity),
+            removal: .move(edge: removalEdge).combined(with: .opacity)
+        )
+    }
+
+    private func selectTab(_ index: Int) {
+        guard selectedIndex != index else { return }
+        AppHaptics.impact(index == 4 ? .medium : .light)
+
+        previousIndex = selectedIndex
+        withAnimation(reduceMotion ? .none : AppMotion.smooth) {
+            selectedIndex = index
         }
     }
 }
@@ -281,6 +293,9 @@ struct TabItem: View {
                         .scaledToFit()
                         .frame(width: 24, height: 24)
                         .foregroundColor(isSelected ? .white : .gray)
+                        .offset(y: isSelected && !reduceMotion ? -2 : 0)
+                        .scaleEffect(isSelected && !reduceMotion ? 1.08 : 1.0)
+                        .animation(reduceMotion ? .none : AppMotion.quick, value: isSelected)
                 }
             }
         }

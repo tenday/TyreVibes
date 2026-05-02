@@ -59,6 +59,7 @@ struct RotationGuideOverlay: View {
     @StateObject private var motionManager = MotionManager()
     @Binding var isScanning: Bool
     let onRotationComplete: () -> Void
+    private let completionFeedbackDelay: Double = 2.8
     
     @State private var pulseAnimation = false
     @State private var arrowRotation: Double = 0
@@ -281,8 +282,8 @@ struct RotationGuideOverlay: View {
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.success)
         
-        // Chiama callback dopo animazione
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        // Lascia il feedback visibile abbastanza a lungo da essere letto.
+        DispatchQueue.main.asyncAfter(deadline: .now() + completionFeedbackDelay) {
             onRotationComplete()
         }
     }

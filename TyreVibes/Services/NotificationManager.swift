@@ -152,6 +152,10 @@ class NotificationManager: NSObject {
         }
     }
 
+    func prepareNotificationCategories() async {
+        await registerCategories()
+    }
+
     @MainActor
     private func updateAuthorizationStatus() async {
         let settings = await center.notificationSettings()

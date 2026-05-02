@@ -3281,6 +3281,16 @@
         }
       }
     },
+    "Checkpoint %lld di %lld" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Checkpoint %1$lld di %2$lld"
+          }
+        }
+      }
+    },
     "Chiama officina" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4535,6 +4545,9 @@
           }
         }
       }
+    },
+    "Dati facoltativi" : {
+
     },
     "Dati Personali" : {
       "extractionState" : "stale",
@@ -6040,6 +6053,9 @@
           }
         }
       }
+    },
+    "Export non riuscito" : {
+
     },
     "Export PDF" : {
       "comment" : "A menu item that allows the user to export the current report as a PDF.",
@@ -9660,6 +9676,9 @@
         }
       }
     },
+    "Manutenzione registrata" : {
+
+    },
     "Manutenzione smart" : {
 
     },
@@ -10966,7 +10985,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notifications"
+            "value" : "Notifiche"
           }
         }
       }
@@ -14174,6 +14193,9 @@
         }
       }
     },
+    "Set registrati per tipologia" : {
+
+    },
     "Settings" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15593,6 +15615,9 @@
           }
         }
       }
+    },
+    "Tutti i dati obbligatori raccolti." : {
+
     },
     "Tutti i file temporanei sono stati rimossi." : {
       "extractionState" : "stale",

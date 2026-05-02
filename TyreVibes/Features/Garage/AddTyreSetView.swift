@@ -5,6 +5,7 @@ struct AddTyreSetView: View {
     let vehicleTyres: [VehicleTyre]
     @ObservedObject var tyreViewModel: TyreViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum TyreSetType: String, CaseIterable, Identifiable {
         case frontRear = "Anteriore/Posteriore"
@@ -67,18 +68,86 @@ struct AddTyreSetView: View {
     private struct RecommendedTyreSet: Identifiable {
         let id: Int
         let name: String
+        let category: TyreSetCategory
         let tyres: [VehicleTyre]
+    }
+
+    private struct RecommendedTyreGroup: Identifiable {
+        let category: TyreSetCategory
+        let sets: [RecommendedTyreSet]
+
+        var id: String { category.id }
+    }
+
+    private enum TyreSetCategory: String, CaseIterable, Identifiable {
+        case summer
+        case winter
+        case allSeason
+        case track
+        case standard
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .summer: return "Estivi"
+            case .winter: return "Invernali"
+            case .allSeason: return "Quattro stagioni"
+            case .track: return "Pista"
+            case .standard: return "Standard"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .summer: return "sun.max.fill"
+            case .winter: return "snowflake"
+            case .allSeason: return "cloud.sun.fill"
+            case .track: return "flag.checkered"
+            case .standard: return "circle.grid.2x2.fill"
+            }
+        }
+
+        var sortOrder: Int {
+            switch self {
+            case .summer: return 0
+            case .winter: return 1
+            case .allSeason: return 2
+            case .track: return 3
+            case .standard: return 4
+            }
+        }
+
+        static func infer(from values: [String]) -> TyreSetCategory {
+            for rawValue in values {
+                let value = rawValue.lowercased()
+                if value.contains("winter") || value.contains("invern") || value.contains("snow") {
+                    return .winter
+                }
+                if value.contains("summer") || value.contains("estiv") || value.contains("estate") {
+                    return .summer
+                }
+                if value.contains("all season") || value.contains("all-season") || value.contains("4 stag") || value.contains("quattro stag") {
+                    return .allSeason
+                }
+                if value.contains("track") || value.contains("pista") || value.contains("racing") {
+                    return .track
+                }
+            }
+
+            return .standard
+        }
     }
 
     @State private var setType: TyreSetType = .frontRear
     @State private var setName: String = ""
     @State private var includeRearTyre: Bool = true
-    @State private var selectedRecommendedSetId: Int?
     @State private var isPresentingScanner = false
     @State private var pendingPositions: [ScanPosition] = []
     @State private var currentPosition: ScanPosition?
     @State private var didCompleteCurrentScan = false
     @State private var completedPositions: [ScanPosition] = []
+    @State private var contentAppeared = false
 
     private var needsDoubleScan: Bool {
         setType == .frontRear || includeRearTyre
@@ -92,9 +161,29 @@ struct AddTyreSetView: View {
         requiredPositions.count
     }
 
+    private var isScanFlowInProgress: Bool {
+        currentPosition != nil || !pendingPositions.isEmpty || !completedPositions.isEmpty
+    }
+
+    private var isScanFlowComplete: Bool {
+        !completedPositions.isEmpty && completedPositions.count == totalSteps && pendingPositions.isEmpty && currentPosition == nil
+    }
+
+    private var startButtonTitle: String {
+        if isScanFlowComplete {
+            return "Completa"
+        }
+
+        if !pendingPositions.isEmpty {
+            return "Continua scansione"
+        }
+
+        return needsDoubleScan ? "Avvia doppia scansione" : "Avvia scansione"
+    }
+
     private var scanContext: String? {
         guard let currentPosition else { return nil }
-        let stepIndex = totalSteps - pendingPositions.count
+        let stepIndex = min(completedPositions.count + 1, totalSteps)
         var components: [String] = ["Passaggio \(stepIndex) di \(totalSteps)"]
 
         if setType == .custom, isCustomNameValid {
@@ -123,6 +212,19 @@ struct AddTyreSetView: View {
         }
     }
 
+    private var recommendedSetGroups: [RecommendedTyreGroup] {
+        let grouped = Dictionary(grouping: recommendedSets) { $0.category }
+
+        return grouped
+            .map { category, sets in
+                RecommendedTyreGroup(
+                    category: category,
+                    sets: sets.sorted { $0.name < $1.name }
+                )
+            }
+            .sorted { $0.category.sortOrder < $1.category.sortOrder }
+    }
+
     private var recommendedSets: [RecommendedTyreSet] {
         guard !vehicleTyres.isEmpty else { return [] }
 
@@ -142,11 +244,45 @@ struct AddTyreSetView: View {
 
         let sets = grouped.map { (key, tyres) -> RecommendedTyreSet in
             let sortedTyres = tyres.sorted { ($0.setName ?? "") < ($1.setName ?? "") }
-            let name = tyres.first?.setName ?? "Set \(abs(key))"
-            return RecommendedTyreSet(id: key, name: name, tyres: sortedTyres)
+            let name = displayName(for: tyres, fallbackKey: key)
+            let category = tyreSetCategory(for: tyres, setName: name)
+            return RecommendedTyreSet(id: key, name: name, category: category, tyres: sortedTyres)
         }
 
         return sets.sorted { $0.name < $1.name }
+    }
+
+    private func tyreSetCategory(for tyres: [VehicleTyre], setName: String) -> TyreSetCategory {
+        let values = tyres.compactMap(\.season) + tyres.compactMap(\.setName) + [setName]
+        return TyreSetCategory.infer(from: values)
+    }
+
+    private func displayName(for tyres: [VehicleTyre], fallbackKey: Int) -> String {
+        if let name = cleanDisplayName(tyres.first?.setName) {
+            return name
+        }
+
+        switch fallbackKey {
+        case 1:
+            return "Misura anteriore"
+        case 2:
+            return "Misura posteriore"
+        default:
+            return tyres.count > 1 ? "Misure registrate" : "Misura registrata"
+        }
+    }
+
+    private func cleanDisplayName(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+
+        if trimmed.range(of: #"^Set\s+\d+$"#, options: .regularExpression) != nil {
+            return nil
+        }
+
+        return trimmed
     }
 
     var body: some View {
@@ -199,7 +335,7 @@ struct AddTyreSetView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     headerSection
 
-                    if !recommendedSets.isEmpty {
+                    if !recommendedSetGroups.isEmpty {
                         suggestedSetsSection
                     }
 
@@ -207,16 +343,26 @@ struct AddTyreSetView: View {
 
                     if setType == .custom {
                         customNameSection
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
                     if setType != .frontRear {
                         doubleMeasureToggle
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
                     stepsSection
                     startButton
                 }
                 .padding(.bottom, 24)
+                .opacity(contentAppeared ? 1 : 0)
+                .offset(y: contentAppeared || reduceMotion ? 0 : 16)
+                .animation(reduceMotion ? nil : AppMotion.smooth, value: contentAppeared)
+            }
+        }
+        .onAppear {
+            withAnimation(reduceMotion ? nil : AppMotion.smooth) {
+                contentAppeared = true
             }
         }
     }
@@ -237,31 +383,46 @@ struct AddTyreSetView: View {
 
     private var suggestedSetsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Misure consigliate")
+            Text("Set registrati per tipologia")
                 .font(.customFont(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.horizontal, 20)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(recommendedSets) { set in
-                        Button {
-                            applyRecommendedSet(set)
-                        } label: {
-                            recommendedSetCard(for: set)
+            ForEach(recommendedSetGroups) { group in
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: group.category.icon)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.orange)
+
+                        Text(group.category.title)
+                            .font(.customFont(size: 13, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.8))
+
+                        Text("\(group.sets.count)")
+                            .font(.customFont(size: 11, weight: .bold))
+                            .foregroundColor(.white.opacity(0.65))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.08), in: Capsule())
+                    }
+                    .padding(.horizontal, 20)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            ForEach(group.sets) { set in
+                                recommendedSetCard(for: set)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 20)
                     }
                 }
-                .padding(.horizontal, 20)
             }
         }
     }
 
     private func recommendedSetCard(for set: RecommendedTyreSet) -> some View {
-        let isSelected = selectedRecommendedSetId == set.id
-
-        return VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(set.name)
                     .font(.customFont(size: 14, weight: .semibold))
@@ -269,15 +430,13 @@ struct AddTyreSetView: View {
 
                 Spacer()
 
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.orange)
-                }
+                Image(systemName: "info.circle")
+                    .foregroundColor(.white.opacity(0.45))
             }
 
-            ForEach(set.tyres.prefix(2), id: \.id) { tyre in
+            ForEach(Array(set.tyres.prefix(2).enumerated()), id: \.element.id) { index, tyre in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(tyre.setName ?? "Misura")
+                    Text(recommendedTyreLabel(for: tyre, index: index, in: set))
                         .font(.customFont(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.6))
 
@@ -291,12 +450,24 @@ struct AddTyreSetView: View {
         .frame(width: 220, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(isSelected ? 0.25 : 0.08))
+                .fill(Color.white.opacity(0.08))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isSelected ? Color.orange.opacity(0.6) : Color.white.opacity(0.1), lineWidth: 1)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
+    }
+
+    private func recommendedTyreLabel(for tyre: VehicleTyre, index: Int, in set: RecommendedTyreSet) -> String {
+        if let name = cleanDisplayName(tyre.setName), name != set.name {
+            return name
+        }
+
+        guard set.tyres.count > 1 else {
+            return "Misura registrata"
+        }
+
+        return index == 0 ? "Anteriore" : "Posteriore"
     }
 
     private func formattedSize(from tyre: VehicleTyre) -> String {
@@ -328,11 +499,12 @@ struct AddTyreSetView: View {
                     HStack(spacing: 16) {
                         Image(systemName: type.icon)
                             .font(.system(size: 24, weight: .medium))
-                            .foregroundColor(setType == type ? .orange : .white.opacity(0.6))
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(setType == type ? Color.orange.opacity(0.2) : Color.white.opacity(0.1))
+                        .foregroundColor(setType == type ? .orange : .white.opacity(0.6))
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(setType == type && !reduceMotion ? 1.06 : 1.0)
+                        .background(
+                            Circle()
+                                .fill(setType == type ? Color.orange.opacity(0.2) : Color.white.opacity(0.1))
                             )
 
                         VStack(alignment: .leading, spacing: 4) {
@@ -351,6 +523,7 @@ struct AddTyreSetView: View {
                         Image(systemName: setType == type ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 24, weight: setType == type ? .semibold : .regular))
                             .foregroundColor(setType == type ? .orange : .white.opacity(0.3))
+                            .scaleEffect(setType == type && !reduceMotion ? 1.08 : 1.0)
                     }
                     .padding(16)
                     .background(
@@ -362,10 +535,11 @@ struct AddTyreSetView: View {
                             .stroke(setType == type ? Color.orange.opacity(0.5) : Color.white.opacity(0.1), lineWidth: 1)
                     )
                 }
-                .buttonStyle(.plain)
+                .pressScaleButtonStyle(scale: 0.98)
                 .padding(.horizontal, 20)
             }
         }
+        .animation(reduceMotion ? nil : AppMotion.smooth, value: setType)
     }
 
     private var doubleMeasureToggle: some View {
@@ -409,6 +583,7 @@ struct AddTyreSetView: View {
 
             ForEach(Array(requiredPositions.enumerated()), id: \.offset) { index, position in
                 scanStepRow(for: position, index: index)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
 
             Text(needsDoubleScan ? "Al termine della prima scansione ti chiederemo automaticamente di ripetere la procedura per il posteriore." : "Effettua una singola scansione OCR per registrare il set.")
@@ -425,11 +600,16 @@ struct AddTyreSetView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
         .padding(.horizontal, 20)
+        .animation(reduceMotion ? nil : AppMotion.smooth, value: requiredPositions.count)
+        .animation(reduceMotion ? nil : AppMotion.smooth, value: completedPositions)
     }
 
     private func scanStepRow(for position: ScanPosition, index: Int) -> some View {
-        HStack(spacing: 14) {
-            stepBadge(number: index + 1, isCompleted: completedPositions.contains(position))
+        let isCompleted = completedPositions.contains(position)
+        let isNext = !isCompleted && currentPosition == nil && pendingPositions.first == position
+
+        return HStack(spacing: 14) {
+            stepBadge(number: index + 1, isCompleted: isCompleted, isActive: isNext)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(position.label)
@@ -444,44 +624,62 @@ struct AddTyreSetView: View {
 
             Spacer(minLength: 12)
 
-            if completedPositions.contains(position) {
+            if isCompleted {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
                     .font(.system(size: 20, weight: .semibold))
+                    .transition(.scale.combined(with: .opacity))
             } else if currentPosition == position && isPresentingScanner {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .transition(.opacity)
             }
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18)
-                .fill(Color.customFieldColor)
+                .fill(isNext ? Color.orange.opacity(0.12) : Color.customFieldColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(isNext ? Color.orange.opacity(0.35) : Color.white.opacity(0.08), lineWidth: 1)
         )
+        .animation(reduceMotion ? nil : AppMotion.smooth, value: isCompleted)
     }
 
-    private func stepBadge(number: Int, isCompleted: Bool) -> some View {
+    private func stepBadge(number: Int, isCompleted: Bool, isActive: Bool) -> some View {
         ZStack {
             Circle()
                 .fill(isCompleted ? Color.green.opacity(0.2) : Color.orange.opacity(0.15))
                 .frame(width: 40, height: 40)
 
-            Text("\(number)")
-                .font(.customFont(size: 16, weight: .bold))
-                .foregroundColor(.white)
+            if isCompleted {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.green)
+                    .transition(.scale.combined(with: .opacity))
+            } else {
+                Text("\(number)")
+                    .font(.customFont(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                    .transition(.scale.combined(with: .opacity))
+            }
+
+            if isActive && !reduceMotion {
+                Circle()
+                    .stroke(Color.orange.opacity(0.45), lineWidth: 2)
+                    .frame(width: 42, height: 42)
+            }
         }
+        .animation(reduceMotion ? nil : AppMotion.smooth, value: isCompleted)
     }
 
     private var startButton: some View {
-        Button(action: startScanFlow) {
+        Button(action: handlePrimaryScanAction) {
             HStack {
-                Image(systemName: "camera.viewfinder")
+                Image(systemName: isScanFlowComplete ? "checkmark.circle.fill" : "camera.viewfinder")
                     .font(.system(size: 18, weight: .semibold))
-                Text(needsDoubleScan ? "Avvia doppia scansione" : "Avvia scansione")
+                Text(startButtonTitle)
                     .font(.customFont(size: 16, weight: .bold))
             }
             .foregroundColor(.white)
@@ -494,23 +692,31 @@ struct AddTyreSetView: View {
         }
         .disabled(isStartDisabled)
         .opacity(isStartDisabled ? 0.5 : 1.0)
+        .pressScaleButtonStyle()
         .padding(.horizontal, 20)
-    }
-
-    private func applyRecommendedSet(_ set: RecommendedTyreSet) {
-        selectedRecommendedSetId = set.id
-        let usesDouble = set.tyres.count > 1
-        includeRearTyre = usesDouble
-        if usesDouble {
-            setType = .frontRear
-        }
     }
 
     private func startScanFlow() {
         guard !isStartDisabled else { return }
-        completedPositions = []
-        pendingPositions = requiredPositions
+        AppHaptics.impact(.medium)
+        withAnimation(reduceMotion ? nil : AppMotion.smooth) {
+            completedPositions = []
+            pendingPositions = requiredPositions
+        }
         advanceToNextScan()
+    }
+
+    private func handlePrimaryScanAction() {
+        guard !isStartDisabled else { return }
+
+        if isScanFlowComplete {
+            finishFlow()
+        } else if !pendingPositions.isEmpty {
+            AppHaptics.impact(.medium)
+            advanceToNextScan()
+        } else {
+            startScanFlow()
+        }
     }
 
     private func advanceToNextScan() {
@@ -532,10 +738,12 @@ struct AddTyreSetView: View {
         }
 
         if didCompleteCurrentScan {
-            completedPositions.append(position)
-            currentPosition = nil
-            didCompleteCurrentScan = false
-            advanceToNextScan()
+            AppHaptics.success()
+            withAnimation(reduceMotion ? nil : AppMotion.emphasized) {
+                completedPositions.append(position)
+                currentPosition = nil
+                didCompleteCurrentScan = false
+            }
         } else {
             resetFlow()
         }
@@ -550,10 +758,12 @@ struct AddTyreSetView: View {
     }
 
     private func resetFlow() {
-        currentPosition = nil
-        pendingPositions = []
-        didCompleteCurrentScan = false
-        completedPositions = []
+        withAnimation(reduceMotion ? nil : AppMotion.quick) {
+            currentPosition = nil
+            pendingPositions = []
+            didCompleteCurrentScan = false
+            completedPositions = []
+        }
     }
 
     private var isCustomNameValid: Bool {
@@ -561,7 +771,7 @@ struct AddTyreSetView: View {
     }
 
     private var isStartDisabled: Bool {
-        isPresentingScanner || (setType == .custom && !isCustomNameValid)
+        isPresentingScanner || (!isScanFlowInProgress && setType == .custom && !isCustomNameValid)
     }
 }
 

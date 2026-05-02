@@ -45,6 +45,12 @@ struct MaintenanceNotificationSettingsView: View {
         .onAppear {
             loadDisabledTypes()
         }
+        .onChange(of: notificationsEnabled) { _, enabled in
+            guard !enabled else { return }
+            Task {
+                await NotificationManager.shared.cancel(type: .maintenanceReminder)
+            }
+        }
     }
 
     private func binding(for type: MaintenanceSchedule.MaintenanceType) -> Binding<Bool> {

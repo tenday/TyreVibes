@@ -15,7 +15,15 @@ class SupabaseManager {
             fatalError("L'URL di Supabase non è valido: \(urlString)")
         }
 
-        return SupabaseClient(supabaseURL: url, supabaseKey: key)
+        return SupabaseClient(
+            supabaseURL: url,
+            supabaseKey: key,
+            options: SupabaseClientOptions(
+                auth: SupabaseClientOptions.AuthOptions(
+                    emitLocalSessionAsInitialSession: true
+                )
+            )
+        )
     }()
 
 }

@@ -6,7 +6,11 @@ struct ScanReceiptSheet: View {
     let onSave: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var viewModel: ScanReceiptViewModel
+    @State private var capturePulse = false
+    @State private var processingSweep = false
+    @State private var formAppeared = false
 
     init(vehicleId: Int, onSave: (() -> Void)? = nil) {
         self.vehicleId = vehicleId
@@ -19,12 +23,17 @@ struct ScanReceiptSheet: View {
             Group {
                 if viewModel.scannedImage == nil {
                     capturePromptView
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 } else if viewModel.isProcessing {
                     processingView
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 } else {
                     reviewForm
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
+            .animation(reduceMotion ? nil : AppMotion.smooth, value: viewModel.scannedImage != nil)
+            .animation(reduceMotion ? nil : AppMotion.smooth, value: viewModel.isProcessing)
             .navigationTitle("Scansiona ricevuta")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -34,9 +43,11 @@ struct ScanReceiptSheet: View {
                 if viewModel.ocrCompleted {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Salva") {
-                            viewModel.save()
-                            onSave?()
-                            dismiss()
+                            if viewModel.save() {
+                                AppHaptics.success()
+                                onSave?()
+                                dismiss()
+                            }
                         }
                         .disabled(!viewModel.canSave)
                     }
@@ -72,9 +83,18 @@ struct ScanReceiptSheet: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "doc.text.viewfinder")
-                .font(.system(size: 64))
-                .foregroundColor(.cyan)
+            ZStack {
+                RoundedRectangle(cornerRadius: 28)
+                    .stroke(Color.cyan.opacity(capturePulse ? 0.18 : 0.45), lineWidth: 2)
+                    .frame(width: capturePulse ? 124 : 104, height: capturePulse ? 124 : 104)
+                    .opacity(capturePulse ? 0.4 : 1)
+
+                Image(systemName: "doc.text.viewfinder")
+                    .font(.system(size: 64))
+                    .foregroundColor(.cyan)
+                    .scaleEffect(capturePulse && !reduceMotion ? 1.04 : 1.0)
+            }
+            .animation(reduceMotion ? nil : AppMotion.subtlePulse, value: capturePulse)
 
             Text("Scansiona la ricevuta")
                 .font(.customFont(size: 20, weight: .semibold))
@@ -89,6 +109,7 @@ struct ScanReceiptSheet: View {
             VStack(spacing: 12) {
                 if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
                     Button {
+                        AppHaptics.impact(.light)
                         viewModel.showLiveScanner = true
                     } label: {
                         Label("Scansiona con fotocamera", systemImage: "text.viewfinder")
@@ -101,8 +122,10 @@ struct ScanReceiptSheet: View {
                                     .fill(Color.cyan)
                             )
                     }
+                    .pressScaleButtonStyle()
                 } else if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
+                        AppHaptics.impact(.light)
                         viewModel.imagePickerSource = .camera
                         viewModel.showImagePicker = true
                     } label: {
@@ -116,9 +139,11 @@ struct ScanReceiptSheet: View {
                                     .fill(Color.cyan)
                             )
                     }
+                    .pressScaleButtonStyle()
                 }
 
                 Button {
+                    AppHaptics.impact(.light)
                     viewModel.imagePickerSource = .photoLibrary
                     viewModel.showImagePicker = true
                 } label: {
@@ -132,6 +157,7 @@ struct ScanReceiptSheet: View {
                                 .stroke(Color.cyan, lineWidth: 1.5)
                         )
                 }
+                .pressScaleButtonStyle()
             }
             .padding(.horizontal, 32)
 
@@ -139,6 +165,11 @@ struct ScanReceiptSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: "191919"))
+        .onAppear {
+            withAnimation(reduceMotion ? nil : AppMotion.subtlePulse) {
+                capturePulse = true
+            }
+        }
     }
 
     // MARK: - Step 2: Processing
@@ -146,9 +177,40 @@ struct ScanReceiptSheet: View {
     private var processingView: some View {
         VStack(spacing: 20) {
             Spacer()
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .cyan))
-                .scaleEffect(1.5)
+
+            ZStack {
+                if let image = viewModel.scannedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 220, height: 260)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(Color.cyan.opacity(0.45), lineWidth: 1.5)
+                        )
+                        .overlay(alignment: .top) {
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.clear, Color.cyan.opacity(0.65), .clear],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(height: 3)
+                                .shadow(color: .cyan.opacity(0.7), radius: 12)
+                                .offset(y: processingSweep && !reduceMotion ? 244 : 12)
+                                .animation(reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: processingSweep)
+                        }
+                        .shadow(color: .cyan.opacity(0.18), radius: 18, x: 0, y: 12)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .cyan))
+                        .scaleEffect(1.5)
+                }
+            }
+
             Text("Analisi in corso...")
                 .font(.customFont(size: 16, weight: .medium))
                 .foregroundColor(.white)
@@ -159,6 +221,11 @@ struct ScanReceiptSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: "191919"))
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                processingSweep = true
+            }
+        }
     }
 
     // MARK: - Step 3: Review Form
@@ -180,8 +247,11 @@ struct ScanReceiptSheet: View {
                     .listRowBackground(Color.clear)
 
                     Button {
-                        viewModel.scannedImage = nil
-                        viewModel.ocrCompleted = false
+                        AppHaptics.impact(.light)
+                        withAnimation(reduceMotion ? nil : AppMotion.smooth) {
+                            viewModel.scannedImage = nil
+                            viewModel.ocrCompleted = false
+                        }
                     } label: {
                         Label("Scansiona di nuovo", systemImage: "arrow.clockwise")
                             .font(.customFont(size: 14, weight: .medium))
@@ -189,6 +259,8 @@ struct ScanReceiptSheet: View {
                 } header: {
                     Text("Ricevuta scansionata")
                 }
+                .opacity(formAppeared ? 1 : 0)
+                .offset(y: formAppeared || reduceMotion ? 0 : 10)
             }
 
             // Error banner
@@ -202,6 +274,7 @@ struct ScanReceiptSheet: View {
                             .foregroundColor(.orange)
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             // Maintenance details
@@ -269,5 +342,12 @@ struct ScanReceiptSheet: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .onAppear {
+            formAppeared = false
+            withAnimation(reduceMotion ? nil : AppMotion.smooth.delay(0.05)) {
+                formAppeared = true
+            }
+        }
+        .animation(reduceMotion ? nil : AppMotion.smooth, value: viewModel.errorMessage)
     }
 }

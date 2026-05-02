@@ -466,9 +466,10 @@ struct GarageScreen: View {
                                 .frame(maxWidth: .infinity, alignment: .center)
                         }
                         else {
-                            ForEach(filteredCars, id: \.vehicle.id) { car in
+                            ForEach(Array(filteredCars.enumerated()), id: \.element.vehicle.id) { index, car in
                                 SwipeableCarRow(
                                     vehicle: car,
+                                    appearanceDelay: Double(index) * 0.04,
                                     onShowDetails: {
                                         viewModel.showDetails(for: car)
                                     },
@@ -786,11 +787,14 @@ struct GarageScreen: View {
     // Custom swipeable row for car card, swipes left but does not reveal delete or trigger deletion
     struct SwipeableCarRow: View {
         let vehicle: VehicleResponse
+        var appearanceDelay: Double = 0
         let onShowDetails: () -> Void
         let onShare: () -> Void
         let onDelete: () -> Void
 
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var offsetX: CGFloat = 0
+        @State private var hasAppeared = false
         @State private var isDragging = false
         @State private var offsetStart: CGFloat = 0
         @State private var shouldHandleGesture = false
@@ -916,6 +920,13 @@ struct GarageScreen: View {
                 }
             }
             .aspectRatio(2.05, contentMode: .fit)
+            .opacity(hasAppeared ? 1 : 0)
+            .offset(y: hasAppeared || reduceMotion ? 0 : 18)
+            .onAppear {
+                withAnimation(reduceMotion ? nil : AppMotion.smooth.delay(appearanceDelay)) {
+                    hasAppeared = true
+                }
+            }
                 .onTapGesture {
                     // Se la card è aperta (swipe), chiudila
                     if offsetX != 0 {

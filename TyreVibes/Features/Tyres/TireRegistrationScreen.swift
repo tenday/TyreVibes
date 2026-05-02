@@ -1472,43 +1472,10 @@ struct TyreRegistrationView: View {
                     ScrollView {
                         ExtractedDataView(data: ocrManager.extractedData)
                     }
-                    .frame(maxHeight: 300)
+                    .frame(maxHeight: 360)
+                    .frame(minHeight: 240)
                     .padding(.horizontal, 24)
                 }
-                
-                // Istruzioni
-                VStack(spacing: 8) {
-                    Text(L10n.tireSidewallScanning.localized)
-                        .font(.customFont(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
-
-                    VStack(spacing: 4) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "1.circle.fill")
-                                .foregroundColor(.cyan)
-                            Text("Get close to tire sidewall")
-                                .font(.customFont(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-
-                        HStack(spacing: 8) {
-                            Image(systemName: "2.circle.fill")
-                                .foregroundColor(.cyan)
-                            Text("Move camera slowly to scan text")
-                                .font(.customFont(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-
-                        HStack(spacing: 8) {
-                            Image(systemName: "3.circle.fill")
-                                .foregroundColor(.cyan)
-                            Text("Follow guide lines for coverage")
-                                .font(.customFont(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    }
-                }
-                .padding(.top, 20)
                 
                 Spacer()
             }
@@ -1603,12 +1570,40 @@ struct ExtractedDataView: View {
         return Double(essentialCompleted) / Double(essentialFields.count)
     }
 
+    private var dataFields: [(icon: String, label: String, value: String, isCompleted: Bool, isOptional: Bool)] {
+        [
+            ( "textformat.size", String(localized: "Size"), data.size, !data.size.isEmpty, false),
+            ( "tag.fill", String(localized: "Brand"), data.brand, !data.brand.isEmpty, false),
+            ( "textformat", String(localized: "Model"), data.model.isEmpty ? String(localized: "Auto-detecting...") : data.model, !data.model.isEmpty, true),
+            ( "speedometer", String(localized: "Load Index"), data.loadIndex, !data.loadIndex.isEmpty, false),
+            ( "gauge.high", String(localized: "Speed Rating"), data.speedRating, !data.speedRating.isEmpty, false),
+            ( "calendar", String(localized: "DOT Code"), data.dot, !data.dot.isEmpty, false),
+            ( "snowflake", String(localized: "Season"), data.season.isEmpty ? String(localized: "Auto-detecting...") : data.season, !data.season.isEmpty, true)
+        ]
+    }
+
+    private var currentField: (icon: String, label: String, value: String, isCompleted: Bool, isOptional: Bool) {
+        if let firstMissing = dataFields.first(where: { !$0.isCompleted && !$0.isOptional }) {
+            return firstMissing
+        }
+        
+        if let firstMissingOptional = dataFields.first(where: { !$0.isCompleted }) {
+            return firstMissingOptional
+        }
+        
+        return dataFields.last ?? ("", "", "", true, false)
+    }
+
+    private var mandatoryFieldCount: Int {
+        dataFields.filter { !$0.isOptional }.count
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             // Header con progress
             HStack {
                 Text(L10n.tireData.localized)
-                    .font(.customFont(size: 20, weight: .semibold))
+                    .font(.customFont(size: 22, weight: .semibold))
                     .foregroundColor(.white)
 
                 Spacer()
@@ -1616,71 +1611,60 @@ struct ExtractedDataView: View {
                 // Progress indicator
                 HStack(spacing: 4) {
                     Text("\(Int(completionPercentage * 100))%")
-                        .font(.customFont(size: 14, weight: .semibold))
+                        .font(.customFont(size: 16, weight: .semibold))
                         .foregroundColor(completionPercentage == 1.0 ? .green : .yellow)
 
                     ProgressView(value: completionPercentage)
                         .progressViewStyle(LinearProgressViewStyle(tint: completionPercentage == 1.0 ? .green : .yellow))
-                        .frame(width: 60)
+                        .frame(width: 84, height: 8)
+                        .scaleEffect(y: 1.2)
                 }
             }
 
             // Dati essenziali con stato
-            VStack(spacing: 12) {
-                EssentialDataRow(
-                    icon: "textformat.size",
-                    label: String(localized: "Size"),
-                    value: data.size,
-                    isCompleted: !data.size.isEmpty
-                )
-
-                EssentialDataRow(
-                    icon: "tag.fill",
-                    label: String(localized: "Brand"),
-                    value: data.brand,
-                    isCompleted: !data.brand.isEmpty
-                )
-
-                EssentialDataRow(
-                    icon: "textformat",
-                    label: String(localized: "Model"),
-                    value: data.model.isEmpty ? String(localized: "Auto-detecting...") : data.model,
-                    isCompleted: !data.model.isEmpty
-                )
-
-                EssentialDataRow(
-                    icon: "speedometer",
-                    label: String(localized: "Load Index"),
-                    value: data.loadIndex,
-                    isCompleted: !data.loadIndex.isEmpty
-                )
-
-                EssentialDataRow(
-                    icon: "gauge.high",
-                    label: String(localized: "Speed Rating"),
-                    value: data.speedRating,
-                    isCompleted: !data.speedRating.isEmpty
-                )
-
-                EssentialDataRow(
-                    icon: "calendar",
-                    label: String(localized: "DOT Code"),
-                    value: data.dot,
-                    isCompleted: !data.dot.isEmpty
-                )
-
-                EssentialDataRow(
-                    icon: "snowflake",
-                    label: String(localized: "Season"),
-                    value: data.season.isEmpty ? String(localized: "Auto-detecting...") : data.season,
-                    isCompleted: !data.season.isEmpty
-                )
+            VStack(spacing: 14) {
+                let mandatoryCompleted = dataFields.filter { !$0.isOptional && $0.isCompleted }.count
+                
+                if mandatoryCompleted < mandatoryFieldCount {
+                    Text("Checkpoint \(mandatoryCompleted + 1) di \(mandatoryFieldCount)")
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    EssentialDataRow(
+                        icon: currentField.icon,
+                        label: currentField.label,
+                        value: currentField.value,
+                        isCompleted: currentField.isCompleted
+                    )
+                } else if !currentField.isCompleted {
+                    Text("Dati facoltativi")
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    EssentialDataRow(
+                        icon: currentField.icon,
+                        label: currentField.label,
+                        value: currentField.value,
+                        isCompleted: currentField.isCompleted
+                    )
+                } else {
+                    Text("Tutti i dati obbligatori raccolti.")
+                        .font(.customFont(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    EssentialDataRow(
+                        icon: currentField.icon,
+                        label: currentField.label,
+                        value: currentField.value,
+                        isCompleted: currentField.isCompleted
+                    )
+                }
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(.ultraThinMaterial)
-                    .overlay(
+                        .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(
                                 completionPercentage == 1.0 ?
@@ -1703,13 +1687,13 @@ struct ExtractedDataView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                     Text(String(localized: "All data collected! Redirecting..."))
-                        .font(.customFont(size: 14, weight: .medium))
+                        .font(.customFont(size: 16, weight: .medium))
                         .foregroundColor(.green)
                 }
                 .transition(.scale.combined(with: .opacity))
             } else {
                 Text(String(localized: "Keep scanning to collect all tire information"))
-                    .font(.customFont(size: 14, weight: .regular))
+                    .font(.customFont(size: 16, weight: .regular))
                     .foregroundColor(.white.opacity(0.7))
                     .transition(.opacity)
             }
@@ -1730,24 +1714,27 @@ struct EssentialDataRow: View {
         HStack(spacing: 12) {
             // Icon con stato
             Image(systemName: icon)
-                .font(.system(size: 16))
+                .font(.system(size: 18))
                 .foregroundColor(isCompleted ? .green : .white.opacity(0.5))
                 .frame(width: 20)
 
             // Label
             Text(label)
-                .font(.customFont(size: 14, weight: .medium))
+                .font(.customFont(size: 16, weight: .medium))
                 .foregroundColor(.white.opacity(0.8))
-                .frame(width: 80, alignment: .leading)
+                .frame(width: 102, alignment: .leading)
 
             // Value o placeholder
             if isCompleted {
                 Text(value)
-                    .font(.customFont(size: 14, weight: .semibold))
+                    .font(.customFont(size: 17, weight: .semibold))
                     .foregroundColor(.white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             } else {
                 Text(String(localized: "Scanning..."))
-                    .font(.customFont(size: 14, weight: .regular))
+                    .font(.customFont(size: 16, weight: .regular))
                     .foregroundColor(.white.opacity(0.5))
                     .italic()
             }
@@ -1756,7 +1743,7 @@ struct EssentialDataRow: View {
 
             // Status indicator
             Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 14))
+                .font(.system(size: 16))
                 .foregroundColor(isCompleted ? .green : .white.opacity(0.3))
         }
         .animation(.easeInOut(duration: 0.3), value: isCompleted)

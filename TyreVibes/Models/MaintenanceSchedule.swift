@@ -120,7 +120,7 @@ struct MaintenanceSchedule: Identifiable, Codable {
             case .brakeDiscs: return "circle.dashed"
             case .brakeFluid: return "drop.triangle"
             case .coolant: return "thermometer.medium"
-            case .washerFluid: return "wiper.rear.and.fluid"
+            case .washerFluid: return "drop"
             case .airFilter: return "wind"
             case .oilFilter: return "line.3.horizontal.decrease.circle"
             case .fuelFilter: return "fuelpump"

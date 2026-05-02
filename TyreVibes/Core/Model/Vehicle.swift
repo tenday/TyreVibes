@@ -101,6 +101,7 @@ struct VehicleTyre: Codable, Identifiable, Hashable {
     let speedIndex: String?
     let loadIndex: String?
     let sizeLabel: String?
+    let season: String?
     let setId: Int? // Per identificare il set di appartenenza (es. 1 = anteriore, 2 = posteriore)
     let setName: String? // Nome del set (es. "Anteriore", "Posteriore", "Set Standard")
 
@@ -112,6 +113,7 @@ struct VehicleTyre: Codable, Identifiable, Hashable {
         case speedIndex = "speed_index"
         case loadIndex = "load_index"
         case sizeLabel = "size_label"
+        case season
         case setId = "set_id"
         case setName = "set_name"
     }

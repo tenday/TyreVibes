@@ -266,7 +266,7 @@ struct MapView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 // Search Icon
-                Image(systemName: "sparkles.magnifyingglass")
+                Image(systemName: "magnifyingglass")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(
                         LinearGradient(

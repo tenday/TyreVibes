@@ -57,9 +57,6 @@ final class SettingsViewModel: NSObject, ObservableObject {
     @Published var analysisNotifications: Bool
     @Published var customNotifications: [CustomNotificationSetting]
 
-    // Appearance Settings
-    @Published var selectedTheme: AppTheme
-
     // Account Settings
     @Published var isPresentingLogoutConfirmation = false
 
@@ -71,6 +68,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
     private let languageManager = LanguageManager.shared
     private let notificationManager = NotificationManager.shared
     private let passkeyService = PasskeyAuthService.shared
+    private let networkManager = NetworkManager.shared
     private var isSyncingFromStore = false
 
     private struct ExportPayload: Codable {
@@ -84,6 +82,14 @@ final class SettingsViewModel: NSObject, ObservableObject {
         let cameraPermission: Bool
         let privacyLevel: String
         let language: String
+        let notificationsEnabled: Bool
+        let promotionNotifications: Bool
+        let updateNotifications: Bool
+        let analysisNotifications: Bool
+        let customNotifications: [CustomNotificationSetting]
+        let maintenanceNotificationsEnabled: Bool
+        let maintenanceReminderDays: Int
+        let maintenanceDisabledNotificationTypes: [String]
     }
 
     private struct Keys {
@@ -96,7 +102,6 @@ final class SettingsViewModel: NSObject, ObservableObject {
         static let updateNotifications = "settings_update_notifications"
         static let analysisNotifications = "settings_analysis_notifications"
         static let customNotifications = "settings_custom_notifications"
-        static let selectedTheme = "settings_selected_theme"
     }
 
     private static func loadCustomNotifications(from defaults: UserDefaults, key: String) -> [CustomNotificationSetting] {
@@ -125,10 +130,6 @@ final class SettingsViewModel: NSObject, ObservableObject {
         updateNotifications = UserDefaults.standard.object(forKey: Keys.updateNotifications) as? Bool ?? false
         analysisNotifications = UserDefaults.standard.object(forKey: Keys.analysisNotifications) as? Bool ?? true
         customNotifications = SettingsViewModel.loadCustomNotifications(from: UserDefaults.standard, key: Keys.customNotifications)
-
-        // Load theme settings
-        let themeRawValue = UserDefaults.standard.string(forKey: Keys.selectedTheme) ?? AppTheme.system.rawValue
-        selectedTheme = AppTheme(rawValue: themeRawValue) ?? .system
 
         super.init()
 
@@ -469,6 +470,11 @@ final class SettingsViewModel: NSObject, ObservableObject {
         cacheManagement = defaults.object(forKey: Keys.cacheManagement) as? Bool ?? cacheManagement
         privacyLevel = PrivacyLevel(rawValue: defaults.string(forKey: Keys.privacyLevel) ?? privacyLevel.rawValue) ?? privacyLevel
         selectedLanguage = languageManager.currentLanguage
+        notificationsEnabled = defaults.object(forKey: Keys.notificationsEnabled) as? Bool ?? notificationsEnabled
+        promotionNotifications = defaults.object(forKey: Keys.promotionNotifications) as? Bool ?? promotionNotifications
+        updateNotifications = defaults.object(forKey: Keys.updateNotifications) as? Bool ?? updateNotifications
+        analysisNotifications = defaults.object(forKey: Keys.analysisNotifications) as? Bool ?? analysisNotifications
+        customNotifications = SettingsViewModel.loadCustomNotifications(from: defaults, key: Keys.customNotifications)
         isSyncingFromStore = false
     }
 
@@ -575,7 +581,15 @@ final class SettingsViewModel: NSObject, ObservableObject {
             locationPermission: locationPermission,
             cameraPermission: cameraPermission,
             privacyLevel: privacyLevel.rawValue,
-            language: selectedLanguage.rawValue
+            language: selectedLanguage.rawValue,
+            notificationsEnabled: notificationsEnabled,
+            promotionNotifications: promotionNotifications,
+            updateNotifications: updateNotifications,
+            analysisNotifications: analysisNotifications,
+            customNotifications: customNotifications,
+            maintenanceNotificationsEnabled: MaintenanceNotificationSettingsView.notificationsEnabled,
+            maintenanceReminderDays: MaintenanceNotificationSettingsView.reminderDaysAdvance,
+            maintenanceDisabledNotificationTypes: defaults.stringArray(forKey: "maintenance_disabled_notification_types") ?? []
         )
     }
 
@@ -674,19 +688,17 @@ extension SettingsViewModel {
         applyAnalysisNotifications()
     }
 
-    func handleThemeChange() {
-        applyTheme()
-    }
 }
 
-// MARK: - Notification & Theme Handlers
+// MARK: - Notification Handlers
 
 extension SettingsViewModel {
     private func applyNotificationsEnabled() {
+        guard !isSyncingFromStore else { return }
+
         defaults.set(notificationsEnabled, forKey: Keys.notificationsEnabled)
 
         if notificationsEnabled {
-            // Request notification authorization
             Task {
                 do {
                     let granted = try await notificationManager.requestAuthorization()
@@ -695,30 +707,54 @@ extension SettingsViewModel {
                             isSyncingFromStore = true
                             notificationsEnabled = false
                             isSyncingFromStore = false
+                            defaults.set(false, forKey: Keys.notificationsEnabled)
+                            featureFlags.isNotificationsEnabled = false
                             alert = SettingsAlert(
                                 title: "Notifications Disabled",
                                 message: "Please enable notifications in Settings to receive alerts.",
                                 style: .openSettings
                             )
+                            syncSettingsToCloud()
+                        }
+                    } else {
+                        await MainActor.run {
+                            featureFlags.isNotificationsEnabled = true
+                            rescheduleCustomNotifications()
+                            syncSettingsToCloud()
                         }
                     }
                 } catch {
                     await MainActor.run {
+                        defaults.set(false, forKey: Keys.notificationsEnabled)
+                        isSyncingFromStore = true
+                        notificationsEnabled = false
+                        isSyncingFromStore = false
+                        featureFlags.isNotificationsEnabled = false
                         alert = SettingsAlert(
                             title: "Error",
                             message: "Failed to request notification permissions.",
                             style: .info
                         )
+                        syncSettingsToCloud()
                     }
                 }
             }
-            rescheduleCustomNotifications()
         } else {
-            // Disable all notification types
+            isSyncingFromStore = true
             promotionNotifications = false
             updateNotifications = false
             analysisNotifications = false
+            isSyncingFromStore = false
+            defaults.set(false, forKey: Keys.promotionNotifications)
+            defaults.set(false, forKey: Keys.updateNotifications)
+            defaults.set(false, forKey: Keys.analysisNotifications)
+            featureFlags.isNotificationsEnabled = false
             cancelCustomNotifications()
+            notificationManager.cancelAll()
+            Task {
+                await PushNotificationManager.shared.unregisterForPushNotifications()
+            }
+            syncSettingsToCloud()
         }
     }
 
@@ -780,30 +816,13 @@ extension SettingsViewModel {
         customNotifications.forEach { notificationManager.cancel(identifier: $0.id) }
     }
 
-    private func applyTheme() {
-        defaults.set(selectedTheme.rawValue, forKey: Keys.selectedTheme)
-
-        // Apply theme to the entire app
-        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-        windowScene?.windows.forEach { window in
-            switch selectedTheme {
-            case .system:
-                window.overrideUserInterfaceStyle = .unspecified
-            case .light:
-                window.overrideUserInterfaceStyle = .light
-            case .dark:
-                window.overrideUserInterfaceStyle = .dark
-            }
-        }
-
-        syncSettingsToCloud()
-    }
 }
 
 // MARK: - Cloud Sync
 
 extension SettingsViewModel {
     private struct UserSettings: Codable {
+        let id: String?
         let userId: String
         let backgroundSync: Bool
         let batteryOptimization: Bool
@@ -816,8 +835,42 @@ extension SettingsViewModel {
         let promotionNotifications: Bool
         let updateNotifications: Bool
         let analysisNotifications: Bool
-        let selectedTheme: String
-        let updatedAt: String
+        let selectedTheme: String?
+        let updatedAt: String?
+        let createdAt: String?
+
+        init(
+            userId: String,
+            backgroundSync: Bool,
+            batteryOptimization: Bool,
+            imageQuality: Double,
+            cacheManagement: Bool,
+            biometricAuth: Bool,
+            privacyLevel: String,
+            language: String,
+            notificationsEnabled: Bool,
+            promotionNotifications: Bool,
+            updateNotifications: Bool,
+            analysisNotifications: Bool,
+            selectedTheme: String = "system"
+        ) {
+            self.id = nil
+            self.userId = userId
+            self.backgroundSync = backgroundSync
+            self.batteryOptimization = batteryOptimization
+            self.imageQuality = imageQuality
+            self.cacheManagement = cacheManagement
+            self.biometricAuth = biometricAuth
+            self.privacyLevel = privacyLevel
+            self.language = language
+            self.notificationsEnabled = notificationsEnabled
+            self.promotionNotifications = promotionNotifications
+            self.updateNotifications = updateNotifications
+            self.analysisNotifications = analysisNotifications
+            self.selectedTheme = selectedTheme
+            self.updatedAt = nil
+            self.createdAt = nil
+        }
     }
 
     func syncSettingsToCloud() {
@@ -825,8 +878,7 @@ extension SettingsViewModel {
 
         Task {
             do {
-                let session = try await SupabaseManager.client.auth.session
-                let userId = session.user.id.uuidString
+                guard let userId = await AuthService.currentUserId else { return }
 
                 let settings = UserSettings(
                     userId: userId,
@@ -840,19 +892,21 @@ extension SettingsViewModel {
                     notificationsEnabled: notificationsEnabled,
                     promotionNotifications: promotionNotifications,
                     updateNotifications: updateNotifications,
-                    analysisNotifications: analysisNotifications,
-                    selectedTheme: selectedTheme.rawValue,
-                    updatedAt: ISO8601DateFormatter().string(from: Date())
+                    analysisNotifications: analysisNotifications
                 )
 
-                // Upsert settings to Supabase
-                try await SupabaseManager.client
-                    .from("user_settings")
-                    .upsert(settings)
-                    .execute()
+                let encoder = JSONEncoder()
+                encoder.keyEncodingStrategy = .convertToSnakeCase
+                let body = try encoder.encode(settings)
+
+                let _: UserSettings = try await networkManager.request(
+                    endpoint: "/v1/user_settings/\(userId)",
+                    method: .put,
+                    body: body
+                )
 
             } catch {
-                print("Failed to sync settings to cloud: \(error)")
+                print("Failed to sync settings to server: \(error)")
             }
         }
     }
@@ -862,16 +916,11 @@ extension SettingsViewModel {
 
         Task {
             do {
-                let session = try await SupabaseManager.client.auth.session
-                let userId = session.user.id.uuidString
+                guard let userId = await AuthService.currentUserId else { return }
 
-                let response: UserSettings = try await SupabaseManager.client
-                    .from("user_settings")
-                    .select("*")
-                    .eq("userId", value: userId)
-                    .single()
-                    .execute()
-                    .value
+                let response: UserSettings = try await networkManager.get(
+                    endpoint: "/v1/user_settings/\(userId)"
+                )
 
                 // Update local settings with cloud data
                 await MainActor.run {
@@ -888,7 +937,6 @@ extension SettingsViewModel {
                     promotionNotifications = response.promotionNotifications
                     updateNotifications = response.updateNotifications
                     analysisNotifications = response.analysisNotifications
-                    selectedTheme = AppTheme(rawValue: response.selectedTheme) ?? .system
 
                     // Save to UserDefaults
                     defaults.set(batteryOptimization, forKey: Keys.batteryOptimization)
@@ -899,13 +947,12 @@ extension SettingsViewModel {
                     defaults.set(promotionNotifications, forKey: Keys.promotionNotifications)
                     defaults.set(updateNotifications, forKey: Keys.updateNotifications)
                     defaults.set(analysisNotifications, forKey: Keys.analysisNotifications)
-                    defaults.set(selectedTheme.rawValue, forKey: Keys.selectedTheme)
 
                     isSyncingFromStore = false
                 }
 
             } catch {
-                print("Failed to load settings from cloud: \(error)")
+                print("Failed to load settings from server: \(error)")
             }
         }
     }

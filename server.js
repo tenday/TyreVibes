@@ -256,7 +256,13 @@ const authenticateJWT = (req, res, next) => {
   });
 };
 
-const authenticatedUserId = (req) => req.user?.id ? String(req.user.id) : null;
+const normalizeUserId = (value) => {
+  if (value == null) return null;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized || null;
+};
+
+const authenticatedUserId = (req) => normalizeUserId(req.user?.id);
 
 const rejectUserMismatch = (req, res, userId) => {
   const tokenUserId = authenticatedUserId(req);
@@ -265,7 +271,8 @@ const rejectUserMismatch = (req, res, userId) => {
     return true;
   }
 
-  if (userId != null && String(userId) !== tokenUserId) {
+  const requestedUserId = normalizeUserId(userId);
+  if (requestedUserId != null && requestedUserId !== tokenUserId) {
     res.status(403).json({ message: "Accesso non autorizzato." });
     return true;
   }
@@ -650,6 +657,52 @@ const parseToDate = (value) => {
     avg_depth: toNumberOrNull(row.avg_depth),
     avg_remaining_life: toNumberOrNull(row.avg_remaining_life),
     last_analysis_date: toISODate(row.last_analysis_date)
+  });
+
+  const boolToDb = (value, fallback = false) => {
+    if (value === undefined || value === null || value === "") {
+      return fallback ? 1 : 0;
+    }
+    if (typeof value === "boolean") return value ? 1 : 0;
+    if (typeof value === "number") return value !== 0 ? 1 : 0;
+    const normalized = String(value).trim().toLowerCase();
+    if (["1", "true", "yes", "on"].includes(normalized)) return 1;
+    if (["0", "false", "no", "off"].includes(normalized)) return 0;
+    return fallback ? 1 : 0;
+  };
+
+  const formatUserSettingsRow = (row) => ({
+    id: row.id,
+    user_id: row.user_id,
+    background_sync: row.background_sync === 1 || row.background_sync === true,
+    battery_optimization: row.battery_optimization === 1 || row.battery_optimization === true,
+    image_quality: toNumberOrNull(row.image_quality) ?? 0.8,
+    cache_management: row.cache_management === 1 || row.cache_management === true,
+    biometric_auth: row.biometric_auth === 1 || row.biometric_auth === true,
+    privacy_level: row.privacy_level || "strict",
+    language: row.language || "it",
+    notifications_enabled: row.notifications_enabled === 1 || row.notifications_enabled === true,
+    promotion_notifications: row.promotion_notifications === 1 || row.promotion_notifications === true,
+    update_notifications: row.update_notifications === 1 || row.update_notifications === true,
+    analysis_notifications: row.analysis_notifications === 1 || row.analysis_notifications === true,
+    selected_theme: row.selected_theme || "system",
+    updated_at: toISODate(row.updated_at),
+    created_at: toISODate(row.created_at)
+  });
+
+  const normalizeUserSettingsPayload = (payload = {}) => ({
+    backgroundSync: payload.background_sync ?? payload.backgroundSync,
+    batteryOptimization: payload.battery_optimization ?? payload.batteryOptimization,
+    imageQuality: payload.image_quality ?? payload.imageQuality,
+    cacheManagement: payload.cache_management ?? payload.cacheManagement,
+    biometricAuth: payload.biometric_auth ?? payload.biometricAuth,
+    privacyLevel: payload.privacy_level ?? payload.privacyLevel,
+    language: payload.language,
+    notificationsEnabled: payload.notifications_enabled ?? payload.notificationsEnabled,
+    promotionNotifications: payload.promotion_notifications ?? payload.promotionNotifications,
+    updateNotifications: payload.update_notifications ?? payload.updateNotifications,
+    analysisNotifications: payload.analysis_notifications ?? payload.analysisNotifications,
+    selectedTheme: payload.selected_theme ?? payload.selectedTheme
   });
 
   const tyreKeyFromPayload = tyre => {
@@ -2510,6 +2563,143 @@ router.get("/v1/user_analysis_stats/:userId", authenticateJWT, async (req, res) 
     return res.status(200).json(rows.map(formatUserAnalysisStatsRow));
   } catch (err) {
     console.error("Errore GET /v1/user_analysis_stats/:userId:", err);
+    return res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET v1/user_settings/:userId
+router.get("/v1/user_settings/:userId", authenticateJWT, async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "userId è richiesto." });
+  }
+
+  if (rejectUserMismatch(req, res, userId)) {
+    return;
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.execute(
+      `SELECT * FROM user_settings WHERE user_id = ? LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      const settingsId = crypto.randomUUID();
+      await conn.execute(
+        `INSERT INTO user_settings (id, user_id) VALUES (?, ?)`,
+        [settingsId, userId]
+      );
+
+      const [createdRows] = await conn.execute(
+        `SELECT * FROM user_settings WHERE id = ? LIMIT 1`,
+        [settingsId]
+      );
+
+      return res.status(200).json(formatUserSettingsRow(createdRows[0]));
+    }
+
+    return res.status(200).json(formatUserSettingsRow(rows[0]));
+  } catch (err) {
+    console.error("Errore GET /v1/user_settings/:userId:", err);
+    return res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// PUT v1/user_settings/:userId
+router.put("/v1/user_settings/:userId", authenticateJWT, async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "userId è richiesto." });
+  }
+
+  if (rejectUserMismatch(req, res, userId)) {
+    return;
+  }
+
+  const data = normalizeUserSettingsPayload(req.body || {});
+  const privacyLevel = ["basic", "balanced", "strict"].includes(data.privacyLevel)
+    ? data.privacyLevel
+    : "strict";
+  const language = ["en", "it"].includes(data.language) ? data.language : "it";
+  const selectedTheme = ["system", "light", "dark"].includes(data.selectedTheme)
+    ? data.selectedTheme
+    : "system";
+  const imageQuality = Math.min(
+    1,
+    Math.max(0, Number(data.imageQuality ?? 0.8))
+  );
+
+  const conn = await pool.getConnection();
+  try {
+    const settingsId = crypto.randomUUID();
+
+    await conn.execute(
+      `INSERT INTO user_settings (
+        id,
+        user_id,
+        background_sync,
+        battery_optimization,
+        image_quality,
+        cache_management,
+        biometric_auth,
+        privacy_level,
+        language,
+        notifications_enabled,
+        promotion_notifications,
+        update_notifications,
+        analysis_notifications,
+        selected_theme,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      ON DUPLICATE KEY UPDATE
+        background_sync = VALUES(background_sync),
+        battery_optimization = VALUES(battery_optimization),
+        image_quality = VALUES(image_quality),
+        cache_management = VALUES(cache_management),
+        biometric_auth = VALUES(biometric_auth),
+        privacy_level = VALUES(privacy_level),
+        language = VALUES(language),
+        notifications_enabled = VALUES(notifications_enabled),
+        promotion_notifications = VALUES(promotion_notifications),
+        update_notifications = VALUES(update_notifications),
+        analysis_notifications = VALUES(analysis_notifications),
+        selected_theme = VALUES(selected_theme),
+        updated_at = NOW()`,
+      [
+        settingsId,
+        userId,
+        boolToDb(data.backgroundSync, true),
+        boolToDb(data.batteryOptimization, true),
+        imageQuality,
+        boolToDb(data.cacheManagement, true),
+        boolToDb(data.biometricAuth, false),
+        privacyLevel,
+        language,
+        boolToDb(data.notificationsEnabled, true),
+        boolToDb(data.promotionNotifications, true),
+        boolToDb(data.updateNotifications, false),
+        boolToDb(data.analysisNotifications, true),
+        selectedTheme
+      ]
+    );
+
+    const [rows] = await conn.execute(
+      `SELECT * FROM user_settings WHERE user_id = ? LIMIT 1`,
+      [userId]
+    );
+
+    return res.status(200).json(formatUserSettingsRow(rows[0]));
+  } catch (err) {
+    console.error("Errore PUT /v1/user_settings/:userId:", err);
     return res.status(500).json({ message: "Errore server", error: err.message });
   } finally {
     conn.release();

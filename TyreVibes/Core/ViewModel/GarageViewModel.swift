@@ -21,24 +21,45 @@ class GarageViewModel: ObservableObject {
     private let authService = AuthService()
     static let apiConfig = PlateAPIService.apiConfig
 
+    private struct VehiclesEnvelope: Decodable {
+        let vehicles: [VehicleResponse]?
+        let data: [VehicleResponse]?
+    }
+
+    private struct APIErrorResponse: Decodable {
+        let message: String?
+        let error: String?
+    }
+
 
     func fetchCars() async {
         // Show cached vehicles first if available, but only if not loading
+        var didLoadCachedVehicles = false
         if isLoading, let cachedData = UserDefaults.standard.data(forKey: "cachedVehicles") {
             if let cachedVehicles = try? JSONDecoder().decode([VehicleResponse].self, from: cachedData) {
                 vehicles = cachedVehicles
+                didLoadCachedVehicles = true
+            } else {
+                UserDefaults.standard.removeObject(forKey: "cachedVehicles")
             }
         }
         
         do {
-            let userId = await AuthService.currentUserId ?? ""
+            guard let userId = await AuthService.currentUserId, !userId.isEmpty else {
+                print("Error fetching cars: userId not found")
+                vehicles = []
+                isLoading = false
+                return
+            }
 
             guard let baseURL = GarageViewModel.apiConfig["BASE_URL"] as? String else {
                 print("API_BASE_URL not found in Info.plist")
+                isLoading = false
                 return
             }
             guard let url = URL(string: "\(baseURL)/v1/vehicles/\(userId)") else {
                 print("Invalid URL")
+                isLoading = false
                 return
             }
 
@@ -48,20 +69,47 @@ class GarageViewModel: ObservableObject {
             // Add JWT token
             await AuthTokenHelper.addAuthHeader(to: &request)
 
-            let (data, _) = try await URLSession.tyreVibesShared.data(for: request)
-            // Save raw data to UserDefaults before decoding
-            UserDefaults.standard.set(data, forKey: "cachedVehicles")
-            let decodedResponse = try JSONDecoder().decode([VehicleResponse].self, from: data)
+            let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
+            }
+
+            guard (200..<300).contains(httpResponse.statusCode) else {
+                let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data)
+                let message = apiError?.message ?? apiError?.error ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                throw NSError(
+                    domain: "GarageViewModel",
+                    code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: message]
+                )
+            }
+
+            let decodedResponse = try decodeVehicles(from: data)
             
             // Force a clean update by creating a new array
             vehicles = decodedResponse
+            UserDefaults.standard.set(data, forKey: "cachedVehicles")
             isLoading = false
         } catch {
             // Handle the error appropriately, e.g., show an alert to the user
             print("Error fetching cars: \(error)")
-            vehicles = []
+            if !didLoadCachedVehicles {
+                vehicles = []
+            }
             isLoading = false
         }
+    }
+
+    private func decodeVehicles(from data: Data) throws -> [VehicleResponse] {
+        let decoder = JSONDecoder()
+
+        if let vehicles = try? decoder.decode([VehicleResponse].self, from: data) {
+            return vehicles
+        }
+
+        let envelope = try decoder.decode(VehiclesEnvelope.self, from: data)
+        return envelope.vehicles ?? envelope.data ?? []
     }
 
     func showDetails(for vehicle: VehicleResponse) {
