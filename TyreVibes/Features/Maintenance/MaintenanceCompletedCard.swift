@@ -43,7 +43,7 @@ struct MaintenanceCompletedCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Group {
                     if let type = entry.maintenanceType {
@@ -61,9 +61,11 @@ struct MaintenanceCompletedCard: View {
                     Text(entry.title)
                         .font(.customFont(size: 14, weight: .semibold))
                         .foregroundColor(.white)
+                        .lineLimit(1)
                     Text("\(entry.source.label) • \(formatter.string(from: entry.date))")
                         .font(.customFont(size: 12, weight: .regular))
                         .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(1)
                 }
                 Spacer()
 
@@ -78,46 +80,59 @@ struct MaintenanceCompletedCard: View {
                 Text(note)
                     .font(.customFont(size: 12, weight: .regular))
                     .foregroundColor(.white.opacity(0.78))
+                    .lineLimit(2)
             }
 
-            HStack(spacing: 12) {
-                if let mileage = entry.mileage {
-                    Label("Km: \(mileage)", systemImage: "speedometer")
-                        .font(.customFont(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.72))
-                }
-
-                if let workshopName = entry.workshopName, !workshopName.isEmpty {
-                    Label(workshopName, systemImage: "building.2")
-                        .font(.customFont(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.72))
-                        .lineLimit(1)
-                }
-
-                if let type = entry.maintenanceType {
-                    Text(type.category.localizedName)
-                        .font(.customFont(size: 10, weight: .medium))
-                        .foregroundColor(type.color.opacity(0.9))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(type.color.opacity(0.15), in: Capsule())
-                }
-
-                if let ids = entry.attachmentIds, !ids.isEmpty {
-                    Label("\(ids.count)", systemImage: "paperclip")
-                        .font(.customFont(size: 10, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-            }
+            FlowingMaintenanceMetaRow(
+                entry: entry,
+                displayColor: displayColor
+            )
         }
-        .padding(12)
+        .padding(13)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.white.opacity(0.06))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
+    }
+}
+
+private struct FlowingMaintenanceMetaRow: View {
+    let entry: CompletedMaintenanceEntry
+    let displayColor: Color
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if let mileage = entry.mileage {
+                    metaPill("Km \(mileage)", icon: "speedometer", color: .cyan)
+                }
+
+                if let workshopName = entry.workshopName, !workshopName.isEmpty {
+                    metaPill(workshopName, icon: "building.2", color: .white.opacity(0.72))
+                }
+
+                if let type = entry.maintenanceType {
+                    metaPill(type.category.localizedName, icon: type.category.icon, color: type.color)
+                }
+
+                if let ids = entry.attachmentIds, !ids.isEmpty {
+                    metaPill("\(ids.count)", icon: "paperclip", color: displayColor)
+                }
+            }
+        }
+    }
+
+    private func metaPill(_ text: String, icon: String, color: Color) -> some View {
+        Label(text, systemImage: icon)
+            .font(.customFont(size: 11, weight: .medium))
+            .foregroundColor(color)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(color.opacity(0.12), in: Capsule())
     }
 }

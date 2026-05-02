@@ -77,6 +77,7 @@ final class MaintenanceHistoryStore: ObservableObject {
     }
 
     func addManualEntry(
+        id: String = UUID().uuidString,
         vehicleId: Int,
         title: String,
         note: String? = nil,
@@ -89,6 +90,7 @@ final class MaintenanceHistoryStore: ObservableObject {
         attachmentIds: [String]? = nil
     ) {
         let entry = CompletedMaintenanceEntry(
+            id: id,
             vehicleId: vehicleId,
             title: title,
             note: note,
@@ -188,16 +190,20 @@ final class MaintenanceScheduleStore: ObservableObject {
         scheduledDate: Date,
         estimatedCost: Double?,
         priority: MaintenanceSchedule.Priority,
-        dueMileage: Int? = nil
+        dueMileage: Int? = nil,
+        currentMileage: Int? = nil,
+        targetMileage: Int? = nil,
+        lastServiceDate: Date? = nil,
+        dueInKm: Int? = nil
     ) {
         let metadata = MaintenanceSchedule.MaintenanceMetadata(
             currentTreadDepth: nil,
             targetTreadDepth: nil,
-            currentMileage: nil,
-            targetMileage: dueMileage,
-            lastServiceDate: nil,
+            currentMileage: currentMileage,
+            targetMileage: targetMileage ?? dueMileage,
+            lastServiceDate: lastServiceDate,
             dueInDays: nil,
-            dueInKm: dueMileage
+            dueInKm: dueInKm ?? dueMileage
         )
 
         let schedule = MaintenanceSchedule(
@@ -208,7 +214,7 @@ final class MaintenanceScheduleStore: ObservableObject {
             estimatedCost: estimatedCost,
             priority: priority,
             vehicleId: String(vehicleId),
-            metadata: dueMileage == nil ? nil : metadata
+            metadata: currentMileage == nil && targetMileage == nil && lastServiceDate == nil && dueInKm == nil && dueMileage == nil ? nil : metadata
         )
 
         schedules.append(schedule)
@@ -216,9 +222,81 @@ final class MaintenanceScheduleStore: ObservableObject {
         save()
     }
 
+    func upsertAutomaticSchedule(
+        vehicleId: Int,
+        type: MaintenanceSchedule.MaintenanceType,
+        title: String,
+        description: String,
+        scheduledDate: Date,
+        estimatedCost: Double?,
+        priority: MaintenanceSchedule.Priority,
+        currentMileage: Int?,
+        targetMileage: Int?,
+        lastServiceDate: Date?,
+        dueInKm: Int?
+    ) {
+        let metadata = MaintenanceSchedule.MaintenanceMetadata(
+            currentTreadDepth: nil,
+            targetTreadDepth: nil,
+            currentMileage: currentMileage,
+            targetMileage: targetMileage,
+            lastServiceDate: lastServiceDate,
+            dueInDays: nil,
+            dueInKm: dueInKm
+        )
+
+        let schedule = MaintenanceSchedule(
+            type: type,
+            title: title,
+            description: description,
+            scheduledDate: scheduledDate,
+            estimatedCost: estimatedCost,
+            priority: priority,
+            vehicleId: String(vehicleId),
+            metadata: metadata
+        )
+
+        if let index = schedules.firstIndex(where: {
+            $0.vehicleId == String(vehicleId) &&
+            $0.type == type &&
+            canReplaceWithAutomaticSchedule($0)
+        }) {
+            schedules[index] = schedule
+        } else {
+            schedules.append(schedule)
+        }
+
+        schedules.sort { $0.scheduledDate < $1.scheduledDate }
+        save()
+    }
+
+    func canReplaceWithAutomaticSchedule(_ schedule: MaintenanceSchedule) -> Bool {
+        if schedule.metadata?.currentMileage != nil ||
+            schedule.metadata?.lastServiceDate != nil {
+            return true
+        }
+
+        if schedule.title == schedule.type.localizedName {
+            return true
+        }
+
+        return isLegacySeededSchedule(schedule)
+    }
+
     func deleteSchedule(_ scheduleId: String) {
         schedules.removeAll { $0.id == scheduleId }
         save()
+    }
+
+    func removeLegacySeededSchedules(for vehicleId: Int) {
+        let countBefore = schedules.count
+        schedules.removeAll {
+            $0.vehicleId == String(vehicleId) && isLegacySeededSchedule($0)
+        }
+
+        if schedules.count != countBefore {
+            save()
+        }
     }
 
     func markCompleted(
@@ -290,6 +368,17 @@ final class MaintenanceScheduleStore: ObservableObject {
         schedules.append(contentsOf: defaults)
         schedules.sort { $0.scheduledDate < $1.scheduledDate }
         save()
+    }
+
+    private func isLegacySeededSchedule(_ schedule: MaintenanceSchedule) -> Bool {
+        switch (schedule.type, schedule.title) {
+        case (.rotation, "Rotazione gomme"),
+             (.inspection, "Controllo generale"),
+             (.replacement, "Valutazione sostituzione"):
+            return schedule.metadata == nil
+        default:
+            return false
+        }
     }
 
     private func save() {

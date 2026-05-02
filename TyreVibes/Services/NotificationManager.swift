@@ -27,6 +27,7 @@ class NotificationManager: NSObject {
         case alignment = "wheel_alignment"
         case seasonal = "seasonal_change"
         case warranty = "warranty_expiry"
+        case maintenanceReminder = "maintenance_reminder"
         case custom = "custom"
 
         var category: String {
@@ -531,6 +532,33 @@ class NotificationManager: NSObject {
         )
         categories.insert(pressureCategory)
 
+        // Mechanical Maintenance Category
+        let maintenanceActions = [
+            UNNotificationAction(
+                identifier: NotificationAction.viewDetails.rawValue,
+                title: NotificationAction.viewDetails.title,
+                options: .foreground
+            ),
+            UNNotificationAction(
+                identifier: NotificationAction.complete.rawValue,
+                title: NotificationAction.complete.title,
+                options: .destructive
+            ),
+            UNNotificationAction(
+                identifier: NotificationAction.snooze.rawValue,
+                title: NotificationAction.snooze.title,
+                options: []
+            )
+        ]
+
+        let maintenanceCategory = UNNotificationCategory(
+            identifier: NotificationType.maintenanceReminder.category,
+            actions: maintenanceActions,
+            intentIdentifiers: [],
+            options: .customDismissAction
+        )
+        categories.insert(maintenanceCategory)
+
         // Register all categories
         center.setNotificationCategories(categories)
     }
@@ -614,4 +642,3 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         completionHandler()
     }
 }
-

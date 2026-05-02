@@ -376,10 +376,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TyreVibes/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSCameraUsageDescription = "TyreVibes ha bisogno della fotocamera per misurare la profondità del battistrada usando il sensore LiDAR e per scansionare le targhe dei veicoli.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TyreVibes usa la fotocamera per misurare il battistrada, scansionare targhe e acquisire ricevute o fatture di manutenzione.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "volto all'autenticazione";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "La posizione viene utilizzata per geolocalizzare le misurazioni e trovare gommisti nelle vicinanze.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "TyreVibes usa il microfono per l assistente vocale e la guida alla manutenzione.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "TyreVibes usa la libreria foto per importare immagini di ricevute o fatture di manutenzione.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "TyreVibes usa il riconoscimento vocale per capire le richieste di manutenzione.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -412,10 +413,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TyreVibes/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSCameraUsageDescription = "TyreVibes ha bisogno della fotocamera per misurare la profondità del battistrada usando il sensore LiDAR e per scansionare le targhe dei veicoli.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TyreVibes usa la fotocamera per misurare il battistrada, scansionare targhe e acquisire ricevute o fatture di manutenzione.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "volto all'autenticazione";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "La posizione viene utilizzata per geolocalizzare le misurazioni e trovare gommisti nelle vicinanze.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "TyreVibes usa il microfono per l assistente vocale e la guida alla manutenzione.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "TyreVibes usa la libreria foto per importare immagini di ricevute o fatture di manutenzione.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "TyreVibes usa il riconoscimento vocale per capire le richieste di manutenzione.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

@@ -77,6 +77,13 @@ struct MaintenanceNotificationSettingsView: View {
         return !disabled.contains(type.rawValue)
     }
 
+    static var notificationsEnabled: Bool {
+        if UserDefaults.standard.object(forKey: "maintenance_notifications_enabled") == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: "maintenance_notifications_enabled")
+    }
+
     static var reminderDaysAdvance: Int {
         UserDefaults.standard.integer(forKey: "maintenance_reminder_days").nonZero ?? 7
     }

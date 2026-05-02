@@ -55,6 +55,16 @@
         }
       }
     },
+    "%@ - %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ - %2$@"
+          }
+        }
+      }
+    },
     "%@ %@" : {
       "comment" : "The main title of the view, displaying the make and model of the car.",
       "extractionState" : "manual",
@@ -6137,6 +6147,9 @@
         }
       }
     },
+    "Fatto" : {
+
+    },
     "Feature Flags" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7408,6 +7421,9 @@
           }
         }
       }
+    },
+    "Inquadra la ricevuta" : {
+
     },
     "Inquadra la targa nel riquadro" : {
       "extractionState" : "manual",
@@ -9580,6 +9596,9 @@
         }
       }
     },
+    "Mantieni il documento ben illuminato e fermo, poi acquisisci." : {
+
+    },
     "Mantieni l'accesso per le prossime sessioni" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9634,6 +9653,9 @@
           }
         }
       }
+    },
+    "Manutenzione smart" : {
+
     },
     "Manutenzioni in programma" : {
       "extractionState" : "manual",
@@ -10355,6 +10377,9 @@
           }
         }
       }
+    },
+    "NEXT" : {
+
     },
     "No" : {
       "comment" : "The label of a button in an alert that dismisses the alert when pressed.",
@@ -11694,6 +11719,9 @@
         }
       }
     },
+    "Piano, storico e costi in un solo cockpit" : {
+
+    },
     "Piano, storico e registrazioni manuali" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12207,6 +12235,9 @@
         }
       }
     },
+    "Prossimo intervento" : {
+
+    },
     "Protezione Dati" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -12348,6 +12379,9 @@
           }
         }
       }
+    },
+    "Puoi usare la libreria foto oppure la fotocamera classica." : {
+
     },
     "Qualità" : {
       "comment" : "A section header for settings related to the quality of the data.",
@@ -13528,6 +13562,9 @@
         }
       }
     },
+    "Scadenze più precise con i km reali" : {
+
+    },
     "Scadenze Stimate" : {
       "comment" : "A header label for the estimated insurance expiration dates section.",
       "extractionState" : "manual",
@@ -13636,6 +13673,12 @@
         }
       }
     },
+    "Scanner live non disponibile" : {
+
+    },
+    "Scanner ricevuta" : {
+
+    },
     "Scanning..." : {
       "comment" : "A placeholder text displayed while waiting for the user to scan a tire.",
       "extractionState" : "manual",
@@ -13655,6 +13698,9 @@
         }
       }
     },
+    "Scansiona con fotocamera" : {
+
+    },
     "Scansiona di nuovo" : {
 
     },
@@ -13662,6 +13708,9 @@
 
     },
     "Scansiona ricevuta" : {
+
+    },
+    "Scansiona una nuova ricevuta o scegli una foto già salvata. I dati verranno estratti automaticamente." : {
 
     },
     "Scansione Targa" : {
@@ -13681,7 +13730,10 @@
         }
       }
     },
-    "Scatta una foto o seleziona un'immagine della ricevuta o fattura. I dati verranno estratti automaticamente." : {
+    "Scatta nuova foto" : {
+
+    },
+    "score" : {
 
     },
     "SCORE" : {
@@ -15098,6 +15150,9 @@
       }
     },
     "Testo OCR rilevato" : {
+
+    },
+    "Testo rilevato" : {
 
     },
     "The interface language has been updated." : {

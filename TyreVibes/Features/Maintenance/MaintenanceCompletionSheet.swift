@@ -75,6 +75,7 @@ struct MaintenanceCompletionSheet: View {
         let attachmentIds = AttachmentManager.shared.attachments(for: entryId).map(\.id)
 
         MaintenanceHistoryStore.shared.addManualEntry(
+            id: entryId,
             vehicleId: vehicleId,
             title: cleanedTitle,
             note: cleanedNote.isEmpty ? nil : cleanedNote,

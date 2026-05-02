@@ -1,4 +1,5 @@
 import SwiftUI
+import VisionKit
 
 struct ScanReceiptSheet: View {
     let vehicleId: Int
@@ -52,6 +53,16 @@ struct ScanReceiptSheet: View {
                     }
                 )
             }
+            .fullScreenCover(isPresented: $viewModel.showLiveScanner) {
+                ReceiptLiveScannerView(
+                    onImageCaptured: { image in
+                        viewModel.handleImagePicked(image)
+                    },
+                    onCancel: {
+                        viewModel.showLiveScanner = false
+                    }
+                )
+            }
         }
     }
 
@@ -69,19 +80,33 @@ struct ScanReceiptSheet: View {
                 .font(.customFont(size: 20, weight: .semibold))
                 .foregroundColor(.white)
 
-            Text("Scatta una foto o seleziona un'immagine della ricevuta o fattura. I dati verranno estratti automaticamente.")
+            Text("Scansiona una nuova ricevuta o scegli una foto già salvata. I dati verranno estratti automaticamente.")
                 .font(.customFont(size: 14, weight: .regular))
                 .foregroundColor(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
             VStack(spacing: 12) {
-                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
+                    Button {
+                        viewModel.showLiveScanner = true
+                    } label: {
+                        Label("Scansiona con fotocamera", systemImage: "text.viewfinder")
+                            .font(.customFont(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.cyan)
+                            )
+                    }
+                } else if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
                         viewModel.imagePickerSource = .camera
                         viewModel.showImagePicker = true
                     } label: {
-                        Label("Fotocamera", systemImage: "camera.fill")
+                        Label("Scatta nuova foto", systemImage: "camera.fill")
                             .font(.customFont(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)

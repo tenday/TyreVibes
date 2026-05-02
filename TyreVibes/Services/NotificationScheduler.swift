@@ -41,6 +41,16 @@ class NotificationScheduler: ObservableObject {
         loadScheduledNotifications()
     }
 
+    private var mechanicalNotificationTypes: Set<AppNotification.NotificationType> {
+        [
+            .oilChangeReminder,
+            .filterReminder,
+            .brakeReminder,
+            .batteryReminder,
+            .generalMaintenanceReminder
+        ]
+    }
+
     // MARK: - Prediction Algorithms
 
     /// Predict when tyre replacement will be needed based on tread depth and usage
@@ -386,14 +396,26 @@ class NotificationScheduler: ObservableObject {
 
     /// Schedule maintenance reminders for all mechanical types based on SmartMaintenanceScheduler
     func scheduleMaintenanceReminders(vehicleId: Int, vehicleName: String) {
+        guard MaintenanceNotificationSettingsView.notificationsEnabled else {
+            removeMechanicalNotifications(for: vehicleId)
+            Task {
+                await cancelLocalMaintenanceNotifications(vehicleId: vehicleId)
+            }
+            return
+        }
+
         // Evaluate and update schedule store
         SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
 
         // Read the updated schedules from the store
         let schedules = MaintenanceScheduleStore.shared.schedules(for: vehicleId)
         var notifications: [AppNotification] = []
+        var localNotifications: [AppNotification] = []
+        let reminderDaysAdvance = MaintenanceNotificationSettingsView.reminderDaysAdvance
 
         for schedule in schedules {
+            guard MaintenanceNotificationSettingsView.isTypeEnabled(schedule.type) else { continue }
+
             let daysUntil = Calendar.current.dateComponents([.day], from: Date(), to: schedule.scheduledDate).day ?? 0
 
             // Determine notification type based on maintenance category
@@ -425,13 +447,11 @@ class NotificationScheduler: ObservableObject {
                 priority = .low
             }
 
-            // Only create notifications for items within 60 days or overdue
-            guard daysUntil <= 60 else { continue }
-
             let notification = AppNotification(
+                id: localMaintenanceIdentifier(vehicleId: vehicleId, schedule: schedule),
                 type: notificationType,
                 title: schedule.title,
-                message: schedule.description,
+                message: localMaintenanceBody(for: schedule, vehicleName: vehicleName, daysUntil: daysUntil),
                 timestamp: Date(),
                 isRead: false,
                 vehicleId: String(vehicleId),
@@ -452,7 +472,12 @@ class NotificationScheduler: ObservableObject {
                     replacementDueMonths: nil
                 )
             )
-            notifications.append(notification)
+            localNotifications.append(notification)
+
+            // Keep the in-app notification list focused on imminent or overdue items.
+            if daysUntil <= reminderDaysAdvance {
+                notifications.append(notification)
+            }
         }
 
         // Merge with existing tyre notifications (don't overwrite)
@@ -464,6 +489,114 @@ class NotificationScheduler: ObservableObject {
         upcomingNotifications = existingTyreNotifications + notifications
         saveScheduledNotifications()
         scheduledCount = upcomingNotifications.count
+
+        Task {
+            await rescheduleLocalMaintenanceNotifications(
+                vehicleId: vehicleId,
+                notifications: localNotifications,
+                reminderDaysAdvance: reminderDaysAdvance
+            )
+        }
+    }
+
+    private func removeMechanicalNotifications(for vehicleId: Int) {
+        let vehicleKey = String(vehicleId)
+        upcomingNotifications.removeAll { notification in
+            mechanicalNotificationTypes.contains(notification.type) && notification.vehicleId == vehicleKey
+        }
+        saveScheduledNotifications()
+        scheduledCount = upcomingNotifications.count
+    }
+
+    private func localMaintenanceIdentifier(vehicleId: Int, schedule: MaintenanceSchedule) -> String {
+        "maintenance-\(vehicleId)-\(schedule.type.rawValue)"
+    }
+
+    private func localMaintenanceBody(
+        for schedule: MaintenanceSchedule,
+        vehicleName: String,
+        daysUntil: Int
+    ) -> String {
+        let timing: String
+        if daysUntil < 0 {
+            timing = "scaduto da \(abs(daysUntil)) giorni"
+        } else if daysUntil == 0 {
+            timing = "in scadenza oggi"
+        } else if daysUntil == 1 {
+            timing = "in scadenza domani"
+        } else {
+            timing = "in scadenza tra \(daysUntil) giorni"
+        }
+
+        if let dueInKm = schedule.metadata?.dueInKm, dueInKm > 0 {
+            return "\(vehicleName): \(schedule.type.localizedName) \(timing), circa \(dueInKm) km rimanenti."
+        }
+
+        return "\(vehicleName): \(schedule.type.localizedName) \(timing)."
+    }
+
+    private func reminderFireDate(for dueDate: Date, advanceDays: Int) -> Date {
+        let preferredDate = Calendar.current.date(
+            byAdding: .day,
+            value: -advanceDays,
+            to: dueDate
+        ) ?? dueDate
+
+        if preferredDate > Date() {
+            return preferredDate
+        }
+
+        return Date().addingTimeInterval(60)
+    }
+
+    private func cancelLocalMaintenanceNotifications(vehicleId: Int) async {
+        let pending = await NotificationManager.shared.getPendingNotifications()
+        let identifiers = pending
+            .filter { request in
+                let userInfo = request.content.userInfo
+                return userInfo["notificationGroup"] as? String == "maintenance" &&
+                    userInfo["vehicleId"] as? String == String(vehicleId)
+            }
+            .map(\.identifier)
+
+        identifiers.forEach { NotificationManager.shared.cancel(identifier: $0) }
+    }
+
+    private func rescheduleLocalMaintenanceNotifications(
+        vehicleId: Int,
+        notifications: [AppNotification],
+        reminderDaysAdvance: Int
+    ) async {
+        await cancelLocalMaintenanceNotifications(vehicleId: vehicleId)
+
+        for notification in notifications {
+            guard let dueDate = notification.scheduledDate else { continue }
+
+            let config = NotificationManager.NotificationConfig(
+                type: .maintenanceReminder,
+                title: notification.title,
+                body: notification.message,
+                identifier: notification.id,
+                userInfo: [
+                    "notificationGroup": "maintenance",
+                    "notificationId": notification.id,
+                    "vehicleId": String(vehicleId),
+                    "scheduledDate": ISO8601DateFormatter().string(from: dueDate),
+                    "priority": notification.priority.rawValue
+                ],
+                categoryIdentifier: NotificationManager.NotificationType.maintenanceReminder.category,
+                threadIdentifier: "maintenance-\(vehicleId)"
+            )
+
+            do {
+                try await NotificationManager.shared.schedule(
+                    config,
+                    at: reminderFireDate(for: dueDate, advanceDays: reminderDaysAdvance)
+                )
+            } catch {
+                print("Failed to schedule maintenance notification \(notification.id): \(error)")
+            }
+        }
     }
 
     // MARK: - Persistence

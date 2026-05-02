@@ -18,13 +18,18 @@ struct MaintenanceManagementView: View {
     @State private var showCostDashboard = false
     @State private var showScanReceiptSheet = false
     @State private var oemBannerMessage: String?
-    @State private var showVINPrompt = false
-    @State private var vinInput: String = ""
     @State private var selectedEntry: CompletedMaintenanceEntry?
 
     enum Section: String, CaseIterable {
-        case planned = "Da fare"
-        case completed = "Fatte"
+        case planned = "Prossimi"
+        case completed = "Storico"
+
+        var icon: String {
+            switch self {
+            case .planned: return "calendar.badge.clock"
+            case .completed: return "clock.arrow.circlepath"
+            }
+        }
     }
 
     private let automaticTypes: Set<AppNotification.NotificationType> = [
@@ -43,6 +48,10 @@ struct MaintenanceManagementView: View {
 
     private var plannedItems: [MaintenanceSchedule] {
         scheduleStore.schedules(for: vehicleId)
+    }
+
+    private var currentMileage: Int? {
+        mileageStore.mileage(for: vehicleId)
     }
 
     private var automaticEntries: [CompletedMaintenanceEntry] {
@@ -76,10 +85,12 @@ struct MaintenanceManagementView: View {
         plannedItems.filter(\.isOverdue).count
     }
 
-    private var thisMonthCompleted: Int {
-        let calendar = Calendar.current
-        let now = Date()
-        return completedItems.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .month) }.count
+    private var nextItem: MaintenanceSchedule? {
+        plannedItems.first
+    }
+
+    private var upcomingSoonCount: Int {
+        plannedItems.filter { !$0.isOverdue && $0.daysUntil <= 14 }.count
     }
 
     private var totalCostThisMonth: Double {
@@ -91,27 +102,100 @@ struct MaintenanceManagementView: View {
             .reduce(0, +)
     }
 
-    var body: some View {
-        VStack(spacing: 14) {
-            header
-            if mileageStore.needsUpdate(for: vehicleId) {
-                mileageUpdateBanner
-            }
-            if let oemMessage = oemBannerMessage {
-                oemBanner(message: oemMessage)
-            }
-            if oemService.isLoading {
-                oemLoadingBanner
-            }
-            stats
-            sectionSelector
-            content
+    private var readinessScore: Double {
+        var score = 1.0
+
+        if plannedItems.isEmpty {
+            score -= 0.28
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 24)
+
+        score -= min(Double(overdueCount) * 0.22, 0.56)
+        score -= min(Double(upcomingSoonCount) * 0.05, 0.15)
+
+        if mileageStore.needsUpdate(for: vehicleId) {
+            score -= 0.14
+        }
+
+        return max(0.10, min(score, 1.0))
+    }
+
+    private var statusColor: Color {
+        if overdueCount > 0 { return .orange }
+        if mileageStore.needsUpdate(for: vehicleId) || upcomingSoonCount > 0 { return .cyan }
+        return .green
+    }
+
+    private var statusIcon: String {
+        if overdueCount > 0 { return "exclamationmark.triangle.fill" }
+        if mileageStore.needsUpdate(for: vehicleId) { return "speedometer" }
+        if upcomingSoonCount > 0 { return "sparkles" }
+        return "checkmark.seal.fill"
+    }
+
+    private var statusTitle: String {
+        if overdueCount > 0 { return "Intervento scaduto" }
+        if currentMileage == nil { return "Km necessari" }
+        if plannedItems.isEmpty { return "Piano da creare" }
+        if mileageStore.needsUpdate(for: vehicleId) { return "Km da aggiornare" }
+        if upcomingSoonCount > 0 { return "Prossima manutenzione vicina" }
+        return "Manutenzione in ordine"
+    }
+
+    private var statusSubtitle: String {
+        if overdueCount > 0 {
+            return "\(overdueCount) attività richiedono attenzione."
+        }
+
+        if currentMileage == nil {
+            return "Inserisci i km attuali per stimare interventi reali."
+        }
+
+        if plannedItems.isEmpty {
+            return "Nessun intervento necessario con i dati attuali."
+        }
+
+        if mileageStore.needsUpdate(for: vehicleId) {
+            return "I km attuali rendono più precise le scadenze."
+        }
+
+        if let nextItem {
+            return "Prossimo step: \(nextItem.title)."
+        }
+
+        return "Nessuna urgenza rilevata."
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                header
+                commandCenter
+                quickActions
+
+                if mileageStore.needsUpdate(for: vehicleId) {
+                    mileageUpdateBanner
+                }
+
+                if let oemMessage = oemBannerMessage {
+                    oemBanner(message: oemMessage)
+                }
+
+                if oemService.isLoading {
+                    oemLoadingBanner
+                }
+
+                stats
+                nextStepPanel
+                sectionSelector
+                content
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 28)
+        }
         .onAppear {
-            scheduleStore.seedDefaultsIfNeeded(for: vehicleId)
+            scheduleStore.removeLegacySeededSchedules(for: vehicleId)
+            SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
             fetchOEMIntervalsIfNeeded()
         }
         .sheet(isPresented: $showPlanSheet) {
@@ -147,53 +231,17 @@ struct MaintenanceManagementView: View {
         }
     }
 
-    // MARK: - Mileage Update Banner
-
-    private var mileageUpdateBanner: some View {
-        Button {
-            showMileagePrompt = true
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "speedometer")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.cyan)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Aggiorna chilometraggio")
-                        .font(.customFont(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                    Text("Per calcolare le scadenze in base ai km")
-                        .font(.customFont(size: 11, weight: .regular))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.5))
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.cyan.opacity(0.1))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.cyan.opacity(0.25), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
     // MARK: - Header
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Gestione manutenzione")
-                    .font(.customFont(size: 16, weight: .semibold))
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Manutenzione smart")
+                    .font(.customFont(size: 20, weight: .bold))
                     .foregroundColor(.white)
-                Text("Piano, storico e registrazioni manuali")
+                Text("Piano, storico e costi in un solo cockpit")
                     .font(.customFont(size: 12, weight: .regular))
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundColor(.white.opacity(0.62))
             }
 
             Spacer()
@@ -201,11 +249,13 @@ struct MaintenanceManagementView: View {
             Button {
                 showCostDashboard = true
             } label: {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.8))
+                Image(systemName: "chart.xyaxis.line")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Color.white.opacity(0.10), in: Circle())
             }
-            .padding(.trailing, 8)
+            .buttonStyle(.plain)
 
             Menu {
                 Button {
@@ -234,11 +284,175 @@ struct MaintenanceManagementView: View {
                     Label("Ricalcola scadenze", systemImage: "arrow.clockwise")
                 }
             } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.white)
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.black)
+                    .frame(width: 38, height: 38)
+                    .background(Color.white, in: Circle())
             }
         }
+    }
+
+    // MARK: - Command Center
+
+    private var commandCenter: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(statusColor)
+                    Text(statusTitle)
+                        .font(.customFont(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+
+                Text(statusSubtitle)
+                    .font(.customFont(size: 12, weight: .regular))
+                    .foregroundColor(.white.opacity(0.70))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    metricPill(icon: "calendar", value: "\(plannedItems.count)", label: "aperte", color: .cyan)
+                    metricPill(icon: "checkmark.seal", value: "\(completedItems.count)", label: "fatte", color: .green)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.10), lineWidth: 9)
+                    .frame(width: 84, height: 84)
+                Circle()
+                    .trim(from: 0, to: readinessScore)
+                    .stroke(
+                        AngularGradient(
+                            colors: [statusColor.opacity(0.45), statusColor, .white.opacity(0.9)],
+                            center: .center
+                        ),
+                        style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 84, height: 84)
+
+                VStack(spacing: 0) {
+                    Text("\(Int(readinessScore * 100))")
+                        .font(.customFont(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("score")
+                        .font(.customFont(size: 9, weight: .medium))
+                        .foregroundColor(.white.opacity(0.55))
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.13),
+                            statusColor.opacity(0.10),
+                            Color.white.opacity(0.05)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(statusColor.opacity(0.28), lineWidth: 1)
+        )
+    }
+
+    private func metricPill(icon: String, value: String, label: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+            Text(value)
+                .font(.customFont(size: 12, weight: .bold))
+            Text(label)
+                .font(.customFont(size: 10, weight: .medium))
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.13), in: Capsule())
+    }
+
+    // MARK: - Quick Actions
+
+    private var quickActions: some View {
+        HStack(spacing: 10) {
+            MaintenanceQuickActionButton(
+                title: "Pianifica",
+                icon: "calendar.badge.plus",
+                tint: .cyan
+            ) {
+                showPlanSheet = true
+            }
+
+            MaintenanceQuickActionButton(
+                title: "Registra",
+                icon: "checkmark.circle.fill",
+                tint: .green
+            ) {
+                showCompletedSheet = true
+            }
+
+            MaintenanceQuickActionButton(
+                title: "Scansiona",
+                icon: "doc.text.viewfinder",
+                tint: .orange
+            ) {
+                showScanReceiptSheet = true
+            }
+        }
+    }
+
+    // MARK: - Mileage Update Banner
+
+    private var mileageUpdateBanner: some View {
+        Button {
+            showMileagePrompt = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "speedometer")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.cyan)
+                    .frame(width: 34, height: 34)
+                    .background(Color.cyan.opacity(0.14), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Aggiorna chilometraggio")
+                        .font(.customFont(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                    Text("Scadenze più precise con i km reali")
+                        .font(.customFont(size: 11, weight: .regular))
+                        .foregroundColor(.white.opacity(0.62))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.cyan.opacity(0.10))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.cyan.opacity(0.24), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Stats
@@ -252,17 +466,63 @@ struct MaintenanceManagementView: View {
                 icon: "calendar.badge.clock"
             )
             MaintenanceStatCard(
-                title: "Scadute",
+                title: "Urgenti",
                 value: "\(overdueCount)",
                 color: .orange,
                 icon: "exclamationmark.triangle.fill"
             )
             MaintenanceStatCard(
-                title: "Questo mese",
-                value: "\(thisMonthCompleted)",
+                title: "Spesa mese",
+                value: currencyText(totalCostThisMonth, maxDigits: 0),
                 color: .green,
-                icon: "checkmark.seal.fill"
+                icon: "eurosign.circle.fill"
             )
+        }
+    }
+
+    // MARK: - Next Step
+
+    private var nextStepPanel: some View {
+        Group {
+            if let item = nextItem {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Prossimo intervento")
+                            .font(.customFont(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.55))
+                        Text(item.title)
+                            .font(.customFont(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text("\(item.formattedDate) - \(item.relativeTimeString)")
+                            .font(.customFont(size: 12, weight: .regular))
+                            .foregroundColor(.white.opacity(0.68))
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        scheduleStore.markCompleted(scheduleId: item.id, vehicleId: vehicleId)
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.black)
+                            .frame(width: 36, height: 36)
+                            .background(Color.green, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(0.07))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(item.type.color.opacity(0.28), lineWidth: 1)
+                )
+            }
         }
     }
 
@@ -277,19 +537,25 @@ struct MaintenanceManagementView: View {
                         selectedSection = section
                     }
                 } label: {
-                    Text(section.rawValue)
-                        .font(.customFont(size: 13, weight: .semibold))
-                        .foregroundColor(selected ? .black : .white.opacity(0.8))
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(selected ? Color.white : Color.white.opacity(0.08))
-                        )
+                    HStack(spacing: 7) {
+                        Image(systemName: section.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(section.rawValue)
+                            .font(.customFont(size: 13, weight: .semibold))
+                    }
+                    .foregroundColor(selected ? .black : .white.opacity(0.78))
+                    .padding(.vertical, 9)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(selected ? Color.white : Color.white.opacity(0.08))
+                    )
                 }
                 .buttonStyle(.plain)
             }
         }
+        .padding(4)
+        .background(Color.white.opacity(0.05), in: Capsule(style: .continuous))
     }
 
     // MARK: - Content
@@ -304,36 +570,46 @@ struct MaintenanceManagementView: View {
     }
 
     private var plannedContent: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 10) {
+            contentHeader(
+                title: "Timeline interventi",
+                subtitle: "\(plannedItems.count) attività aperte",
+                icon: "point.topleft.down.curvedto.point.bottomright.up"
+            )
+
             if plannedItems.isEmpty {
                 EmptyStateView(
-                    icon: "calendar.badge.exclamationmark",
-                    title: "Nessuna manutenzione pianificata",
-                    subtitle: "Aggiungi il prossimo intervento dal pulsante in alto."
+                    icon: currentMileage == nil ? "speedometer" : "calendar.badge.exclamationmark",
+                    title: currentMileage == nil ? "Inserisci il chilometraggio" : "Nessuna manutenzione necessaria",
+                    subtitle: currentMileage == nil ? "TyreVibes userà i km attuali per stimare scadenze reali." : "La timeline si aggiornerà quando cambiano km, storico o intervalli."
                 )
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(plannedItems) { item in
-                            MaintenancePlannedCard(
-                                item: item,
-                                onComplete: {
-                                    scheduleStore.markCompleted(scheduleId: item.id, vehicleId: vehicleId)
-                                },
-                                onDelete: {
-                                    scheduleStore.deleteSchedule(item.id)
-                                }
-                            )
-                        }
+                LazyVStack(spacing: 10) {
+                    ForEach(Array(plannedItems.enumerated()), id: \.element.id) { index, item in
+                        MaintenancePlannedCard(
+                            item: item,
+                            isNext: index == 0,
+                            onComplete: {
+                                scheduleStore.markCompleted(scheduleId: item.id, vehicleId: vehicleId)
+                            },
+                            onDelete: {
+                                scheduleStore.deleteSchedule(item.id)
+                            }
+                        )
                     }
-                    .padding(.vertical, 4)
                 }
             }
         }
     }
 
     private var completedContent: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 10) {
+            contentHeader(
+                title: "Registro lavori",
+                subtitle: "\(completedItems.count) interventi salvati",
+                icon: "list.bullet.clipboard"
+            )
+
             if completedItems.isEmpty {
                 EmptyStateView(
                     icon: "checkmark.circle",
@@ -341,19 +617,38 @@ struct MaintenanceManagementView: View {
                     subtitle: "Registra i lavori effettuati per avere storico e tracciamento."
                 )
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(completedItems) { entry in
-                            MaintenanceCompletedCard(entry: entry)
-                                .onTapGesture {
-                                    selectedEntry = entry
-                                }
-                        }
+                LazyVStack(spacing: 10) {
+                    ForEach(completedItems) { entry in
+                        MaintenanceCompletedCard(entry: entry)
+                            .onTapGesture {
+                                selectedEntry = entry
+                            }
                     }
-                    .padding(.vertical, 4)
                 }
             }
         }
+    }
+
+    private func contentHeader(title: String, subtitle: String, icon: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.cyan)
+                .frame(width: 28, height: 28)
+                .background(Color.cyan.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.customFont(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                Text(subtitle)
+                    .font(.customFont(size: 11, weight: .regular))
+                    .foregroundColor(.white.opacity(0.55))
+            }
+
+            Spacer()
+        }
+        .padding(.top, 2)
     }
 
     // MARK: - OEM Loading Banner
@@ -369,7 +664,7 @@ struct MaintenanceManagementView: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.cyan.opacity(0.08))
         )
     }
@@ -395,13 +690,23 @@ struct MaintenanceManagementView: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.green.opacity(0.1))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.green.opacity(0.25), lineWidth: 1)
         )
+    }
+
+    // MARK: - Formatting
+
+    private func currencyText(_ value: Double, maxDigits: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        formatter.maximumFractionDigits = maxDigits
+        return formatter.string(from: NSNumber(value: value)) ?? "€0"
     }
 
     // MARK: - OEM Fetch
@@ -423,5 +728,40 @@ struct MaintenanceManagementView: View {
                 print("⚠️ [OEM] Fetch failed: \(error.localizedDescription)")
             }
         }
+    }
+}
+
+private struct MaintenanceQuickActionButton: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(tint)
+                    .frame(width: 34, height: 34)
+                    .background(tint.opacity(0.13), in: Circle())
+                Text(title)
+                    .font(.customFont(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.86))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.065))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }

@@ -11,6 +11,7 @@ class ScanReceiptViewModel: ObservableObject {
     @Published var showImagePicker = false
     @Published var imagePickerSource: ImagePickerView.Source = .camera
     @Published var scannedImage: UIImage?
+    @Published var showLiveScanner = false
 
     // MARK: - OCR State
 
@@ -49,6 +50,7 @@ class ScanReceiptViewModel: ObservableObject {
     func handleImagePicked(_ image: UIImage) {
         scannedImage = image
         showImagePicker = false
+        showLiveScanner = false
         Task {
             await processOCR(image: image)
         }
@@ -117,6 +119,7 @@ class ScanReceiptViewModel: ObservableObject {
         let cleanedWorkshop = workshopName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         MaintenanceHistoryStore.shared.addManualEntry(
+            id: entryId,
             vehicleId: vehicleId,
             title: cleanedTitle,
             note: cleanedNote.isEmpty ? nil : cleanedNote,

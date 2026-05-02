@@ -10,6 +10,8 @@ enum DueTrigger: String {
 class SmartMaintenanceScheduler: ObservableObject {
     static let shared = SmartMaintenanceScheduler()
 
+    private let fallbackKmPerMonth = 1_000
+
     private init() {}
 
     /// Evaluate all maintenance intervals for a vehicle and create/update schedules
@@ -26,13 +28,18 @@ class SmartMaintenanceScheduler: ObservableObject {
         let currentKm = mileageStore.mileage(for: vehicleId)
         let avgKmPerMonth = mileageStore.averageKmPerMonth(for: vehicleId)
 
-        // Get already-scheduled types to avoid duplicates
+        guard currentKm != nil || !history.isEmpty else {
+            return
+        }
+
+        // Get already-scheduled types to avoid duplicate manual plans.
         let existingSchedules = scheduleStore.schedules(for: vehicleId)
-        let scheduledTypes = Set(existingSchedules.map(\.type))
 
         for interval in intervals {
-            // Skip if already scheduled
-            guard !scheduledTypes.contains(interval.maintenanceType) else { continue }
+            if let existing = existingSchedules.first(where: { $0.type == interval.maintenanceType }),
+               !scheduleStore.canReplaceWithAutomaticSchedule(existing) {
+                continue
+            }
 
             // Find last completion of this type
             let lastEntry = history
@@ -50,16 +57,36 @@ class SmartMaintenanceScheduler: ObservableObject {
 
             guard let dueDate = nextDate else { continue }
 
-            let priority = priorityForDueDate(dueDate)
+            let targetMileage = targetMileageForInterval(
+                interval,
+                lastMileage: lastEntry?.mileage,
+                currentMileage: currentKm
+            )
+            let dueInKm = targetMileage.flatMap { target -> Int? in
+                guard let currentKm else { return nil }
+                return target - currentKm
+            }
 
-            scheduleStore.addSchedule(
+            let priority = priorityForDueDate(dueDate, dueInKm: dueInKm)
+
+            scheduleStore.upsertAutomaticSchedule(
                 vehicleId: vehicleId,
                 type: interval.maintenanceType,
                 title: interval.maintenanceType.localizedName,
-                description: descriptionForInterval(interval, trigger: trigger),
+                description: descriptionForInterval(
+                    interval,
+                    trigger: trigger,
+                    currentMileage: currentKm,
+                    targetMileage: targetMileage,
+                    usedFallbackAverage: avgKmPerMonth == nil && trigger == .km
+                ),
                 scheduledDate: dueDate,
                 estimatedCost: estimatedCostForType(interval.maintenanceType),
-                priority: priority
+                priority: priority,
+                currentMileage: currentKm,
+                targetMileage: targetMileage,
+                lastServiceDate: lastEntry?.date,
+                dueInKm: dueInKm
             )
         }
     }
@@ -75,25 +102,32 @@ class SmartMaintenanceScheduler: ObservableObject {
         var timeDueDate: Date?
         var kmDueDate: Date?
 
-        // Time-based calculation
-        if let months = interval.monthsInterval {
-            let baseDate = lastDate ?? Date()
+        // Time-based calculation is meaningful only after a known service date.
+        if let months = interval.monthsInterval,
+           let baseDate = lastDate {
             timeDueDate = Calendar.current.date(byAdding: .month, value: months, to: baseDate)
         }
 
-        // Km-based calculation (project when km threshold will be reached)
+        // Km-based calculation uses the user's current mileage and the real service interval.
         if let kmInterval = interval.kmInterval,
            let currentKm = currentMileage {
-            let lastKm = lastMileage ?? 0
-            let kmSinceLast = currentKm - lastKm
-            let kmRemaining = kmInterval - kmSinceLast
+            let targetKm: Int
+
+            if let lastMileage {
+                targetKm = lastMileage + kmInterval
+            } else {
+                targetKm = nextMileageMilestone(currentMileage: currentKm, interval: kmInterval)
+            }
+
+            let kmRemaining = targetKm - currentKm
 
             if kmRemaining <= 0 {
                 // Already overdue by km
                 kmDueDate = Date()
-            } else if let avgKm = avgKmPerMonth, avgKm > 0 {
+            } else {
                 // Project future date based on average usage
-                let monthsUntilDue = Double(kmRemaining) / Double(avgKm)
+                let monthlyKm = max(avgKmPerMonth ?? fallbackKmPerMonth, 1)
+                let monthsUntilDue = Double(kmRemaining) / Double(monthlyKm)
                 let daysUntilDue = Int(monthsUntilDue * 30.44) // avg days/month
                 kmDueDate = Calendar.current.date(byAdding: .day, value: daysUntilDue, to: Date())
             }
@@ -118,7 +152,13 @@ class SmartMaintenanceScheduler: ObservableObject {
 
     // MARK: - Helpers
 
-    private func priorityForDueDate(_ dueDate: Date) -> MaintenanceSchedule.Priority {
+    private func priorityForDueDate(_ dueDate: Date, dueInKm: Int?) -> MaintenanceSchedule.Priority {
+        if let dueInKm {
+            if dueInKm <= 0 { return .critical }
+            if dueInKm <= 500 { return .high }
+            if dueInKm <= 2_000 { return .medium }
+        }
+
         let daysUntil = Calendar.current.dateComponents([.day], from: Date(), to: dueDate).day ?? 0
         if daysUntil < 0 {
             return daysUntil < -30 ? .critical : .high
@@ -129,7 +169,13 @@ class SmartMaintenanceScheduler: ObservableObject {
         }
     }
 
-    private func descriptionForInterval(_ interval: MaintenanceInterval, trigger: DueTrigger) -> String {
+    private func descriptionForInterval(
+        _ interval: MaintenanceInterval,
+        trigger: DueTrigger,
+        currentMileage: Int?,
+        targetMileage: Int?,
+        usedFallbackAverage: Bool
+    ) -> String {
         var parts: [String] = []
 
         if let km = interval.kmInterval {
@@ -143,12 +189,41 @@ class SmartMaintenanceScheduler: ObservableObject {
 
         switch trigger {
         case .km:
-            return "\(base). Scadenza calcolata in base ai km percorsi."
+            var reason = "\(base). Scadenza stimata sui km inseriti"
+            if let currentMileage, let targetMileage {
+                reason += ": \(currentMileage.formatted())/\(targetMileage.formatted()) km"
+            }
+            if usedFallbackAverage {
+                reason += ". Inserisci più letture km per affinare la data."
+            }
+            return reason + "."
         case .time:
             return "\(base). Scadenza calcolata in base al tempo."
         case .none:
             return base.isEmpty ? "Intervento programmato automaticamente." : base + "."
         }
+    }
+
+    private func targetMileageForInterval(
+        _ interval: MaintenanceInterval,
+        lastMileage: Int?,
+        currentMileage: Int?
+    ) -> Int? {
+        guard let kmInterval = interval.kmInterval,
+              let currentMileage else { return nil }
+
+        if let lastMileage {
+            return lastMileage + kmInterval
+        }
+
+        return nextMileageMilestone(currentMileage: currentMileage, interval: kmInterval)
+    }
+
+    private func nextMileageMilestone(currentMileage: Int, interval: Int) -> Int {
+        guard interval > 0 else { return currentMileage }
+        let completedIntervals = currentMileage / interval
+        let nextInterval = currentMileage.isMultiple(of: interval) ? completedIntervals : completedIntervals + 1
+        return max(nextInterval, 1) * interval
     }
 
     private func estimatedCostForType(_ type: MaintenanceSchedule.MaintenanceType) -> Double? {
