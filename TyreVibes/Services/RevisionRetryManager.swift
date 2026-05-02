@@ -153,14 +153,19 @@ class RevisionRetryManager: ObservableObject {
         dateFormatter.dateFormat = "yyyy-MM-dd"
 
         return rawData.compactMap { dict in
-            guard let km = dict["km"],
-                  let esito = dict["esito"] else {
+            guard let km = dict["numKmiPcsRvs"] ?? dict["km"],
+                  let esito = dict["flgEsiRvsVei"] ?? dict["esito"] else {
                 return nil
             }
 
             var dataRevisione: Date?
-            if let dataStr = dict["data"] {
+            if let dataStr = dict["datRvs"] ?? dict["data"] {
                 dataRevisione = dateFormatter.date(from: dataStr)
+                if dataRevisione == nil {
+                    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.S"
+                    dataRevisione = dateFormatter.date(from: dataStr)
+                    dateFormatter.dateFormat = "yyyy-MM-dd"
+                }
             }
 
             return Revisione(

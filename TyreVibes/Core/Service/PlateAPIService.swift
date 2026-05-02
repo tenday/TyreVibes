@@ -171,7 +171,7 @@ class PlateAPIService {
 
         _ = await AuthTokenHelper.addAuthHeader(to: &request)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
@@ -276,7 +276,7 @@ class PlateAPIService {
             throw PlateAPIError.requestFailed(error)
         }
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
@@ -365,7 +365,7 @@ class PlateAPIService {
             throw PlateAPIError.requestFailed(error)
         }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse
@@ -450,7 +450,7 @@ class PlateAPIService {
         encoder.keyEncodingStrategy = .convertToSnakeCase
         request.httpBody = try encoder.encode(body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw PlateAPIError.invalidResponse

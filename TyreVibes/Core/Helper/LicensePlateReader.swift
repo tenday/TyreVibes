@@ -132,8 +132,8 @@ public class LicensePlateReader {
     // ⚡ URLSession ottimizzata per prestazioni migliori
     private static let optimizedSession: URLSession = {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 3.0     // 3s per richiesta
-        config.timeoutIntervalForResource = 5.0    // 5s totale per risorsa
+        config.timeoutIntervalForRequest = NetworkTimeout.plateProbeRequest
+        config.timeoutIntervalForResource = NetworkTimeout.plateProbeResource
         config.httpMaximumConnectionsPerHost = 8   // Max 8 connessioni parallele
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.urlCache = nil                      // Disabilita cache URLSession (usiamo la nostra)
@@ -153,7 +153,7 @@ public class LicensePlateReader {
         request.httpMethod = "GET"
         request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(error))
                 return
@@ -187,7 +187,7 @@ public class LicensePlateReader {
         req.httpMethod = "GET"
         req.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
         req.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
-        URLSession.shared.dataTask(with: req) { data, resp, err in
+        URLSession.tyreVibesShared.dataTask(with: req) { data, resp, err in
             if let err = err { completion(.failure(err)); return }
             guard let data = data, let html = String(data: data, encoding: .utf8) else {
                 completion(.failure(NSError(domain: "LicensePlateReader", code: 11002, userInfo: [NSLocalizedDescriptionKey: "Nessun HTML dal server"]))); return
@@ -230,7 +230,7 @@ public class LicensePlateReader {
             reloadReq.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
             let body = "v=\(v)&reason=q&k=\(siteKey)&c=\(c)&sa=&co=\(co)"
             reloadReq.httpBody = body.data(using: .utf8)
-            URLSession.shared.dataTask(with: reloadReq) { data2, resp2, err2 in
+            URLSession.tyreVibesShared.dataTask(with: reloadReq) { data2, resp2, err2 in
                 if let err2 = err2 { completion(.failure(err2)); return }
                 guard let data2 = data2, let txt = String(data: data2, encoding: .utf8) else {
                     completion(.failure(NSError(domain: "LicensePlateReader", code: 11006, userInfo: [NSLocalizedDescriptionKey: "Nessuna risposta da /reload"]))); return
@@ -330,7 +330,7 @@ public class LicensePlateReader {
         req.httpMethod = "GET"
         req.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
         req.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
-        URLSession.shared.dataTask(with: req) { data, _, err in
+        URLSession.tyreVibesShared.dataTask(with: req) { data, _, err in
             if let err = err { completion(.failure(err)); return }
             guard let data = data, let html = String(data: data, encoding: .utf8) else {
                 completion(.failure(NSError(domain:"LicensePlateReader", code:13003, userInfo:[NSLocalizedDescriptionKey:"Nessun HTML"])));
@@ -382,7 +382,7 @@ public class LicensePlateReader {
                 } catch {
                     completion(.failure(error)); return
                 }
-                URLSession.shared.dataTask(with: req) { data, _, err in
+                URLSession.tyreVibesShared.dataTask(with: req) { data, _, err in
                     if let err = err { completion(.failure(err)); return }
                     guard let data = data, let txt = String(data: data, encoding: .utf8) else {
                         completion(.failure(NSError(domain:"LicensePlateReader", code:13006, userInfo:[NSLocalizedDescriptionKey:"Nessuna risposta da /reload"])));
@@ -430,7 +430,7 @@ public class LicensePlateReader {
                     req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
                 } catch { completion(.failure(error)); return }
 
-                URLSession.shared.dataTask(with: req) { data, resp, err in
+                URLSession.tyreVibesShared.dataTask(with: req) { data, resp, err in
                     if let err = err { completion(.failure(err)); return }
                     guard let data = data else {
                         completion(.failure(NSError(domain: "LicensePlateReader", code: 12002, userInfo: [NSLocalizedDescriptionKey: "Nessun dato da Quattroruote"])))
@@ -479,7 +479,7 @@ public class LicensePlateReader {
                                     getReq.httpMethod = "POST"
                                     getReq.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
                                     getReq.setValue("application/json", forHTTPHeaderField: "Accept")
-                URLSession.shared.dataTask(with: getReq) { data2, resp2, err2 in
+                URLSession.tyreVibesShared.dataTask(with: getReq) { data2, resp2, err2 in
                     if let err2 = err2 {
                         completion(.failure(err2))
                         return
@@ -559,7 +559,7 @@ public class LicensePlateReader {
                                                 req.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
                                                 req.setValue("application/json", forHTTPHeaderField: "Accept")
 
-                                                URLSession.shared.dataTask(with: req) { data, resp, err in
+                                                URLSession.tyreVibesShared.dataTask(with: req) { data, resp, err in
                                                     if let err = err {
                                                         completion(.failure(err))
                                                         return
@@ -733,7 +733,7 @@ request.httpMethod = "POST"
 request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 request.httpBody = "{}".data(using: .utf8)
-let task = URLSession.shared.dataTask(with: request) { data, response, error in
+let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
     if let error = error {
         completion(.failure(error))
         return
@@ -762,8 +762,10 @@ public static func fetchRevisioniSecure(
     maxAttempts: Int = 15,
     completion: @escaping (Result<[[String:String]], Error>) -> Void
 ) {
+    let captchaCount = 10
+    let candidatesPerBatch = 4
+
     func attempt(_ remaining: Int) {
-        let captchaCount = 10
         let group = DispatchGroup()
         var captchaResults: [(id: String, image: String)] = []
         var firstError: Error?
@@ -795,26 +797,67 @@ public static func fetchRevisioniSecure(
                 }
                 return
             }
-            guard let best = chooseBestCaptcha(captchaResults) else {
+            let candidates = rankedCaptchaCandidates(captchaResults).prefix(candidatesPerBatch)
+            guard !candidates.isEmpty else {
                 completion(.failure(NSError(domain: "LicensePlateReader", code: 3011, userInfo: [NSLocalizedDescriptionKey: "Impossibile selezionare captcha"])))
                 return
             }
-            fetchCaptchaVerify(id: best.id, imageBase64: best.image) { verifyResult in
-                switch verifyResult {
-                case .failure(let error):
+
+            func verifyCandidate(_ index: Int) {
+                guard index < candidates.count else {
                     if remaining > 1 {
                         attempt(remaining - 1)
                     } else {
-                        completion(.failure(error))
+                        completion(.failure(NSError(domain: "LicensePlateReader", code: 3012, userInfo: [NSLocalizedDescriptionKey: "Impossibile risolvere il captcha"])))
                     }
                     return
+                }
+
+                let candidate = candidates[index]
+                fetchCaptchaVerify(id: candidate.id, imageBase64: candidate.image) { verifyResult in
+                switch verifyResult {
+                case .failure(let error):
+                    print("⚠️ [Revisioni] Captcha candidate \(index + 1)/\(candidates.count) fallito: \(error.localizedDescription)")
+                    verifyCandidate(index + 1)
+                    return
                 case .success(let guid):
-                    callRevisioniAPI(plate: plate, tipoVeicolo: tipoVeicolo, guid: guid, completion: completion)
+                    callRevisioniAPI(plate: plate, tipoVeicolo: tipoVeicolo, guid: guid) { apiResult in
+                        switch apiResult {
+                        case .success:
+                            completion(apiResult)
+                        case .failure(let error):
+                            print("⚠️ [Revisioni] GUID ottenuto ma API revisioni fallita: \(error.localizedDescription)")
+                            verifyCandidate(index + 1)
+                        }
+                    }
+                }
                 }
             }
+
+            verifyCandidate(0)
         }
     }
     attempt(maxAttempts)
+}
+
+private static func rankedCaptchaCandidates(_ captchas: [(id: String, image: String)]) -> [(id: String, image: String)] {
+    let scored = captchas.compactMap { captcha -> (captcha: (id: String, image: String), score: Double)? in
+        guard let data = Data(base64Encoded: captcha.image),
+              let uiImage = UIImage(data: data),
+              let cgImage = uiImage.cgImage else {
+            return nil
+        }
+
+        let inkScore = inkDensity(of: cgImage)
+        let spacing = averageCharSpacing(of: cgImage)
+        let leftPadding = leftmostInkPosition(of: cgImage)
+        let combined = inkScore - spacing * 0.01 + leftPadding * 0.001
+        return (captcha, combined)
+    }
+
+    return scored
+        .sorted { $0.score < $1.score }
+        .map { $0.captcha }
 }
 
 // Async/await wrapper per fetchRevisioniSecure
@@ -849,7 +892,7 @@ private static func callRevisioniAPI(
     request.httpMethod = "GET"
     request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
     request.setValue(guid, forHTTPHeaderField: "Guid")
-    let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
         if let error = error {
             completion(.failure(error))
             return
@@ -862,8 +905,10 @@ private static func callRevisioniAPI(
             let obj = try JSONSerialization.jsonObject(with: data, options: [])
             if let dict = obj as? [String: Any] {
                 guard let informations = dict["informations"] as? [[String: Any]] else {
-                    // Se non c'è "informations" restituisce array vuoto
-                    completion(.success([]))
+                    let message = (dict["messaggio"] as? String)
+                        ?? (dict["message"] as? String)
+                        ?? "Risposta revisioni senza campo informations"
+                    completion(.failure(NSError(domain: "LicensePlateReader", code: 3005, userInfo: [NSLocalizedDescriptionKey: message])))
                     return
                 }
                 // Estrai campi richiesti
@@ -953,7 +998,7 @@ DispatchQueue.global(qos: .userInitiated).async {
         completion(.failure(error))
         return
     }
-    let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
         if let error = error {
             completion(.failure(error))
             return
@@ -2465,7 +2510,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 exists = false
                 return nil
@@ -2597,7 +2642,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 6
+        request.timeoutInterval = NetworkTimeout.quickLookup
         request.setValue("motor", forHTTPHeaderField: "line-of-business")
         request.setValue("IT", forHTTPHeaderField: "backend-tenant")
         request.setValue("it-IT", forHTTPHeaderField: "mapped-lang")
@@ -2639,7 +2684,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
             return
         }
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.tyreVibesShared.dataTask(with: request) { data, _, error in
             if let error = error {
                 completion(.failure(error))
                 return
@@ -2689,7 +2734,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 6
+        request.timeoutInterval = NetworkTimeout.quickLookup
         request.setValue("motor", forHTTPHeaderField: "line-of-business")
         request.setValue("IT", forHTTPHeaderField: "backend-tenant")
         request.setValue("it-IT", forHTTPHeaderField: "mapped-lang")
@@ -2742,7 +2787,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         let snapshotRegistrationDate = plateData.registrationDate ?? ""
         let snapshotModelDetails = plateData.modelDetails ?? ""
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.tyreVibesShared.dataTask(with: request) { data, _, error in
             if let error = error { completion(.failure(error)); return }
             guard let data = data else {
                 completion(.failure(NSError(domain: "LicensePlateReader", code: 2, userInfo: nil)))
@@ -2829,7 +2874,7 @@ return
 
 var request = URLRequest(url: url)
 request.httpMethod = "POST"
-request.timeoutInterval = 6
+request.timeoutInterval = NetworkTimeout.quickLookup
 request.setValue("text/xml;charset=utf-8", forHTTPHeaderField: "Content-Type")
 request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 
@@ -2858,7 +2903,7 @@ let soapBody = """
 
 request.httpBody = soapBody.data(using: .utf8)
 
-URLSession.shared.dataTask(with: request) { data, response, error in
+URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
 if let error = error {
     completion(.failure(error))
     return
@@ -2883,7 +2928,7 @@ return
 
 var request = URLRequest(url: url)
 request.httpMethod = "POST"
-request.timeoutInterval = 6
+request.timeoutInterval = NetworkTimeout.quickLookup
 request.setValue("text/xml;charset=utf-8", forHTTPHeaderField: "Content-Type")
 request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
 request.setValue("\"VerificaClasseAmbientaleVeicoloSecure\"", forHTTPHeaderField: "SOAPAction")
@@ -2916,7 +2961,7 @@ let soapBody = """
 """
 request.httpBody = soapBody.data(using: .utf8)
 
-URLSession.shared.dataTask(with: request) { data, response, error in
+URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
 if let error = error { completion(.failure(error)); return }
 guard let data = data else {
     completion(.failure(NSError(domain: "LicensePlateReader", code: 6, userInfo: nil)))
@@ -2943,7 +2988,7 @@ guard let url = URL(string: urlString) else {
 var request = URLRequest(url: url)
 request.httpMethod = "GET"
 request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
-let task = URLSession.shared.dataTask(with: request) { data, response, error in
+let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
     if let error = error {
         completion(.failure(error))
         return
@@ -2973,7 +3018,7 @@ public static func fetchTyreBlackcircles(plate: String, completion: @escaping (R
     }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
-    request.timeoutInterval = 6
+    request.timeoutInterval = NetworkTimeout.quickLookup
     // Generate X-XSRF-TOKEN value
     let xsrfToken = generateBlackcirclesToken()
     // Headers richiesti
@@ -2990,7 +3035,7 @@ public static func fetchTyreBlackcircles(plate: String, completion: @escaping (R
     let bodyString = params.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }
         .joined(separator: "&")
     request.httpBody = bodyString.data(using: .utf8)
-    let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
         if let error = error {
             completion(.failure(error))
             return
@@ -3058,7 +3103,7 @@ public static func fetchTyreBlackcircles(plate: String, completion: @escaping (R
         }
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
             if let http = response as? HTTPURLResponse {
                 print("📡 Status:", http.statusCode)
             }
@@ -3075,13 +3120,13 @@ public static func fetchTyreBlackcircles(plate: String, completion: @escaping (R
         
         var request = URLRequest(url: url)
     request.httpMethod = "POST"
-    request.timeoutInterval = 6
+    request.timeoutInterval = NetworkTimeout.quickLookup
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = "{}".data(using: .utf8)
         
         do {
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
             if let http = response as? HTTPURLResponse {
                 print("📡 Status:", http.statusCode)
             }
@@ -3108,7 +3153,7 @@ guard let url = URL(string: urlString) else {
 completion(.failure(NSError(domain: "LicensePlateReader", code: 7, userInfo: nil)))
 return
 }
-URLSession.shared.dataTask(with: url) { data, _, error in
+URLSession.tyreVibesShared.dataTask(with: url) { data, _, error in
 if let error = error { completion(.failure(error)); return }
 guard let data = data else {
     completion(.failure(NSError(domain: "LicensePlateReader", code: 8, userInfo: nil)))

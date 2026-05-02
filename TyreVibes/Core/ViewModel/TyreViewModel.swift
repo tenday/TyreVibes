@@ -232,7 +232,7 @@ class TyreViewModel: ObservableObject {
         Task {
             await AuthTokenHelper.addAuthHeader(to: &request)
 
-            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            URLSession.tyreVibesShared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isLoading = false
 
@@ -287,7 +287,7 @@ class TyreViewModel: ObservableObject {
         Task {
             await AuthTokenHelper.addAuthHeader(to: &request)
 
-            URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            URLSession.tyreVibesShared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
                     print("❌ Errore network: \(error.localizedDescription)")
@@ -407,7 +407,7 @@ class TyreViewModel: ObservableObject {
         Task {
             await AuthTokenHelper.addAuthHeader(to: &request)
 
-            URLSession.shared.dataTask(with: request) { data, response, error in
+            URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
                     print("❌ Errore network: \(error.localizedDescription)")

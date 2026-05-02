@@ -186,7 +186,7 @@ class ACISPIDAuthService: ObservableObject {
             request.setValue("https://bollo.aci.it/", forHTTPHeaderField: "Referer")
             request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
 
-            URLSession.shared.dataTask(with: request) { data, response, error in
+            URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
                 if let error = error {
                     print("❌ [reCAPTCHA] Anchor error: \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
@@ -293,7 +293,7 @@ class ACISPIDAuthService: ObservableObject {
             print("🔍 [reCAPTCHA] Reload body: \(bodyString.prefix(200))…")
             request.httpBody = bodyString.data(using: .utf8)
 
-            URLSession.shared.dataTask(with: request) { data, response, error in
+            URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
                 if let error = error {
                     print("❌ [reCAPTCHA] Reload error: \(error.localizedDescription)")
                     completion(.failure(.networkError(error)))
@@ -413,7 +413,7 @@ class ACISPIDAuthService: ObservableObject {
 
                 print("🚗 [ACISPIDAuth] Richiesta vehicle -> \(self.vehicleEndpoint.absoluteString)")
 
-                URLSession.shared.dataTask(with: request) { data, response, error in
+                URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
                     if let error = error {
                         print("❌ [ACISPIDAuth] Errore rete vehicle: \(error.localizedDescription)")
                         completion(.failure(.networkError(error)))

@@ -1511,6 +1511,9 @@
     "Analisi in corso..." : {
 
     },
+    "Analisi visiva" : {
+
+    },
     "Analysis Complete" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5024,6 +5027,9 @@
           }
         }
       }
+    },
+    "Difetto %lld%%" : {
+
     },
     "Dimensione App" : {
       "extractionState" : "stale",
@@ -11240,6 +11246,9 @@
           }
         }
       }
+    },
+    "OK %lld%%" : {
+
     },
     "Oltre 100 kW" : {
       "comment" : "A label for the \"Beyond 100 kW\" column in the rate card.",

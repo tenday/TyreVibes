@@ -408,7 +408,7 @@ class ProfileViewModel: ObservableObject {
 
         Task {
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
+                let (data, _) = try await URLSession.tyreVibesShared.data(from: url)
                 if let image = UIImage(data: data) {
                     await MainActor.run {
                         self.profileImage = image

@@ -1,0 +1,4 @@
+.venv-tyreml/
+runs/
+output/ml/
+yolo*.pt

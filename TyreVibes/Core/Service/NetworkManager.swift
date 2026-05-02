@@ -1,6 +1,26 @@
 import Foundation
 import Supabase
 
+// MARK: - Network Timeout Policy
+enum NetworkTimeout {
+    static let standard: TimeInterval = 30.0
+    static let externalAPI: TimeInterval = 15.0
+    static let quickLookup: TimeInterval = 6.0
+    static let plateProbeRequest: TimeInterval = 3.0
+    static let plateProbeResource: TimeInterval = 5.0
+}
+
+extension URLSession {
+    static let tyreVibesShared: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = NetworkTimeout.standard
+        config.timeoutIntervalForResource = NetworkTimeout.standard
+        config.waitsForConnectivity = true
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: config)
+    }()
+}
+
 // MARK: - Network Errors
 enum NetworkError: LocalizedError {
     case invalidURL
@@ -43,6 +63,43 @@ enum NetworkError: LocalizedError {
     }
 }
 
+extension NetworkError: AppErrorProtocol {
+    var title: String {
+        switch self {
+        case .timeout:
+            return "Timeout di rete"
+        case .unauthorized:
+            return "Sessione scaduta"
+        case .forbidden:
+            return "Accesso negato"
+        case .notFound:
+            return "Risorsa non trovata"
+        case .serverError, .httpError:
+            return "Errore server"
+        default:
+            return "Errore di rete"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .timeout:
+            return "La richiesta sta impiegando troppo tempo. Controlla la connessione e riprova."
+        default:
+            return errorDescription ?? "Si e verificato un errore di rete."
+        }
+    }
+
+    var actionTitle: String? {
+        switch self {
+        case .timeout, .networkError:
+            return "Riprova"
+        default:
+            return nil
+        }
+    }
+}
+
 // MARK: - HTTP Method
 enum HTTPMethod: String {
     case get = "GET"
@@ -58,7 +115,6 @@ class NetworkManager {
 
     private let session: URLSession
     private let baseURL: String
-    private let timeout: TimeInterval = 30.0
     private static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -71,13 +127,7 @@ class NetworkManager {
     }()
 
     private init() {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = timeout
-        config.timeoutIntervalForResource = timeout
-        config.waitsForConnectivity = true
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-
-        self.session = URLSession(configuration: config)
+        self.session = .tyreVibesShared
 
         // Load base URL from Api.plist
         if let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
@@ -203,9 +253,15 @@ class NetworkManager {
                 throw NetworkError.decodingError(error)
             }
         } catch let error as NetworkError {
+            showGlobalNetworkError(error)
             throw error
+        } catch let error as URLError where error.code == .timedOut {
+            showGlobalNetworkError(.timeout)
+            throw NetworkError.timeout
         } catch {
-            throw NetworkError.networkError(error)
+            let networkError = NetworkError.networkError(error)
+            showGlobalNetworkError(networkError)
+            throw networkError
         }
     }
 
@@ -260,9 +316,27 @@ class NetworkManager {
 
         logRequest(request)
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response, data: data)
-        logResponse(response, data: data)
+        do {
+            let (data, response) = try await session.data(for: request)
+            try validateResponse(response, data: data)
+            logResponse(response, data: data)
+        } catch let error as NetworkError {
+            showGlobalNetworkError(error)
+            throw error
+        } catch let error as URLError where error.code == .timedOut {
+            showGlobalNetworkError(.timeout)
+            throw NetworkError.timeout
+        } catch {
+            let networkError = NetworkError.networkError(error)
+            showGlobalNetworkError(networkError)
+            throw networkError
+        }
+    }
+
+    private func showGlobalNetworkError(_ error: NetworkError) {
+        Task { @MainActor in
+            ErrorHandler.shared.handle(error)
+        }
     }
 
     // MARK: - Validate Response
