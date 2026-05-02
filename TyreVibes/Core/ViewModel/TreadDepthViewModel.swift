@@ -52,6 +52,9 @@ class TreadDepthViewModel: ObservableObject {
     /// Storico misurazioni
     @Published var measurementHistory: [TreadDepthMeasurement] = []
 
+    /// Classificazione visiva good/defective dell'ultimo frame acquisito
+    @Published var tyreQualityPrediction: TyreQualityPrediction?
+
     // MARK: - Private Properties
 
     private let service = LiDARTreadMeasurementService.shared
@@ -105,6 +108,7 @@ class TreadDepthViewModel: ObservableObject {
         scanProgress = 0.0
         pointCount = 0
         errorMessage = nil
+        tyreQualityPrediction = nil
 
         service.startMeasurement(tyreId: tyreId, configuration: scanConfiguration)
 
@@ -130,6 +134,9 @@ class TreadDepthViewModel: ObservableObject {
 
             // Salva nello storico
             addToHistory(measurement)
+
+            statusMessage = "Analisi visiva pneumatico..."
+            tyreQualityPrediction = await classifyLatestCapturedFrame()
 
             measurementState = .completed
             statusMessage = "Misurazione completata!"
@@ -161,6 +168,7 @@ class TreadDepthViewModel: ObservableObject {
         cancelMeasurement()
         lastMeasurement = nil
         errorMessage = nil
+        tyreQualityPrediction = nil
         statusMessage = "Pronto per iniziare"
     }
 
@@ -270,6 +278,19 @@ class TreadDepthViewModel: ObservableObject {
     private func showErrorAlert(_ message: String) {
         errorMessage = message
         showError = true
+    }
+
+    private func classifyLatestCapturedFrame() async -> TyreQualityPrediction? {
+        guard let pixelBuffer = service.latestCapturedPixelBuffer else {
+            return nil
+        }
+
+        do {
+            return try await TyreQualityClassifierService.shared.classify(pixelBuffer: pixelBuffer)
+        } catch {
+            print("⚠️ [TreadDepthVM] Classificazione qualità pneumatico non riuscita: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     // MARK: - History Management

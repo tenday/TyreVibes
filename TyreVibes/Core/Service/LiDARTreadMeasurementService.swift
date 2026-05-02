@@ -27,6 +27,9 @@ class LiDARTreadMeasurementService: NSObject {
     /// Sessione di misurazione corrente
     private(set) var currentSession: MeasurementSession?
 
+    /// Ultimo frame RGB acquisito durante la scansione, usato per inferenza CoreML sul pneumatico.
+    private(set) var latestCapturedPixelBuffer: CVPixelBuffer?
+
     /// Filtro di Kalman per smoothing
     private var kalmanFilter: AdaptiveKalmanFilter?
 
@@ -135,6 +138,7 @@ class LiDARTreadMeasurementService: NSObject {
 
         currentSession = MeasurementSession(id: UUID(), startTime: Date())
         currentSession?.isProcessing = false
+        latestCapturedPixelBuffer = nil
 
         if config.enableKalmanFilter {
             kalmanFilter = AdaptiveKalmanFilter(
@@ -152,6 +156,7 @@ class LiDARTreadMeasurementService: NSObject {
     /// - Parameter frame: ARFrame corrente
     func captureFrame(_ frame: ARFrame) {
         guard let session = currentSession, !session.isProcessing else { return }
+        latestCapturedPixelBuffer = frame.capturedImage
 
         // Estrai depth map dal frame
         guard let sceneDepth = frame.sceneDepth else {
@@ -580,4 +585,3 @@ extension simd_float4 {
         return simd_float3(x, y, z)
     }
 }
-

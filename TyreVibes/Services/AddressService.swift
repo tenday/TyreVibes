@@ -14,7 +14,7 @@ class AddressService {
             return
         }
 
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        URLSession.tyreVibesShared.dataTask(with: url) { data, response, error in
             if let error = error {
                 completion(.failure(error))
                 return

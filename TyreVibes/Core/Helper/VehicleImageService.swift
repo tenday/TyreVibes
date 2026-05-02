@@ -138,7 +138,7 @@ class VehicleImageService {
         request.setValue(options.origin, forHTTPHeaderField: "Origin")
         request.setValue(options.userAgent, forHTTPHeaderField: "User-Agent")
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession.tyreVibesShared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(error)); return
             }

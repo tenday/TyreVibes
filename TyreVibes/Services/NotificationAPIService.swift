@@ -58,7 +58,7 @@ class NotificationAPIService {
         let jsonData = try JSONSerialization.data(withJSONObject: payload)
         request.httpBody = jsonData
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -96,7 +96,7 @@ class NotificationAPIService {
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -128,7 +128,7 @@ class NotificationAPIService {
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -169,7 +169,7 @@ class NotificationAPIService {
         let jsonData = try JSONSerialization.data(withJSONObject: payload)
         request.httpBody = jsonData
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -197,7 +197,7 @@ class NotificationAPIService {
         request.setValue("Bearer \(jwtToken)", forHTTPHeaderField: "Authorization")
         request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await URLSession.tyreVibesShared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse

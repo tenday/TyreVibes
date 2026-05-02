@@ -78,7 +78,11 @@ struct LiDARTreadMeasurementView: View {
         }
         .sheet(isPresented: $showResults) {
             if let measurement = viewModel.lastMeasurement {
-                MeasurementResultView(measurement: measurement, history: viewModel.measurementHistory)
+                MeasurementResultView(
+                    measurement: measurement,
+                    history: viewModel.measurementHistory,
+                    tyreQualityPrediction: viewModel.tyreQualityPrediction
+                )
             }
         }
         .alert("Errore", isPresented: $viewModel.showError) {
@@ -515,6 +519,7 @@ struct LiDARSettingsView: View {
 struct MeasurementResultView: View {
     let measurement: TreadDepthMeasurement
     let history: [TreadDepthMeasurement]
+    let tyreQualityPrediction: TyreQualityPrediction?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -523,6 +528,10 @@ struct MeasurementResultView: View {
                 VStack(spacing: 24) {
                     // Status indicator
                     statusSection
+
+                    if let tyreQualityPrediction {
+                        qualitySection(tyreQualityPrediction)
+                    }
 
                     // Profondità media
                     depthSection
@@ -585,6 +594,48 @@ struct MeasurementResultView: View {
         case "red": return .red
         default: return .gray
         }
+    }
+
+    private func qualitySection(_ prediction: TyreQualityPrediction) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: prediction.isDefective ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(prediction.isDefective ? .orange : .green)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Analisi visiva")
+                        .font(.customFont(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+
+                    Text(prediction.displayName)
+                        .font(.customFont(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                Spacer()
+
+                Text("\(prediction.confidencePercentage)%")
+                    .font(.customFont(size: 18, weight: .bold))
+                    .foregroundColor(prediction.isDefective ? .orange : .green)
+            }
+
+            if let good = prediction.probabilities["good"],
+               let defective = prediction.probabilities["defective"] {
+                HStack {
+                    Text("OK \(Int((good * 100).rounded()))%")
+                    Spacer()
+                    Text("Difetto \(Int((defective * 100).rounded()))%")
+                }
+                .font(.customFont(size: 13, weight: .regular))
+                .foregroundColor(.white.opacity(0.75))
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.customFieldColor)
+        )
     }
 
     private var depthSection: some View {
@@ -811,7 +862,11 @@ struct MeasurementHistoryView: View {
             }
         }
         .sheet(item: $selectedMeasurement) { measurement in
-            MeasurementResultView(measurement: measurement, history: measurements)
+            MeasurementResultView(
+                measurement: measurement,
+                history: measurements,
+                tyreQualityPrediction: nil
+            )
         }
     }
 

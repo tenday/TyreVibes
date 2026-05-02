@@ -130,12 +130,12 @@ final class ManufacturerMaintenanceService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue(apiKey, forHTTPHeaderField: "x-AuthKey")
-        request.timeoutInterval = 15
+        request.timeoutInterval = NetworkTimeout.externalAPI
 
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await URLSession.tyreVibesShared.data(for: request)
         } catch {
             throw ManufacturerMaintenanceError.networkError(error.localizedDescription)
         }

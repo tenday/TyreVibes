@@ -112,6 +112,7 @@ struct TyreVibesApp: App {
             .alert(item: $passwordRecoveryAlertItem) { alertItem in
                 Alert(title: Text(alertItem.title), message: Text(alertItem.message), dismissButton: .default(Text("OK")))
             }
+            .withErrorHandling()
             .onAppear {
                 Task { @MainActor in
                     let token = await SupabaseManager.client.auth.onAuthStateChange { event, session in

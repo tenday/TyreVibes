@@ -48,7 +48,7 @@ class GarageViewModel: ObservableObject {
             // Add JWT token
             await AuthTokenHelper.addAuthHeader(to: &request)
 
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, _) = try await URLSession.tyreVibesShared.data(for: request)
             // Save raw data to UserDefaults before decoding
             UserDefaults.standard.set(data, forKey: "cachedVehicles")
             let decodedResponse = try JSONDecoder().decode([VehicleResponse].self, from: data)
@@ -93,7 +93,7 @@ class GarageViewModel: ObservableObject {
                 // Add JWT token
                 await AuthTokenHelper.addAuthHeader(to: &request)
 
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.tyreVibesShared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         vehicles.removeAll { $0.vehicle.id == vehicle.id }

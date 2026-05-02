@@ -1810,6 +1810,7 @@ class OCRCameraView: UIView {
     private var camera: AVCaptureDevice?
     private var currentTorchLevel: Float = 0.3
     private var isSessionRunning = false
+    private var isTextAreaDetectionInFlight = false
     
     func stopCameraSession() {
         guard let session = captureSession, isSessionRunning else { return }
@@ -2010,14 +2011,77 @@ class OCRCameraView: UIView {
         // Crea CGImage mantenendo la qualità
         guard let cgImage = context.createCGImage(finalImage, from: finalImage.extent) else { return }
         
-        // Crop migliorato che mantiene più risoluzione
-        if let croppedImage = cropImageToCircleHighRes(cgImage) {
-            ocrManager?.extractTextFromImage(croppedImage)
+        processFrameForTextArea(cgImage)
+    }
+
+    private func processFrameForTextArea(_ image: CGImage) {
+        guard !isTextAreaDetectionInFlight else { return }
+        isTextAreaDetectionInFlight = true
+
+        Task { [weak self] in
+            guard let self else { return }
+
+            let detections = await TyreTextAreaDetectorService.shared.detect(in: image)
+            let croppedImage = self.cropImageUsingTextAreaDetections(detections, in: image)
+                ?? self.cropImageToCircleHighRes(image)
+
+            if let croppedImage {
+                self.ocrManager?.extractTextFromImage(croppedImage)
+            }
+
+            self.isTextAreaDetectionInFlight = false
         }
     }
-    
-    
-    
+
+    private func cropImageUsingTextAreaDetections(_ detections: [TyreTextAreaDetection], in image: CGImage) -> CGImage? {
+        guard !detections.isEmpty else { return nil }
+
+        let imageRect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        let candidateRects = prioritizedTextAreaDetections(detections)
+            .map { detection in
+                visionBoundingBoxToImageRect(detection.boundingBox, imageSize: imageRect.size)
+            }
+            .filter { $0.width >= 24 && $0.height >= 24 }
+
+        guard !candidateRects.isEmpty else { return nil }
+
+        let unionRect = candidateRects
+            .prefix(6)
+            .reduce(candidateRects[0]) { $0.union($1) }
+            .insetBy(dx: -40, dy: -40)
+            .intersection(imageRect)
+            .integral
+
+        guard unionRect.width >= 50, unionRect.height >= 50 else { return nil }
+        return image.cropping(to: unionRect)
+    }
+
+    private func prioritizedTextAreaDetections(_ detections: [TyreTextAreaDetection]) -> [TyreTextAreaDetection] {
+        var selected: [TyreTextAreaDetection] = []
+
+        for category in TyreSidewallTextCategory.allCases where category != .unknown {
+            if let best = detections
+                .filter({ $0.category == category })
+                .max(by: { $0.confidence < $1.confidence }) {
+                selected.append(best)
+            }
+        }
+
+        if selected.isEmpty {
+            selected = Array(detections.sorted { $0.confidence > $1.confidence }.prefix(6))
+        }
+
+        return selected
+    }
+
+    private func visionBoundingBoxToImageRect(_ boundingBox: CGRect, imageSize: CGSize) -> CGRect {
+        CGRect(
+            x: boundingBox.minX * imageSize.width,
+            y: (1 - boundingBox.maxY) * imageSize.height,
+            width: boundingBox.width * imageSize.width,
+            height: boundingBox.height * imageSize.height
+        )
+    }
 
     private func cropImageToCircleHighRes(_ image: CGImage) -> CGImage? {
         let imageWidth = image.width
