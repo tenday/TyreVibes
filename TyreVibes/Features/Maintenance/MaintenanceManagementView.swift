@@ -195,6 +195,9 @@ struct MaintenanceManagementView: View {
         }
         .onAppear {
             scheduleStore.removeLegacySeededSchedules(for: vehicleId)
+            Task {
+                await historyStore.refreshFromRemote(vehicleId: vehicleId)
+            }
             SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
             NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
             fetchOEMIntervalsIfNeeded()

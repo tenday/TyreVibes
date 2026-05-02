@@ -763,6 +763,21 @@ const parseToDate = (value) => {
     namedPlaceholders: false
   });
 
+  const maintenanceEntriesMigrationState = {
+    status: "pending",
+    error: null,
+    completedAt: null
+  };
+  const maintenanceAttachmentsMigrationState = {
+    status: "pending",
+    error: null,
+    completedAt: null
+  };
+  const userProfileImagesMigrationState = {
+    status: "pending",
+    error: null,
+    completedAt: null
+  };
 
   // ===== Router comune =====
   const router = express.Router();
@@ -786,6 +801,9 @@ const parseToDate = (value) => {
           activeConnections: poolState._allConnections.length - poolState._freeConnections.length,
           queuedRequests: poolState._connectionQueue.length
         },
+        maintenanceEntriesMigration: maintenanceEntriesMigrationState,
+        maintenanceAttachmentsMigration: maintenanceAttachmentsMigrationState,
+        userProfileImagesMigration: userProfileImagesMigrationState,
         uptime: process.uptime(),
         memory: {
           used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
@@ -1934,6 +1952,689 @@ router.get("/v1/tyres_vehicles/vehicle/:vehicleId", authenticateJWT, async (req,
     res.status(500).json({ message: "Errore server", error: err.message });
   } finally {
     conn.release();
+  }
+});
+
+const ensureMaintenanceEntriesTable = async (conn) => {
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS maintenance_entries (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      user_id VARCHAR(128) NOT NULL,
+      vehicle_id INT NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      note TEXT NULL,
+      completed_at DATETIME NOT NULL,
+      mileage INT NULL,
+      source VARCHAR(32) NOT NULL DEFAULT 'manual',
+      maintenance_type VARCHAR(64) NULL,
+      cost DECIMAL(10,2) NULL,
+      workshop_name VARCHAR(255) NULL,
+      workshop_id VARCHAR(128) NULL,
+      attachment_ids JSON NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_maintenance_entries_user_vehicle (user_id, vehicle_id),
+      INDEX idx_maintenance_entries_completed_at (completed_at)
+    )
+  `);
+};
+
+const ensureMaintenanceAttachmentsTable = async (conn) => {
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS maintenance_attachments (
+      id VARCHAR(64) NOT NULL PRIMARY KEY,
+      maintenance_entry_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(128) NOT NULL,
+      vehicle_id INT NOT NULL,
+      type VARCHAR(32) NOT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      mime_type VARCHAR(128) NOT NULL,
+      file_size INT NULL,
+      file_data LONGBLOB NULL,
+      thumbnail_data LONGBLOB NULL,
+      created_at DATETIME NOT NULL,
+      uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_maintenance_attachments_entry (maintenance_entry_id),
+      INDEX idx_maintenance_attachments_user_vehicle (user_id, vehicle_id),
+      INDEX idx_maintenance_attachments_created_at (created_at)
+    )
+  `);
+};
+
+const ensureUserProfileImagesTable = async (conn) => {
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_profile_images (
+      user_id VARCHAR(128) NOT NULL PRIMARY KEY,
+      file_name VARCHAR(255) NOT NULL,
+      mime_type VARCHAR(128) NOT NULL,
+      file_size INT NULL,
+      image_data LONGBLOB NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_profile_images_updated_at (updated_at)
+    )
+  `);
+};
+
+const runMaintenanceEntriesMigration = async () => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceEntriesTable(conn);
+    maintenanceEntriesMigrationState.status = "ready";
+    maintenanceEntriesMigrationState.error = null;
+    maintenanceEntriesMigrationState.completedAt = new Date().toISOString();
+    console.log("✅ maintenance_entries table ready");
+
+    await ensureMaintenanceAttachmentsTable(conn);
+    maintenanceAttachmentsMigrationState.status = "ready";
+    maintenanceAttachmentsMigrationState.error = null;
+    maintenanceAttachmentsMigrationState.completedAt = new Date().toISOString();
+    console.log("✅ maintenance_attachments table ready");
+
+    await ensureUserProfileImagesTable(conn);
+    userProfileImagesMigrationState.status = "ready";
+    userProfileImagesMigrationState.error = null;
+    userProfileImagesMigrationState.completedAt = new Date().toISOString();
+    console.log("✅ user_profile_images table ready");
+  } catch (err) {
+    const completedAt = new Date().toISOString();
+    if (maintenanceEntriesMigrationState.status !== "ready") {
+      maintenanceEntriesMigrationState.status = "failed";
+      maintenanceEntriesMigrationState.error = err.message;
+      maintenanceEntriesMigrationState.completedAt = completedAt;
+    }
+    if (maintenanceAttachmentsMigrationState.status !== "ready") {
+      maintenanceAttachmentsMigrationState.status = "failed";
+      maintenanceAttachmentsMigrationState.error = err.message;
+      maintenanceAttachmentsMigrationState.completedAt = completedAt;
+    }
+    if (userProfileImagesMigrationState.status !== "ready") {
+      userProfileImagesMigrationState.status = "failed";
+      userProfileImagesMigrationState.error = err.message;
+      userProfileImagesMigrationState.completedAt = completedAt;
+    }
+    console.error("❌ Maintenance persistence migration failed:", err);
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+runMaintenanceEntriesMigration();
+
+const toMysqlDateTime = (date) => {
+  const resolved = date instanceof Date ? date : parseToDate(date);
+  if (!resolved || Number.isNaN(resolved.getTime())) return null;
+  return resolved.toISOString().slice(0, 19).replace("T", " ");
+};
+
+const toIsoStringOrNull = (value) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : parseToDate(value);
+  return date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+};
+
+const parseJsonArrayOrNull = (value) => {
+  if (value == null) return null;
+  if (Array.isArray(value)) return value;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const base64ToBufferOrNull = (value) => {
+  if (!value) return null;
+  const cleaned = String(value).replace(/^data:[^;]+;base64,/, "");
+  return Buffer.from(cleaned, "base64");
+};
+
+const formatMaintenanceEntry = (row) => ({
+  id: row.id,
+  vehicleId: row.vehicle_id,
+  title: row.title,
+  note: row.note,
+  date: toIsoStringOrNull(row.completed_at),
+  mileage: row.mileage == null ? null : Number(row.mileage),
+  source: row.source,
+  maintenanceType: row.maintenance_type,
+  cost: row.cost == null ? null : Number(row.cost),
+  workshopName: row.workshop_name,
+  workshopId: row.workshop_id,
+  attachmentIds: parseJsonArrayOrNull(row.attachment_ids),
+  createdAt: toIsoStringOrNull(row.created_at),
+  updatedAt: toIsoStringOrNull(row.updated_at)
+});
+
+const formatMaintenanceAttachment = (row, includeData = false) => {
+  const attachment = {
+    id: row.id,
+    entryId: row.maintenance_entry_id,
+    vehicleId: row.vehicle_id,
+    type: row.type,
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    fileSize: row.file_size == null ? null : Number(row.file_size),
+    createdAt: toIsoStringOrNull(row.created_at),
+    uploadedAt: toIsoStringOrNull(row.uploaded_at),
+    updatedAt: toIsoStringOrNull(row.updated_at)
+  };
+
+  if (includeData) {
+    attachment.dataBase64 = bufferToBase64(row.file_data);
+    attachment.thumbnailBase64 = bufferToBase64(row.thumbnail_data);
+  }
+
+  return attachment;
+};
+
+const formatUserProfileImage = (row, includeData = true) => {
+  const profileImage = {
+    userId: row.user_id,
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    fileSize: row.file_size == null ? null : Number(row.file_size),
+    createdAt: toIsoStringOrNull(row.created_at),
+    updatedAt: toIsoStringOrNull(row.updated_at)
+  };
+
+  if (includeData) {
+    profileImage.imageBase64 = bufferToBase64(row.image_data);
+  }
+
+  return profileImage;
+};
+
+const appendMaintenanceAttachmentId = async (conn, userId, entryId, attachmentId) => {
+  const [rows] = await conn.execute(
+    `SELECT attachment_ids FROM maintenance_entries WHERE id = ? AND user_id = ? LIMIT 1`,
+    [entryId, userId]
+  );
+  if (rows.length === 0) return;
+
+  const attachmentIds = parseJsonArrayOrNull(rows[0].attachment_ids) || [];
+  if (!attachmentIds.includes(attachmentId)) {
+    attachmentIds.push(attachmentId);
+    await conn.execute(
+      `UPDATE maintenance_entries SET attachment_ids = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+      [JSON.stringify(attachmentIds), entryId, userId]
+    );
+  }
+};
+
+const removeMaintenanceAttachmentId = async (conn, userId, entryId, attachmentId) => {
+  const [rows] = await conn.execute(
+    `SELECT attachment_ids FROM maintenance_entries WHERE id = ? AND user_id = ? LIMIT 1`,
+    [entryId, userId]
+  );
+  if (rows.length === 0) return;
+
+  const attachmentIds = (parseJsonArrayOrNull(rows[0].attachment_ids) || [])
+    .filter(id => id !== attachmentId);
+  await conn.execute(
+    `UPDATE maintenance_entries SET attachment_ids = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+    [attachmentIds.length > 0 ? JSON.stringify(attachmentIds) : null, entryId, userId]
+  );
+};
+
+router.get("/v1/maintenance_entries/vehicle/:vehicleId", authenticateJWT, async (req, res) => {
+  const { vehicleId } = req.params;
+  const userId = authenticatedUserId(req);
+
+  if (!vehicleId) {
+    return res.status(400).json({ message: "vehicleId è richiesto." });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceEntriesTable(conn);
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    const [rows] = await conn.execute(
+      `SELECT *
+       FROM maintenance_entries
+       WHERE user_id = ? AND vehicle_id = ?
+       ORDER BY completed_at DESC, updated_at DESC`,
+      [userId, vehicleId]
+    );
+
+    res.status(200).json(rows.map(formatMaintenanceEntry));
+  } catch (err) {
+    console.error("Errore GET /v1/maintenance_entries/vehicle/:vehicleId:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.post("/v1/maintenance_entries", authenticateJWT, async (req, res) => {
+  const data = req.body || {};
+  const userId = authenticatedUserId(req);
+  const vehicleId = data.vehicle_id ?? data.vehicleId;
+  const id = data.id || crypto.randomUUID();
+  const title = data.title;
+  const completedAt = toMysqlDateTime(data.date ?? data.completed_at ?? data.completedAt) || toMysqlDateTime(new Date());
+  const attachmentIds = Array.isArray(data.attachment_ids)
+    ? data.attachment_ids
+    : Array.isArray(data.attachmentIds)
+      ? data.attachmentIds
+      : null;
+
+  if (!vehicleId || !title) {
+    return res.status(400).json({ message: "vehicle_id e title sono obbligatori." });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceEntriesTable(conn);
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    await conn.execute(
+      `INSERT INTO maintenance_entries (
+        id, user_id, vehicle_id, title, note, completed_at, mileage, source,
+        maintenance_type, cost, workshop_name, workshop_id, attachment_ids
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        note = VALUES(note),
+        completed_at = VALUES(completed_at),
+        mileage = VALUES(mileage),
+        source = VALUES(source),
+        maintenance_type = VALUES(maintenance_type),
+        cost = VALUES(cost),
+        workshop_name = VALUES(workshop_name),
+        workshop_id = VALUES(workshop_id),
+        attachment_ids = VALUES(attachment_ids),
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        id,
+        userId,
+        vehicleId,
+        title,
+        data.note ?? null,
+        completedAt,
+        data.mileage ?? null,
+        data.source ?? "manual",
+        data.maintenance_type ?? data.maintenanceType ?? null,
+        data.cost ?? null,
+        data.workshop_name ?? data.workshopName ?? null,
+        data.workshop_id ?? data.workshopId ?? null,
+        attachmentIds ? JSON.stringify(attachmentIds) : null
+      ]
+    );
+
+    const [rows] = await conn.execute(
+      `SELECT * FROM maintenance_entries WHERE id = ? AND user_id = ? LIMIT 1`,
+      [id, userId]
+    );
+
+    res.status(201).json(formatMaintenanceEntry(rows[0]));
+  } catch (err) {
+    console.error("Errore POST /v1/maintenance_entries:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.patch("/v1/maintenance_entries/:entryId/mileage", authenticateJWT, async (req, res) => {
+  const { entryId } = req.params;
+  const userId = authenticatedUserId(req);
+  const mileage = req.body?.mileage;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceEntriesTable(conn);
+
+    const [rows] = await conn.execute(
+      `SELECT vehicle_id FROM maintenance_entries WHERE id = ? AND user_id = ? LIMIT 1`,
+      [entryId, userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Manutenzione non trovata." });
+    }
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, rows[0].vehicle_id);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    await conn.execute(
+      `UPDATE maintenance_entries SET mileage = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+      [mileage ?? null, entryId, userId]
+    );
+
+    res.status(204).send();
+  } catch (err) {
+    console.error("Errore PATCH /v1/maintenance_entries/:entryId/mileage:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.get("/v1/maintenance_attachments/entry/:entryId", authenticateJWT, async (req, res) => {
+  const { entryId } = req.params;
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceEntriesTable(conn);
+    await ensureMaintenanceAttachmentsTable(conn);
+
+    const [entryRows] = await conn.execute(
+      `SELECT vehicle_id FROM maintenance_entries WHERE id = ? AND user_id = ? LIMIT 1`,
+      [entryId, userId]
+    );
+    if (entryRows.length === 0) {
+      return res.status(404).json({ message: "Manutenzione non trovata." });
+    }
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, entryRows[0].vehicle_id);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    const [rows] = await conn.execute(
+      `SELECT id, maintenance_entry_id, user_id, vehicle_id, type, file_name, mime_type, file_size, created_at, uploaded_at, updated_at
+       FROM maintenance_attachments
+       WHERE user_id = ? AND maintenance_entry_id = ?
+       ORDER BY created_at DESC, uploaded_at DESC`,
+      [userId, entryId]
+    );
+
+    res.status(200).json(rows.map(row => formatMaintenanceAttachment(row)));
+  } catch (err) {
+    console.error("Errore GET /v1/maintenance_attachments/entry/:entryId:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.get("/v1/maintenance_attachments/:attachmentId/content", authenticateJWT, async (req, res) => {
+  const { attachmentId } = req.params;
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceAttachmentsTable(conn);
+
+    const [rows] = await conn.execute(
+      `SELECT *
+       FROM maintenance_attachments
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`,
+      [attachmentId, userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Allegato non trovato." });
+    }
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, rows[0].vehicle_id);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    res.status(200).json(formatMaintenanceAttachment(rows[0], true));
+  } catch (err) {
+    console.error("Errore GET /v1/maintenance_attachments/:attachmentId/content:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.post("/v1/maintenance_attachments", authenticateJWT, async (req, res) => {
+  const data = req.body || {};
+  const userId = authenticatedUserId(req);
+  const id = data.id || crypto.randomUUID();
+  const entryId = data.entry_id ?? data.entryId ?? data.maintenance_entry_id ?? data.maintenanceEntryId;
+  const vehicleIdFromPayload = data.vehicle_id ?? data.vehicleId;
+  const type = data.type;
+  const fileName = data.file_name ?? data.fileName;
+  const mimeType = data.mime_type ?? data.mimeType ?? (type === "pdf" ? "application/pdf" : "image/jpeg");
+  const fileData = base64ToBufferOrNull(data.data_base64 ?? data.dataBase64);
+  const thumbnailData = base64ToBufferOrNull(data.thumbnail_base64 ?? data.thumbnailBase64);
+  const createdAt = toMysqlDateTime(data.created_at ?? data.createdAt) || toMysqlDateTime(new Date());
+
+  if (!entryId || !type || !fileName) {
+    return res.status(400).json({ message: "entry_id, type e file_name sono obbligatori." });
+  }
+  if (!["photo", "pdf"].includes(type)) {
+    return res.status(400).json({ message: "type deve essere photo o pdf." });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceEntriesTable(conn);
+    await ensureMaintenanceAttachmentsTable(conn);
+
+    const [entryRows] = await conn.execute(
+      `SELECT vehicle_id FROM maintenance_entries WHERE id = ? AND user_id = ? LIMIT 1`,
+      [entryId, userId]
+    );
+    const vehicleId = entryRows[0]?.vehicle_id ?? vehicleIdFromPayload;
+    if (!vehicleId) {
+      return res.status(400).json({ message: "vehicle_id è richiesto quando la manutenzione non è ancora sincronizzata." });
+    }
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, vehicleId);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    await conn.execute(
+      `INSERT INTO maintenance_attachments (
+        id, maintenance_entry_id, user_id, vehicle_id, type, file_name, mime_type,
+        file_size, file_data, thumbnail_data, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        maintenance_entry_id = VALUES(maintenance_entry_id),
+        vehicle_id = VALUES(vehicle_id),
+        type = VALUES(type),
+        file_name = VALUES(file_name),
+        mime_type = VALUES(mime_type),
+        file_size = VALUES(file_size),
+        file_data = COALESCE(VALUES(file_data), file_data),
+        thumbnail_data = COALESCE(VALUES(thumbnail_data), thumbnail_data),
+        created_at = VALUES(created_at),
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        id,
+        entryId,
+        userId,
+        vehicleId,
+        type,
+        fileName,
+        mimeType,
+        data.file_size ?? data.fileSize ?? (fileData ? fileData.length : null),
+        fileData,
+        thumbnailData,
+        createdAt
+      ]
+    );
+
+    await appendMaintenanceAttachmentId(conn, userId, entryId, id);
+
+    const [rows] = await conn.execute(
+      `SELECT id, maintenance_entry_id, user_id, vehicle_id, type, file_name, mime_type, file_size, created_at, uploaded_at, updated_at
+       FROM maintenance_attachments
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`,
+      [id, userId]
+    );
+
+    res.status(201).json(formatMaintenanceAttachment(rows[0]));
+  } catch (err) {
+    console.error("Errore POST /v1/maintenance_attachments:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.delete("/v1/maintenance_attachments/:attachmentId", authenticateJWT, async (req, res) => {
+  const { attachmentId } = req.params;
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureMaintenanceAttachmentsTable(conn);
+
+    const [rows] = await conn.execute(
+      `SELECT maintenance_entry_id, vehicle_id FROM maintenance_attachments WHERE id = ? AND user_id = ? LIMIT 1`,
+      [attachmentId, userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Allegato non trovato." });
+    }
+
+    const ownsVehicle = await ensureVehicleOwnership(conn, userId, rows[0].vehicle_id);
+    if (!ownsVehicle) {
+      return res.status(403).json({ message: "Accesso non autorizzato al veicolo." });
+    }
+
+    await conn.execute(
+      `DELETE FROM maintenance_attachments WHERE id = ? AND user_id = ?`,
+      [attachmentId, userId]
+    );
+    await removeMaintenanceAttachmentId(conn, userId, rows[0].maintenance_entry_id, attachmentId);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error("Errore DELETE /v1/maintenance_attachments/:attachmentId:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.get("/v1/profile_image", authenticateJWT, async (req, res) => {
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureUserProfileImagesTable(conn);
+
+    const [rows] = await conn.execute(
+      `SELECT *
+       FROM user_profile_images
+       WHERE user_id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(200).json({ userId, imageBase64: null });
+    }
+
+    res.status(200).json(formatUserProfileImage(rows[0], true));
+  } catch (err) {
+    console.error("Errore GET /v1/profile_image:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.put("/v1/profile_image", authenticateJWT, async (req, res) => {
+  const userId = authenticatedUserId(req);
+  const data = req.body || {};
+  const imageData = base64ToBufferOrNull(data.image_base64 ?? data.imageBase64);
+  const mimeType = data.mime_type ?? data.mimeType ?? "image/jpeg";
+  const fileName = data.file_name ?? data.fileName ?? "profile.jpg";
+
+  if (!imageData) {
+    return res.status(400).json({ message: "image_base64 è richiesto." });
+  }
+
+  if (!["image/jpeg", "image/png", "image/heic", "image/heif"].includes(mimeType)) {
+    return res.status(400).json({ message: "Formato immagine non supportato." });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureUserProfileImagesTable(conn);
+
+    await conn.execute(
+      `INSERT INTO user_profile_images (
+        user_id, file_name, mime_type, file_size, image_data
+      )
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        file_name = VALUES(file_name),
+        mime_type = VALUES(mime_type),
+        file_size = VALUES(file_size),
+        image_data = VALUES(image_data),
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        userId,
+        fileName,
+        mimeType,
+        data.file_size ?? data.fileSize ?? imageData.length,
+        imageData
+      ]
+    );
+
+    const [rows] = await conn.execute(
+      `SELECT *
+       FROM user_profile_images
+       WHERE user_id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    res.status(200).json(formatUserProfileImage(rows[0], false));
+  } catch (err) {
+    console.error("Errore PUT /v1/profile_image:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.delete("/v1/profile_image", authenticateJWT, async (req, res) => {
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureUserProfileImagesTable(conn);
+
+    await conn.execute(
+      `DELETE FROM user_profile_images WHERE user_id = ?`,
+      [userId]
+    );
+
+    res.status(204).send();
+  } catch (err) {
+    console.error("Errore DELETE /v1/profile_image:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
