@@ -32,8 +32,6 @@ struct ScanReceiptSheet: View {
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
-            .animation(reduceMotion ? nil : AppMotion.smooth, value: viewModel.scannedImage != nil)
-            .animation(reduceMotion ? nil : AppMotion.smooth, value: viewModel.isProcessing)
             .navigationTitle("Scansiona ricevuta")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -94,7 +92,7 @@ struct ScanReceiptSheet: View {
                     .foregroundColor(.cyan)
                     .scaleEffect(capturePulse && !reduceMotion ? 1.04 : 1.0)
             }
-            .animation(reduceMotion ? nil : AppMotion.subtlePulse, value: capturePulse)
+            .animation(nil, value: capturePulse)
 
             Text("Scansiona la ricevuta")
                 .font(.customFont(size: 20, weight: .semibold))
@@ -166,11 +164,7 @@ struct ScanReceiptSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: "191919"))
         .onAppear {
-            capturePulse = false
-            if reduceMotion { return }
-            withAnimation(AppMotion.subtlePulse) {
-                capturePulse = true
-            }
+            capturePulse = true
         }
         .onDisappear {
             capturePulse = false
@@ -206,7 +200,6 @@ struct ScanReceiptSheet: View {
                                 .frame(height: 3)
                                 .shadow(color: .cyan.opacity(0.7), radius: 12)
                                 .offset(y: processingSweep && !reduceMotion ? 244 : 12)
-                                .animation(reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: processingSweep)
                         }
                         .shadow(color: .cyan.opacity(0.18), radius: 18, x: 0, y: 12)
                 } else {
@@ -227,11 +220,7 @@ struct ScanReceiptSheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(hex: "191919"))
         .onAppear {
-            processingSweep = false
-            if reduceMotion { return }
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                processingSweep = true
-            }
+            processingSweep = true
         }
         .onDisappear {
             processingSweep = false
@@ -258,10 +247,8 @@ struct ScanReceiptSheet: View {
 
                     Button {
                         AppHaptics.impact(.light)
-                        withAnimation(reduceMotion ? nil : AppMotion.smooth) {
-                            viewModel.scannedImage = nil
-                            viewModel.ocrCompleted = false
-                        }
+                        viewModel.scannedImage = nil
+                        viewModel.ocrCompleted = false
                     } label: {
                         Label("Scansiona di nuovo", systemImage: "arrow.clockwise")
                             .font(.customFont(size: 14, weight: .medium))
@@ -354,10 +341,8 @@ struct ScanReceiptSheet: View {
         .scrollDismissesKeyboard(.interactively)
         .onAppear {
             formAppeared = false
-            withAnimation(reduceMotion ? nil : AppMotion.smooth.delay(0.05)) {
-                formAppeared = true
-            }
+            formAppeared = true
         }
-        .animation(reduceMotion ? nil : AppMotion.smooth, value: viewModel.errorMessage)
+        .animation(nil, value: viewModel.errorMessage)
     }
 }
