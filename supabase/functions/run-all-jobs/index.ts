@@ -11,6 +11,23 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? 'https://jbcbrnegmqraivdfmlsn.supabase.co'
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
+const JOBS_SECRET = Deno.env.get('BACKGROUND_JOBS_SECRET') ?? ''
+
+function isAuthorized(req: Request): boolean {
+  if (!JOBS_SECRET) {
+    console.error('❌ BACKGROUND_JOBS_SECRET non configurato')
+    return false
+  }
+
+  const authHeader = req.headers.get('authorization')
+  const cronHeader = req.headers.get('x-cron-secret')
+
+  if (cronHeader === JOBS_SECRET) return true
+  if (authHeader === `Bearer ${JOBS_SECRET}`) return true
+
+  return false
+}
+
 async function runJob(jobName: string): Promise<any> {
   console.log(`🚀 Esecuzione job: ${jobName}`)
 
@@ -19,7 +36,8 @@ async function runJob(jobName: string): Promise<any> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-cron-secret': JOBS_SECRET
       }
     })
 
@@ -45,6 +63,13 @@ serve(async (req) => {
   // Gestione CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST' || !isAuthorized(req)) {
+    return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 401
+    })
   }
 
   try {

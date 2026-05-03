@@ -51,7 +51,7 @@ echo ""
 # Deploy di ogni funzione
 for func in "${FUNCTIONS[@]}"; do
     echo "🚀 Deploy di $func..."
-    supabase functions deploy $func --no-verify-jwt
+    supabase functions deploy $func
 
     if [ $? -eq 0 ]; then
         echo "✅ $func deployata con successo"
