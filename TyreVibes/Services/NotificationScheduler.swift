@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import UserNotifications
 
 @MainActor
 class NotificationScheduler: ObservableObject {
@@ -509,7 +510,7 @@ class NotificationScheduler: ObservableObject {
     }
 
     private func localMaintenanceIdentifier(vehicleId: Int, schedule: MaintenanceSchedule) -> String {
-        "maintenance-\(vehicleId)-\(schedule.type.rawValue)"
+        "maintenance-\(vehicleId)-\(schedule.id)"
     }
 
     private func localMaintenanceBody(
@@ -581,6 +582,7 @@ class NotificationScheduler: ObservableObject {
                     "notificationGroup": "maintenance",
                     "notificationId": notification.id,
                     "vehicleId": String(vehicleId),
+                    "scheduleId": notification.id.replacingOccurrences(of: "maintenance-\(vehicleId)-", with: ""),
                     "scheduledDate": ISO8601DateFormatter().string(from: dueDate),
                     "priority": notification.priority.rawValue
                 ],
@@ -589,6 +591,7 @@ class NotificationScheduler: ObservableObject {
             )
 
             do {
+                guard await ensureNotificationAuthorization() else { return }
                 try await NotificationManager.shared.schedule(
                     config,
                     at: reminderFireDate(for: dueDate, advanceDays: reminderDaysAdvance)
@@ -596,6 +599,88 @@ class NotificationScheduler: ObservableObject {
             } catch {
                 print("Failed to schedule maintenance notification \(notification.id): \(error)")
             }
+        }
+    }
+
+    func handleMaintenanceNotificationResponse(
+        actionIdentifier: String,
+        userInfo: [AnyHashable: Any]
+    ) {
+        guard userInfo["notificationGroup"] as? String == "maintenance",
+              let vehicleIdString = userInfo["vehicleId"] as? String,
+              let vehicleId = Int(vehicleIdString) else { return }
+
+        let notificationId = userInfo["notificationId"] as? String
+        let scheduleId = userInfo["scheduleId"] as? String
+
+        switch actionIdentifier {
+        case NotificationManager.NotificationAction.complete.rawValue:
+            if let scheduleId {
+                MaintenanceScheduleStore.shared.markCompleted(scheduleId: scheduleId, vehicleId: vehicleId)
+            }
+            if let notificationId {
+                NotificationManager.shared.cancel(identifier: notificationId)
+            }
+            scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
+
+        case NotificationManager.NotificationAction.snooze.rawValue:
+            guard let notificationId else { return }
+            Task {
+                let pending = await NotificationManager.shared.getPendingNotifications()
+                guard let request = pending.first(where: { $0.identifier == notificationId }) else { return }
+
+                NotificationManager.shared.cancel(identifier: notificationId)
+
+                let config = NotificationManager.NotificationConfig(
+                    type: .maintenanceReminder,
+                    title: request.content.title,
+                    body: request.content.body,
+                    identifier: notificationId,
+                    userInfo: Dictionary(
+                        uniqueKeysWithValues: request.content.userInfo.compactMap { key, value in
+                            guard let key = key as? String else { return nil }
+                            return (key, value)
+                        }
+                    ),
+                    categoryIdentifier: NotificationManager.NotificationType.maintenanceReminder.category,
+                    threadIdentifier: request.content.threadIdentifier
+                )
+
+                do {
+                    guard await self.ensureNotificationAuthorization() else { return }
+                    try await NotificationManager.shared.schedule(config, after: 24 * 60 * 60)
+                } catch {
+                    print("Failed to snooze maintenance notification \(notificationId): \(error)")
+                }
+            }
+
+        default:
+            NotificationCenter.default.post(
+                name: Notification.Name("NotificationTapped"),
+                object: nil,
+                userInfo: userInfo
+            )
+        }
+    }
+
+    private func ensureNotificationAuthorization() async -> Bool {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            await NotificationManager.shared.prepareNotificationCategories()
+            return true
+        case .notDetermined:
+            do {
+                return try await NotificationManager.shared.requestAuthorization()
+            } catch {
+                print("Failed to request notification authorization: \(error)")
+                return false
+            }
+        case .denied:
+            return false
+        @unknown default:
+            return false
         }
     }
 

@@ -83,6 +83,8 @@ class TyreDetailViewModel: ObservableObject {
     // MARK: - Load from Database
 
     private func loadFromSavedAnalysis(_ analysis: TyreAnalysisRecord) async {
+        resetAnalysisData()
+
         // Carica dati profondità battistrada
         if let fl = analysis.depthFrontLeft,
            let fr = analysis.depthFrontRight,

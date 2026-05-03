@@ -139,6 +139,16 @@
         }
       }
     },
+    "%@, %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
     "%@, %@ %@" : {
       "comment" : "A sublabel displaying the city, province, and postal code of an address.",
       "extractionState" : "manual",
@@ -1904,6 +1914,9 @@
         }
       }
     },
+    "Apri dettaglio gomma" : {
+
+    },
     "Apri il centro notifiche" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3281,6 +3294,16 @@
         }
       }
     },
+    "Checkpoint %lld di %lld" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Checkpoint %1$lld di %2$lld"
+          }
+        }
+      }
+    },
     "Chiama officina" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3509,7 +3532,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Color"
+            "value" : "Colore"
           }
         }
       }
@@ -4536,6 +4559,9 @@
         }
       }
     },
+    "Dati facoltativi" : {
+
+    },
     "Dati Personali" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5461,6 +5487,9 @@
         }
       }
     },
+    "Eliminare manutenzione?" : {
+
+    },
     "Email" : {
       "comment" : "A label displayed above the user's email text field.",
       "extractionState" : "manual",
@@ -6041,6 +6070,9 @@
         }
       }
     },
+    "Export non riuscito" : {
+
+    },
     "Export PDF" : {
       "comment" : "A menu item that allows the user to export the current report as a PDF.",
       "extractionState" : "manual",
@@ -6545,7 +6577,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fuel Type"
+            "value" : "Alimentazione"
           }
         }
       }
@@ -8266,7 +8298,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "License plate"
+            "value" : "Targa"
           }
         }
       }
@@ -9660,6 +9692,9 @@
         }
       }
     },
+    "Manutenzione registrata" : {
+
+    },
     "Manutenzione smart" : {
 
     },
@@ -10966,7 +11001,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notifications"
+            "value" : "Notifiche"
           }
         }
       }
@@ -11303,7 +11338,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Or"
+            "value" : "Oppure"
           }
         }
       }
@@ -13921,7 +13956,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search..."
+            "value" : "Cerca..."
           }
         }
       }
@@ -14174,6 +14209,9 @@
         }
       }
     },
+    "Set registrati per tipologia" : {
+
+    },
     "Settings" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -14220,7 +14258,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share"
+            "value" : "Condividi"
           }
         }
       }
@@ -15537,6 +15575,9 @@
         }
       }
     },
+    "Trascina per ruotare • Tocca una ruota" : {
+
+    },
     "Tread Analysis" : {
       "comment" : "The title of the toolbar item in the Tread Analysis result view.",
       "extractionState" : "manual",
@@ -15593,6 +15634,9 @@
           }
         }
       }
+    },
+    "Tutti i dati obbligatori raccolti." : {
+
     },
     "Tutti i file temporanei sono stati rimossi." : {
       "extractionState" : "stale",

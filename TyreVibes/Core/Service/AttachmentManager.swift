@@ -1,6 +1,45 @@
 import Foundation
 import UIKit
 
+private enum AttachmentRemoteSync {
+    struct RemoteAttachment: Codable {
+        let id: String
+        let entryId: String
+        let vehicleId: Int
+        let type: String
+        let fileName: String
+        let fileSize: Int
+        let mimeType: String
+        let createdAt: Date
+        let dataBase64: String?
+        let thumbnailBase64: String?
+    }
+
+    struct RemoteAttachmentResponse: Decodable {
+        let id: String
+        let entryId: String
+        let vehicleId: Int
+        let type: String
+        let fileName: String
+        let fileSize: Int?
+        let mimeType: String
+        let createdAt: Date?
+    }
+
+    static func upsert(_ attachment: RemoteAttachment) async throws {
+        let _: RemoteAttachmentResponse = try await NetworkManager.shared.post(
+            endpoint: "/v1/maintenance_attachments",
+            body: attachment
+        )
+    }
+
+    static func delete(attachmentId: String) async throws {
+        try await NetworkManager.shared.delete(
+            endpoint: "/v1/maintenance_attachments/\(attachmentId)"
+        )
+    }
+}
+
 @MainActor
 final class AttachmentManager: ObservableObject {
     static let shared = AttachmentManager()
@@ -72,6 +111,7 @@ final class AttachmentManager: ObservableObject {
 
         attachments.append(attachment)
         save()
+        syncAttachmentIfEntryIsKnown(attachment)
         return attachment
     }
 
@@ -102,6 +142,7 @@ final class AttachmentManager: ObservableObject {
 
         attachments.append(attachment)
         save()
+        syncAttachmentIfEntryIsKnown(attachment)
         return attachment
     }
 
@@ -115,6 +156,7 @@ final class AttachmentManager: ObservableObject {
         try? fileManager.removeItem(at: fileURL)
         attachments.removeAll { $0.id == attachmentId }
         save()
+        deleteRemoteAttachment(attachment.id)
     }
 
     func fileURL(for attachment: Attachment) -> URL {
@@ -137,7 +179,74 @@ final class AttachmentManager: ObservableObject {
         return UIImage(data: data)
     }
 
+    func syncAttachments(for entryId: String, vehicleId: Int) {
+        attachments(for: entryId).forEach { attachment in
+            pushToRemote(attachment, vehicleId: vehicleId)
+        }
+    }
+
     // MARK: - Private
+
+    private func syncAttachmentIfEntryIsKnown(_ attachment: Attachment) {
+        guard let entry = MaintenanceHistoryStore.shared.entries.first(where: { $0.id == attachment.entryId }) else {
+            return
+        }
+
+        pushToRemote(attachment, vehicleId: entry.vehicleId)
+    }
+
+    private func pushToRemote(_ attachment: Attachment, vehicleId: Int) {
+        guard let remoteAttachment = makeRemoteAttachment(attachment, vehicleId: vehicleId) else {
+            return
+        }
+
+        Task {
+            do {
+                try await AttachmentRemoteSync.upsert(remoteAttachment)
+            } catch {
+                print("⚠️ [AttachmentManager] Remote attachment save failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func deleteRemoteAttachment(_ attachmentId: String) {
+        Task {
+            do {
+                try await AttachmentRemoteSync.delete(attachmentId: attachmentId)
+            } catch {
+                print("⚠️ [AttachmentManager] Remote attachment delete failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func makeRemoteAttachment(_ attachment: Attachment, vehicleId: Int) -> AttachmentRemoteSync.RemoteAttachment? {
+        let url = fileURL(for: attachment)
+        guard let fileData = try? Data(contentsOf: url) else {
+            return nil
+        }
+
+        return AttachmentRemoteSync.RemoteAttachment(
+            id: attachment.id,
+            entryId: attachment.entryId,
+            vehicleId: vehicleId,
+            type: attachment.type.rawValue,
+            fileName: attachment.fileName,
+            fileSize: attachment.fileSize,
+            mimeType: mimeType(for: attachment),
+            createdAt: attachment.createdAt,
+            dataBase64: fileData.base64EncodedString(),
+            thumbnailBase64: attachment.thumbnailData?.base64EncodedString()
+        )
+    }
+
+    private func mimeType(for attachment: Attachment) -> String {
+        switch attachment.type {
+        case .photo:
+            return "image/jpeg"
+        case .pdf:
+            return "application/pdf"
+        }
+    }
 
     private func resizeImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage? {
         let size = image.size

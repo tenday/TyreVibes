@@ -4,6 +4,7 @@ import LocalAuthentication
 struct CreationSuccessScreen: View {
     @StateObject private var viewModel = LoginViewModel()
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var goHome = false
     @State private var showFaceIDPrompt = false
     
@@ -43,6 +44,7 @@ struct CreationSuccessScreen: View {
                 
                 // Pulsante Get Started
                 Button(action: {
+                    AppHaptics.impact(.light)
                     authenticateUser()
                 }) {
                     Text("Get Started")
@@ -53,6 +55,7 @@ struct CreationSuccessScreen: View {
                         .background(Color.customBitterSweet)
                         .cornerRadius(28)
                 }
+                .pressScaleButtonStyle()
                 .padding(.horizontal, 24)
                 .padding(.bottom, 52)
             }
@@ -91,6 +94,7 @@ struct CreationSuccessScreen: View {
                         print("Authentication failed: \(authenticationError?.localizedDescription ?? "Unknown error")")
                         viewModel.useFaceID = false
                         UserDefaults.standard.set(false, forKey: "useFaceID")
+                        goHome = true
                     }
                 }
             }
@@ -108,8 +112,10 @@ struct CreationSuccessScreen: View {
         @State private var showTyre = false
         @State private var tyreRotation: Double = 0
         @State private var showCheckmark = false
+        @State private var checkmarkProgress: CGFloat = 0
         @State private var showSparks = false
         @State private var bounceEffect = false
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
         
         var body: some View {
             ZStack (alignment: .center){
@@ -156,14 +162,14 @@ struct CreationSuccessScreen: View {
                         .animation(.easeOut(duration: 0.6).delay(0.3), value: showTyre)
                 }
                 
-                // Checkmark di successo al centro
-                Image(systemName: "checkmark")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.green)
-                    .scaleEffect(showCheckmark ? (bounceEffect ? 1.2 : 1.0) : 0.1)
+                CheckmarkShape()
+                    .trim(from: 0, to: checkmarkProgress)
+                    .stroke(Color.green, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    .frame(width: 36, height: 28)
+                    .scaleEffect(showCheckmark ? (bounceEffect ? 1.12 : 1.0) : 0.2)
                     .opacity(showCheckmark ? 1.0 : 0.0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0), value: showCheckmark)
-                    .animation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true), value: bounceEffect)
+                    .animation(reduceMotion ? nil : AppMotion.emphasized, value: showCheckmark)
+                    .animation(reduceMotion ? nil : AppMotion.quick, value: bounceEffect)
                 
                 // Scintille/particelle intorno al pneumatico
                 ForEach(0..<6, id: \.self) { index in
@@ -174,33 +180,55 @@ struct CreationSuccessScreen: View {
                             x: cos(Double(index) * .pi / 3) * (showSparks ? 90 : 60),
                             y: sin(Double(index) * .pi / 3) * (showSparks ? 90 : 60)
                         )
-                        .opacity(showSparks ? 0.0 : 1.0)
+                        .opacity(showSparks ? 0.0 : (showCheckmark ? 1.0 : 0.0))
                         .scaleEffect(showSparks ? 1.5 : 1.0)
-                        .animation(.easeOut(duration: 1.2).delay(0.7), value: showSparks)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 1.0).delay(0.2), value: showSparks)
                 }
             }
             .onAppear {
                 // Sequenza di animazioni a tema pneumatico
-                withAnimation(.easeOut(duration: 0.6)) {
+                withAnimation(reduceMotion ? nil : AppMotion.emphasized) {
                     showTyre = true
                 }
                 
-                // Rotazione continua del pneumatico
-                withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false).delay(0.6)) {
-                    tyreRotation = 360
+                // Rotazione controllata del pneumatico durante il reveal
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 1.1).delay(0.2)) {
+                    tyreRotation = 540
                 }
                 
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.6).delay(1.0)) {
+                withAnimation(reduceMotion ? nil : AppMotion.emphasized.delay(0.8)) {
                     showCheckmark = true
                 }
                 
-                withAnimation(.easeInOut(duration: 0.3).repeatForever(autoreverses: true).delay(1.2)) {
-                    bounceEffect = true
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.35).delay(0.9)) {
+                    checkmarkProgress = 1
                 }
                 
-                withAnimation(.easeOut(duration: 1.2).delay(1.3)) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.05) {
+                    AppHaptics.success()
+                    withAnimation(reduceMotion ? nil : AppMotion.quick) {
+                        bounceEffect = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                        withAnimation(reduceMotion ? nil : AppMotion.quick) {
+                            bounceEffect = false
+                        }
+                    }
+                }
+
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 1.0).delay(1.15)) {
                     showSparks = true
                 }
+            }
+        }
+
+        struct CheckmarkShape: Shape {
+            func path(in rect: CGRect) -> Path {
+                var path = Path()
+                path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+                path.addLine(to: CGPoint(x: rect.width * 0.36, y: rect.maxY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+                return path
             }
         }
         

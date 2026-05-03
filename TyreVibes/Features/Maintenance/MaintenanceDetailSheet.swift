@@ -286,5 +286,6 @@ struct MaintenanceDetailSheet: View {
         }
 
         SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
+        NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
     }
 }

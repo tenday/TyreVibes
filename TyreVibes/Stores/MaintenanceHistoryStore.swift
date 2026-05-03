@@ -1,5 +1,80 @@
 import Foundation
 
+private enum MaintenanceRemoteSync {
+    struct RemoteEntry: Codable {
+        let id: String
+        let vehicleId: Int
+        let title: String
+        let note: String?
+        let date: Date
+        let mileage: Int?
+        let source: CompletedMaintenanceSource
+        let maintenanceType: MaintenanceSchedule.MaintenanceType?
+        let cost: Double?
+        let workshopName: String?
+        let workshopId: String?
+        let attachmentIds: [String]?
+
+        init(entry: CompletedMaintenanceEntry) {
+            self.id = entry.id
+            self.vehicleId = entry.vehicleId
+            self.title = entry.title
+            self.note = entry.note
+            self.date = entry.date
+            self.mileage = entry.mileage
+            self.source = entry.source
+            self.maintenanceType = entry.maintenanceType
+            self.cost = entry.cost
+            self.workshopName = entry.workshopName
+            self.workshopId = entry.workshopId
+            self.attachmentIds = entry.attachmentIds
+        }
+
+        var localEntry: CompletedMaintenanceEntry {
+            CompletedMaintenanceEntry(
+                id: id,
+                vehicleId: vehicleId,
+                title: title,
+                note: note,
+                date: date,
+                mileage: mileage,
+                source: source,
+                maintenanceType: maintenanceType,
+                cost: cost,
+                workshopName: workshopName,
+                workshopId: workshopId,
+                attachmentIds: attachmentIds
+            )
+        }
+    }
+
+    private struct MileageUpdate: Encodable {
+        let mileage: Int?
+    }
+
+    static func fetchEntries(vehicleId: Int) async throws -> [CompletedMaintenanceEntry] {
+        let remoteEntries: [RemoteEntry] = try await NetworkManager.shared.get(
+            endpoint: "/v1/maintenance_entries/vehicle/\(vehicleId)"
+        )
+        return remoteEntries.map(\.localEntry)
+    }
+
+    static func upsert(_ entry: CompletedMaintenanceEntry) async throws {
+        let _: RemoteEntry = try await NetworkManager.shared.post(
+            endpoint: "/v1/maintenance_entries",
+            body: RemoteEntry(entry: entry)
+        )
+    }
+
+    static func updateMileage(entryId: String, mileage: Int?) async throws {
+        try await NetworkManager.shared.requestWithoutResponse(
+            endpoint: "/v1/maintenance_entries/\(entryId)/mileage",
+            method: .patch,
+            body: try JSONEncoder().encode(MileageUpdate(mileage: mileage))
+        )
+    }
+}
+
 enum CompletedMaintenanceSource: String, Codable {
     case manual
     case partner
@@ -105,6 +180,7 @@ final class MaintenanceHistoryStore: ObservableObject {
         )
         entries.insert(entry, at: 0)
         save()
+        pushToRemote(entry)
     }
 
     func registerPartnerAppointmentCompleted(
@@ -132,12 +208,62 @@ final class MaintenanceHistoryStore: ObservableObject {
         )
         entries.insert(entry, at: 0)
         save()
+        pushToRemote(entry)
     }
 
     func updateMileage(entryId: String, newMileage: Int) {
         guard let index = entries.firstIndex(where: { $0.id == entryId }) else { return }
         entries[index].mileage = newMileage
         save()
+        pushMileageToRemote(entryId: entryId, mileage: newMileage)
+    }
+
+    func refreshFromRemote(vehicleId: Int) async {
+        do {
+            let remoteEntries = try await MaintenanceRemoteSync.fetchEntries(vehicleId: vehicleId)
+            merge(remoteEntries)
+        } catch {
+            print("⚠️ [MaintenanceHistoryStore] Remote refresh failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func merge(_ remoteEntries: [CompletedMaintenanceEntry]) {
+        guard !remoteEntries.isEmpty else { return }
+
+        var entriesById: [String: CompletedMaintenanceEntry] = [:]
+        for entry in entries {
+            entriesById[entry.id] = entry
+        }
+
+        for remoteEntry in remoteEntries {
+            entriesById[remoteEntry.id] = remoteEntry
+        }
+
+        entries = entriesById.values.sorted { $0.date > $1.date }
+        save()
+    }
+
+    private func pushToRemote(_ entry: CompletedMaintenanceEntry) {
+        Task {
+            do {
+                try await MaintenanceRemoteSync.upsert(entry)
+                await MainActor.run {
+                    AttachmentManager.shared.syncAttachments(for: entry.id, vehicleId: entry.vehicleId)
+                }
+            } catch {
+                print("⚠️ [MaintenanceHistoryStore] Remote save failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func pushMileageToRemote(entryId: String, mileage: Int?) {
+        Task {
+            do {
+                try await MaintenanceRemoteSync.updateMileage(entryId: entryId, mileage: mileage)
+            } catch {
+                print("⚠️ [MaintenanceHistoryStore] Remote mileage update failed: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func save() {

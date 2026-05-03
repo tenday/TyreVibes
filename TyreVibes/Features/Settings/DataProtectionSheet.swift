@@ -3,6 +3,7 @@ import SwiftUI
 struct DataProtectionSheet: View {
     @ObservedObject var viewModel: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showDeletionConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -45,11 +46,6 @@ struct DataProtectionSheet: View {
                                 label: "Livello Privacy".localized,
                                 value: viewModel.privacyLevel.rawValue.localized,
                                 icon: "hand.raised"
-                            )
-                            DataProtectionRow(
-                                label: "Tema Selezionato".localized,
-                                value: viewModel.selectedTheme.rawValue.localized,
-                                icon: "paintbrush"
                             )
                         }
 
@@ -165,8 +161,7 @@ struct DataProtectionSheet: View {
                             }
 
                             Button(action: {
-                                viewModel.requestDataDeletion()
-                                dismiss()
+                                showDeletionConfirmation = true
                             }) {
                                 GlassCard(height: 56, borderColor: Color.red.opacity(0.4)) {
                                     HStack {
@@ -188,6 +183,19 @@ struct DataProtectionSheet: View {
             }
             .navigationTitle("Protezione Dati".localized)
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog(
+                "Elimina account".localized,
+                isPresented: $showDeletionConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Elimina account".localized, role: .destructive) {
+                    viewModel.requestDataDeletion()
+                    dismiss()
+                }
+                Button("Annulla".localized, role: .cancel) {}
+            } message: {
+                Text("Questa azione eliminerà il tuo account e i dati associati. Non potrà essere annullata.".localized)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Chiudi".localized) {

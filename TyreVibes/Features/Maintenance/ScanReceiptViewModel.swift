@@ -103,19 +103,47 @@ class ScanReceiptViewModel: ObservableObject {
 
     // MARK: - Save
 
-    func save() {
-        let entryId = UUID().uuidString
-
-        var attachmentIds: [String]?
-        if let image = scannedImage {
-            if let attachment = AttachmentManager.shared.addPhoto(image, for: entryId) {
-                attachmentIds = [attachment.id]
-            }
-        }
+    func save() -> Bool {
+        errorMessage = nil
 
         let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cost = Double(costText.replacingOccurrences(of: ",", with: "."))
+        guard let scannedImage else {
+            errorMessage = "Aggiungi prima una scansione della ricevuta."
+            return false
+        }
+
+        guard !cleanedTitle.isEmpty else {
+            errorMessage = "Inserisci un titolo prima di salvare."
+            return false
+        }
+
+        let mileage: Int?
+        if mileageInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            mileage = nil
+        } else if let parsedMileage = parseLocalizedInt(mileageInput) {
+            mileage = parsedMileage
+        } else {
+            errorMessage = "Inserisci un valore di chilometri valido."
+            return false
+        }
+
+        let entryId = UUID().uuidString
+
+        var attachmentIds: [String]?
+        if let attachment = AttachmentManager.shared.addPhoto(scannedImage, for: entryId) {
+            attachmentIds = [attachment.id]
+        }
+
+        let cost: Double?
+        if costText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            cost = nil
+        } else if let parsedCost = parseLocalizedDecimal(costText) {
+            cost = parsedCost
+        } else {
+            errorMessage = "Inserisci un costo valido."
+            return false
+        }
         let cleanedWorkshop = workshopName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         MaintenanceHistoryStore.shared.addManualEntry(
@@ -124,11 +152,59 @@ class ScanReceiptViewModel: ObservableObject {
             title: cleanedTitle,
             note: cleanedNote.isEmpty ? nil : cleanedNote,
             date: date,
-            mileage: Int(mileageInput),
+            mileage: mileage,
             maintenanceType: maintenanceType,
             cost: cost,
             workshopName: cleanedWorkshop.isEmpty ? nil : cleanedWorkshop,
             attachmentIds: attachmentIds
         )
+
+        return true
+    }
+
+    private func parseLocalizedInt(_ input: String) -> Int? {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let sanitized = trimmed
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ".", with: "")
+            .replacingOccurrences(of: ",", with: "")
+
+        let allowed = trimmed.filter { $0.isNumber || $0 == "." || $0 == "," || $0 == " " }
+        guard allowed == trimmed else { return nil }
+        guard !sanitized.isEmpty else { return nil }
+        return Int(sanitized)
+    }
+
+    private func parseLocalizedDecimal(_ input: String) -> Double? {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let removedWhitespace = trimmed.replacingOccurrences(of: " ", with: "")
+        let allowed = removedWhitespace.filter { $0.isNumber || $0 == "." || $0 == "," }
+        guard !allowed.isEmpty else { return nil }
+        guard allowed.count == removedWhitespace.count else { return nil }
+
+        let separatorsCount = allowed.filter { $0 == "." || $0 == "," }.count
+        let normalized: String
+        if separatorsCount == 0 {
+            normalized = allowed
+        } else if separatorsCount >= 1 {
+            let decimalIndex = allowed.lastIndex(of: ".") ?? allowed.lastIndex(of: ",")
+            if let decimalIndex {
+                let integerPart = String(allowed[..<decimalIndex]).filter(\.isNumber)
+                let decimalPart = String(allowed[allowed.index(after: decimalIndex)...]).filter(\.isNumber)
+
+                if integerPart.isEmpty && decimalPart.isEmpty { return nil }
+                normalized = "\(integerPart).\(decimalPart)"
+            } else {
+                return nil
+            }
+        } else {
+            return nil
+        }
+
+        return Double(normalized)
     }
 }

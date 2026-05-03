@@ -195,7 +195,11 @@ struct MaintenanceManagementView: View {
         }
         .onAppear {
             scheduleStore.removeLegacySeededSchedules(for: vehicleId)
+            Task {
+                await historyStore.refreshFromRemote(vehicleId: vehicleId)
+            }
             SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
+            NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
             fetchOEMIntervalsIfNeeded()
         }
         .sheet(isPresented: $showPlanSheet) {
@@ -220,6 +224,7 @@ struct MaintenanceManagementView: View {
                 if let km = Int(mileageInput) {
                     mileageStore.setMileage(km, for: vehicleId)
                     SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
+                    NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
                 }
                 mileageInput = ""
             }
@@ -280,6 +285,7 @@ struct MaintenanceManagementView: View {
 
                 Button {
                     SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
+                    NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
                 } label: {
                     Label("Ricalcola scadenze", systemImage: "arrow.clockwise")
                 }
@@ -591,9 +597,11 @@ struct MaintenanceManagementView: View {
                             isNext: index == 0,
                             onComplete: {
                                 scheduleStore.markCompleted(scheduleId: item.id, vehicleId: vehicleId)
+                                NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
                             },
                             onDelete: {
                                 scheduleStore.deleteSchedule(item.id)
+                                NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
                             }
                         )
                     }
@@ -720,6 +728,7 @@ struct MaintenanceManagementView: View {
                 let count = try await oemService.fetchAndApplyOEMIntervals(vin: vin, vehicleId: vehicleId)
                 if count > 0 {
                     SmartMaintenanceScheduler.shared.evaluateAndSchedule(vehicleId: vehicleId)
+                    NotificationScheduler.shared.scheduleMaintenanceReminders(vehicleId: vehicleId, vehicleName: "Veicolo")
                     withAnimation {
                         oemBannerMessage = "Applicati \(count) intervalli del produttore"
                     }

@@ -79,6 +79,24 @@ class PlateDataCache {
     }
 }
 
+private final class ThrowingContinuationBox<T>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T, Error>?
+
+    init(_ continuation: CheckedContinuation<T, Error>) {
+        self.continuation = continuation
+    }
+
+    func resume(with result: Result<T, Error>) {
+        lock.lock()
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+
+        continuation?.resume(with: result)
+    }
+}
+
 // Modello dati (manteniamo PlateData)
 public struct PlateData {
     public var plate: String
@@ -693,6 +711,13 @@ public class LicensePlateReader {
                                 }
                             }
                         }
+
+                        completion(.failure(NSError(
+                            domain: "LicensePlateReader",
+                            code: 12009,
+                            userInfo: [NSLocalizedDescriptionKey: "Dati Quattroruote non trovati nella risposta HTML"]
+                        )))
+                        return
 
                         
                     }
@@ -2034,8 +2059,18 @@ private static func solveCaptchaWithVisionSimple(from cgImage: CGImage, expected
 
     private static func fetchQuattroruotePlateDataAsync(plate: String) async throws -> [String:Any] {
         try await withCheckedThrowingContinuation { cont in
+            let continuationBox = ThrowingContinuationBox(cont)
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + 9.0) {
+                continuationBox.resume(with: .failure(NSError(
+                    domain: "LicensePlateReader",
+                    code: 12010,
+                    userInfo: [NSLocalizedDescriptionKey: "Timeout Quattroruote"]
+                )))
+            }
+
             fetchQuattroruotePlateData(plate: plate, anchorURL: "https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Le8aF8rAAAAAJWwLyBz0etzTUVmNb_xm68qgxoJ&co=aHR0cHM6Ly9xdW90YXppb25pLnF1YXR0cm9ydW90ZS5pdDo0NDM.&hl=it&v=_mscDd1KHr60EWWbt2I_ULP0&size=invisible&anchor-ms=20000&execute-ms=15000&cb=m871w5q3hb3j") { result in
-                cont.resume(with: result)
+                continuationBox.resume(with: result)
             }
         }
     }
@@ -2285,16 +2320,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
             return ""
         }
         
-        // Esegui le restanti chiamate in parallelo
-        async let rcaResult = fetchWithFallback(label: "CoperturaRC", fallback: [:]) {
-            try await fetchCoperturaRCAsync(plate: plate)
-        }
-        async let classeAmbientaleResult = fetchWithFallback(label: "ClasseAmbientale", fallback: "") {
-            try await fetchClasseAmbientaleAsync(plate: plate)
-        }
-        async let tyresResult = fetchWithFallback(label: "TyreBlackcircles", fallback: [[String: String]]()) {
-            try await fetchTyreBlackcirclesAsync(plate: plate)
-        }
+        // Prima identifichiamo il veicolo: le chiamate secondarie partono solo se esiste.
         async let quattroruoteResult: [String: Any] = fetchWithFallback(label: "Quattroruote", fallback: [:]) {
             try await fetchQuattroruotePlateDataAsync(plate: plate)
         }
@@ -2364,18 +2390,51 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
             plateData.modelDetails = allianz["modelDetail"] ?? ""
         }
 
-        let shouldCalculateRevisions = Self.shouldCalculateRevisions(registrationDateString: plateData.registrationDate)
+        let hasVehicleIdentity = [
+            plateData.make,
+            plateData.model,
+            plateData.modelDetails,
+            plateData.registrationDate,
+            plateData.displacementCC
+        ].contains { value in
+            !(value ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        let shouldCalculateRevisions = hasVehicleIdentity && Self.shouldCalculateRevisions(registrationDateString: plateData.registrationDate)
 
         let revisioniRaw: [[String: String]]
         if shouldCalculateRevisions {
             revisioniRaw = await fetchWithFallback(label: "Revisioni", fallback: [[String: String]]()) {
                 try await fetchRevisioniSecureAsync(plate: plate)
             }
+        } else if hasVehicleIdentity {
+            revisioniRaw = []
         } else {
+            print("ℹ️ [PlateSummary] Revisioni saltate per targa \(plate): veicolo non identificato")
             revisioniRaw = []
         }
 
-        let (rca, classeAmbientale, tyres) = await (rcaResult, classeAmbientaleResult, tyresResult)
+        let rca: [String: String]
+        let classeAmbientale: String
+        let tyres: [[String: String]]
+        if hasVehicleIdentity {
+            async let rcaLookup: [String: String] = fetchWithFallback(label: "CoperturaRC", fallback: [:]) {
+                try await fetchCoperturaRCAsync(plate: plate)
+            }
+            async let classeAmbientaleLookup: String = fetchWithFallback(label: "ClasseAmbientale", fallback: "") {
+                try await fetchClasseAmbientaleAsync(plate: plate)
+            }
+            async let tyresLookup: [[String: String]] = fetchWithFallback(label: "TyreBlackcircles", fallback: [[String: String]]()) {
+                try await fetchTyreBlackcirclesAsync(plate: plate)
+            }
+            (rca, classeAmbientale, tyres) = await (rcaLookup, classeAmbientaleLookup, tyresLookup)
+        } else {
+            print("ℹ️ [PlateSummary] ClasseAmbientale saltata per targa \(plate): veicolo non identificato")
+            print("ℹ️ [PlateSummary] CoperturaRC e pneumatici saltati per targa \(plate): veicolo non identificato")
+            rca = [:]
+            classeAmbientale = ""
+            tyres = []
+        }
 
         plateData.insuranceCompany = rca["company"] ?? plateData.insuranceCompany
         if let expiryStr = rca["expiry"], !expiryStr.isEmpty {
@@ -2429,9 +2488,13 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
             }
         }
 
-        // 💾 CACHE SAVE: Salva i dati elaborati in cache per richieste future
-        PlateDataCache.set(plate, data: plateData)
-        print("💾 Dati salvati in cache per targa: \(plate)")
+        // 💾 CACHE SAVE: Salva solo veicoli identificati, non targhe inesistenti con dati vuoti
+        if hasVehicleIdentity {
+            PlateDataCache.set(plate, data: plateData)
+            print("💾 Dati salvati in cache per targa: \(plate)")
+        } else {
+            print("ℹ️ [PlateSummary] Dati non salvati in cache per targa \(plate): veicolo non identificato")
+        }
 
         return plateData
     }

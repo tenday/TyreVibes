@@ -88,8 +88,17 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         Task { @MainActor in
-            // Gestisci il tap sulla notifica
-            PushNotificationManager.shared.handleNotificationResponse(response)
+            let userInfo = response.notification.request.content.userInfo
+
+            if userInfo["notificationGroup"] as? String == "maintenance" {
+                NotificationScheduler.shared.handleMaintenanceNotificationResponse(
+                    actionIdentifier: response.actionIdentifier,
+                    userInfo: userInfo
+                )
+            } else {
+                // Gestisci il tap sulla notifica
+                PushNotificationManager.shared.handleNotificationResponse(response)
+            }
 
             completionHandler()
         }

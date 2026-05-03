@@ -70,6 +70,35 @@ struct ProfileImageUpdateData: Encodable {
     }
 }
 
+private struct CPanelProfileImageUpload: Encodable {
+    let imageBase64: String
+    let mimeType: String
+    let fileName: String
+    let fileSize: Int
+}
+
+private struct CPanelProfileImageResponse: Decodable {
+    let userId: String?
+    let fileName: String?
+    let mimeType: String?
+    let fileSize: Int?
+    let imageBase64: String?
+    let createdAt: Date?
+    let updatedAt: Date?
+}
+
+private enum ProfileImageEndpoint {
+    static func url(for path: String) -> URL? {
+        guard let plistPath = Bundle.main.path(forResource: "Api", ofType: "plist"),
+              let plist = NSDictionary(contentsOfFile: plistPath),
+              let baseURL = plist["BASE_URL"] as? String else {
+            return nil
+        }
+
+        return URL(string: baseURL + path)
+    }
+}
+
 @MainActor
 class ProfileViewModel: ObservableObject {
     @Published var userProfile: UserProfile?
@@ -107,6 +136,9 @@ class ProfileViewModel: ObservableObject {
     func loadUserProfile(forceRefresh: Bool = false) {
         // Check if cache is valid
         if !forceRefresh, isCacheValid(), userProfile != nil {
+            if profileImage == nil {
+                loadProfileImageFromCPanel()
+            }
             return // Use cached data
         }
 
@@ -132,17 +164,13 @@ class ProfileViewModel: ObservableObject {
                     name: response.fullName,
                     email: session.user.email ?? "",
                     phone: "\(response.countryDialCode ?? "") \(response.phoneNumber ?? "")",
-                    profileImageUrl: response.profileImageUrl
+                    profileImageUrl: nil
                 )
 
                 await MainActor.run {
                     userProfile = profile
                     cacheProfile(profile)
-
-                    // Carica l'immagine profilo se disponibile
-                    if let imageUrl = profile.profileImageUrl {
-                        loadProfileImageFromURL(imageUrl)
-                    }
+                    loadProfileImageFromCPanel()
 
                     isLoading = false
                 }
@@ -157,6 +185,7 @@ class ProfileViewModel: ObservableObject {
                             profileImageUrl: nil
                         )
                     }
+                    loadProfileImageFromCPanel()
                     isLoading = false
                 }
             }
@@ -334,48 +363,30 @@ class ProfileViewModel: ObservableObject {
         isLoading = true
 
         do {
-            // Get current user session
-            let session = try await SupabaseManager.client.auth.session
-            let userId = session.user.id
-
-            // Converti l'immagine in dati JPEG
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            guard let resizedImage = resizeProfileImage(image, maxDimension: 512),
+                  let imageData = resizedImage.jpegData(compressionQuality: 0.82) else {
                 throw NSError(domain: "ProfileViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Impossibile convertire l'immagine"])
             }
 
-            // Crea il percorso del file
-            let fileName = "\(userId.uuidString)/profile.jpg"
+            let upload = CPanelProfileImageUpload(
+                imageBase64: imageData.base64EncodedString(),
+                mimeType: "image/jpeg",
+                fileName: "profile.jpg",
+                fileSize: imageData.count
+            )
+            let encoder = JSONEncoder()
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            let bodyData = try encoder.encode(upload)
 
-            // Upload su Supabase Storage
-            try await SupabaseManager.client.storage
-                .from("profile-images")
-                .upload(
-                    path: fileName,
-                    file: imageData,
-                    options: .init(
-                        cacheControl: "3600",
-                        contentType: "image/jpeg",
-                        upsert: true
-                    )
-                )
-
-            // Ottieni l'URL pubblico dell'immagine
-            let publicURL = try SupabaseManager.client.storage
-                .from("profile-images")
-                .getPublicURL(path: fileName)
-
-            // Aggiorna il profilo utente con l'URL dell'immagine
-            let updateData = ProfileImageUpdateData(profileImageUrl: publicURL.absoluteString)
-
-            try await SupabaseManager.client
-                .from("users")
-                .update(updateData)
-                .eq("id", value: userId)
-                .execute()
+            let _: CPanelProfileImageResponse = try await NetworkManager.shared.request(
+                endpoint: "/v1/profile_image",
+                method: .put,
+                body: bodyData
+            )
 
             // Aggiorna l'immagine locale e il profilo
-            profileImage = image
-            userProfile?.profileImageUrl = publicURL.absoluteString
+            profileImage = resizedImage
+            userProfile?.profileImageUrl = nil
 
             // Aggiorna cache
             if let profile = userProfile {
@@ -403,23 +414,59 @@ class ProfileViewModel: ObservableObject {
         return username.capitalized
     }
 
-    private func loadProfileImageFromURL(_ urlString: String) {
-        guard let url = URL(string: urlString) else { return }
+    private func resizeProfileImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage? {
+        let size = image.size
+        let ratio = min(maxDimension / size.width, maxDimension / size.height)
+        if ratio >= 1.0 {
+            return image
+        }
 
+        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resized = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return resized
+    }
+
+    private func loadProfileImageFromCPanel() {
         Task {
             do {
-                let (data, _) = try await URLSession.tyreVibesShared.data(from: url)
-                if let image = UIImage(data: data) {
-                    await MainActor.run {
-                        self.profileImage = image
-                    }
+                guard let url = ProfileImageEndpoint.url(for: "/v1/profile_image/content") else {
+                    return
+                }
+
+                let config = URLSessionConfiguration.default
+                config.timeoutIntervalForRequest = NetworkTimeout.quickLookup
+                config.timeoutIntervalForResource = NetworkTimeout.externalAPI
+                let session = URLSession(configuration: config)
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                guard await AuthTokenHelper.addAuthHeader(to: &request) else {
+                    return
+                }
+
+                let (data, response) = try await session.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 404 {
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode),
+                      let image = UIImage(data: data) else {
+                    return
+                }
+
+                await MainActor.run {
+                    self.profileImage = image
                 }
             } catch {
                 print("Errore caricamento immagine profilo: \(error.localizedDescription)")
             }
         }
     }
-
     // MARK: - Attività Utente
 
     func loadRecentActivities() {
