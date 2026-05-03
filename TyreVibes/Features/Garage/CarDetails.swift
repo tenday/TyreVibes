@@ -1152,6 +1152,7 @@ struct CarDetailsView: View {
     @State private var isLoadingRevisioni: Bool = false
     @State private var tyreToDelete: TyreRegistered? = nil
     @State private var showDeleteAlert: Bool = false
+    @State private var detailVehicleImage: UIImage? = nil
 
     private var tyreSets: [[TyreRegistered]] {
         let grouped = Dictionary(grouping: tyreViewModel.registeredTyres) { tyre in
@@ -1198,8 +1199,7 @@ struct CarDetailsView: View {
 
                         // Car Image with 360 button
                         ZStack(alignment: .topTrailing) {
-                            if let base64String = vehicle.image?.imageBase64,
-                               let uiImage = base64String.toUIImage() {
+                            if let uiImage = detailVehicleImage ?? vehicle.image?.imageBase64?.toUIImage() {
                                 let trimmed = uiImage.trimmedTransparentPixels(threshold: 5)
 
                                 Image(uiImage: trimmed)
@@ -1209,10 +1209,12 @@ struct CarDetailsView: View {
                                     .padding(.top, 50)
                                     .padding(.horizontal, 30)
                             } else {
-                                Image("placeholder")
-                                    .resizable()
-                                    .scaledToFit()
+                                ProgressView()
+                                    .tint(.white)
                                     .frame(maxWidth: .infinity)
+                                    .frame(height: 180)
+                                    .padding(.top, 50)
+                                    .padding(.horizontal, 30)
                             }
 
                             
@@ -1261,9 +1263,9 @@ struct CarDetailsView: View {
                             ], spacing: 10) {
                                 DetailItem(label: String(localized: "Make"), value: vehicle.vehicle.make?.uppercased() ?? "-")
                                 DetailItem(label: String(localized: "Year"), value: vehicle.plate?.year.map { "\($0)" } ?? "-")
-                                DetailItem(label: String(localized: "Color"), value: vehicle.vehicle.color?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Color"), value: localizedVehicleColorName(vehicle.vehicle.color).uppercased(with: .current))
                                 DetailItem(label: String(localized: "Model"), value: vehicle.vehicle.model?.uppercased() ?? "-")
-                                DetailItem(label: String(localized: "Engine"), value: vehicle.vehicle.engine?.uppercased() ?? "-")
+                                DetailItem(label: String(localized: "Engine"), value: vehicle.vehicle.smartEngineDescription ?? "-")
                                 DetailItem(label: String(localized: "License plate"), value: vehicle.plate?.plateNumber.uppercased() ?? "-")
                                 DetailItem(label: String(localized: "Alimentazione"), value: vehicle.vehicle.fuelType?.uppercased() ?? "-")
                                 DetailItem(label: String(localized: "Horsepower"), value: vehicle.vehicle.powerCV.map { "\($0) CV" } ?? "-")
@@ -1547,6 +1549,9 @@ struct CarDetailsView: View {
         } message: {
             Text("Qui trovi due funzioni utili: il pulsante AR mostra la vista 360° della tua auto, mentre il pulsante info ti dà dettagli avanzati sul veicolo.")
         }
+        .task(id: vehicle.vehicle.id) {
+            await loadDetailVehicleImageIfNeeded()
+        }
         .alert(String(localized: "Delete Tire"), isPresented: $showDeleteAlert) {
             Button(String(localized: "Cancel"), role: .cancel) { }
             Button(String(localized: "Delete"), role: .destructive) {
@@ -1559,6 +1564,44 @@ struct CarDetailsView: View {
     }
 
     // MARK: - Helpers
+
+    private func loadDetailVehicleImageIfNeeded() async {
+        if detailVehicleImage != nil || vehicle.image?.imageBase64?.toUIImage() != nil {
+            return
+        }
+
+        guard let baseURL = GarageViewModel.apiConfig["BASE_URL"] as? String,
+              let url = URL(string: "\(baseURL)/v1/vehicles/\(vehicle.vehicle.id)/image/thumbnail?v=2") else {
+            return
+        }
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = NetworkTimeout.quickLookup
+        config.timeoutIntervalForResource = NetworkTimeout.externalAPI
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        let session = URLSession(configuration: config)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        guard await AuthTokenHelper.addAuthHeader(to: &request) else {
+            return
+        }
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let image = UIImage(data: data) else {
+                return
+            }
+
+            await MainActor.run {
+                detailVehicleImage = image
+            }
+        } catch {
+            print("Error fetching vehicle detail image \(vehicle.vehicle.id): \(error)")
+        }
+    }
 
     private func handleDeleteTyre() {
         guard let tyreToDelete = tyreToDelete else { return }
@@ -1658,10 +1701,11 @@ fileprivate struct VehicleInfoSection: View {
         if let version = sanitizedUppercased(vehicle.vehicle.version) ?? sanitizedUppercased(vehicle.vehicle.modelDetail) {
             items.append(VehicleInfoSpec(icon: "square.grid.2x2", label: "Version", value: version))
         }
-        if let color = sanitizedUppercased(vehicle.vehicle.color) {
+        if sanitizedVehicleText(vehicle.vehicle.color) != nil {
+            let color = localizedVehicleColorName(vehicle.vehicle.color).uppercased(with: .current)
             items.append(VehicleInfoSpec(icon: "paintpalette", label: "Color", value: color))
         }
-        if let engine = sanitizedUppercased(vehicle.vehicle.engine) {
+        if let engine = vehicle.vehicle.smartEngineDescription {
             items.append(VehicleInfoSpec(icon: "gearshape.2", label: "Engine", value: engine))
         }
         if let displacement = formatDisplacement(vehicle.vehicle.displacementCC) {
@@ -2318,7 +2362,7 @@ struct VehicleSpecificationsView: View {
                     icon: "engine.combustion.fill",
                     color: .orange,
                     items: [
-                        ("Motorizzazione", vehicle.vehicle.engine ?? "N/A"),
+                        ("Motorizzazione", vehicle.vehicle.smartEngineDescription ?? "N/A"),
                         ("Alimentazione", vehicle.vehicle.fuelType ?? "N/A"),
                         ("Cilindrata", vehicle.vehicle.displacementCC != nil ? "\(vehicle.vehicle.displacementCC!) cc" : "N/A"),
                         ("Potenza", vehicle.vehicle.powerCV != nil ? "\(vehicle.vehicle.powerCV!) CV" : "N/A"),
@@ -2340,7 +2384,7 @@ struct VehicleSpecificationsView: View {
                         ("Carrozzeria", vehicle.vehicle.bodyType ?? "N/A"),
                         ("Porte", vehicle.vehicle.doors ?? "N/A"),
                         ("Posti", vehicle.vehicle.seats ?? "N/A"),
-                        ("Colore", vehicle.vehicle.color?.capitalized ?? "N/A")
+                        ("Colore", localizedVehicleColorName(vehicle.vehicle.color, fallback: "N/A").uppercased(with: .current))
                     ]
                 )
 

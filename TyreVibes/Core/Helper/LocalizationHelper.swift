@@ -29,6 +29,61 @@ extension String {
     }
 }
 
+func localizedVehicleColorName(_ value: String?, fallback: String = "-") -> String {
+    guard let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+        return fallback
+    }
+
+    let normalized = raw
+        .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+        .replacingOccurrences(of: "_", with: " ")
+        .replacingOccurrences(of: "-", with: " ")
+        .uppercased()
+
+    let usesItalian = Locale.preferredLanguages.contains { $0.hasPrefix("it") }
+    let colors: [(keywords: [String], en: String, it: String)] = [
+        (["BIANCO", "WHITE"], "White", "Bianco"),
+        (["NERO", "BLACK", "NOIR"], "Black", "Nero"),
+        (["ARGENTO", "SILVER"], "Silver", "Argento"),
+        (["GRIGIO", "GREY", "GRAY", "ANTRACITE"], "Gray", "Grigio"),
+        (["ROSSO", "RED", "BORDEAUX", "RUBINO"], "Red", "Rosso"),
+        (["BLU", "BLUE", "NAVY"], "Blue", "Blu"),
+        (["AZZURRO", "LIGHT BLUE"], "Light blue", "Azzurro"),
+        (["VERDE", "GREEN"], "Green", "Verde"),
+        (["GIALLO", "YELLOW"], "Yellow", "Giallo"),
+        (["ARANCIO", "ARANCIONE", "ORANGE"], "Orange", "Arancione"),
+        (["MARRONE", "BROWN"], "Brown", "Marrone"),
+        (["BRONZO", "BRONZE"], "Bronze", "Bronzo"),
+        (["BEIGE", "CREMA", "SABBIA", "CREAM", "SAND"], "Beige", "Beige"),
+        (["ORO", "GOLD"], "Gold", "Oro"),
+        (["VIOLA", "PURPLE", "LILLA"], "Purple", "Viola"),
+        (["ROSA", "PINK"], "Pink", "Rosa"),
+        (["TURCHESE", "TURQUOISE"], "Turquoise", "Turchese")
+    ]
+
+    let baseColor = colors.first { color in
+        color.keywords.contains { normalized.contains($0) }
+    }
+
+    guard let baseColor else {
+        return raw.capitalized(with: .current)
+    }
+
+    var localized = usesItalian ? baseColor.it : baseColor.en
+    let modifiers: [(keywords: [String], en: String, it: String)] = [
+        (["METALLIC", "METALLIZZATO", "METAL"], "metallic", "metallizzato"),
+        (["PEARL", "PERLA", "PEARLESCENT"], "pearl", "perlato"),
+        (["MATTE", "OPACO"], "matte", "opaco")
+    ]
+
+    for modifier in modifiers where modifier.keywords.contains(where: { normalized.contains($0) }) {
+        localized += " \(usesItalian ? modifier.it : modifier.en)"
+        break
+    }
+
+    return localized
+}
+
 /// Enum con tutte le chiavi di localizzazione dell'app
 enum L10n {
     // MARK: - Common

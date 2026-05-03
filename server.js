@@ -332,10 +332,20 @@ const parseToDate = (value) => {
     return `${month}/${year}`;
   };
 
-    const extractEngineFromModelDetail = (description = "") => {
+  const extractEngineFromModelDetail = (description = "", { allowShortFallback = false } = {}) => {
     if (!description || typeof description !== "string") {
       return null;
     }
+
+    const normalizedDescription = description
+      .replace(/,/g, ".")
+      .replace(/cm³/gi, "cc")
+      .replace(/cm3/gi, "cc")
+      .replace(/c\.c\./gi, "cc")
+      .replace(/\be\s+tsi\b/gi, "ETSI")
+      .replace(/\bm\s+hybrid\b/gi, "MHYBRID")
+      .replace(/\s+/g, " ")
+      .trim();
 
     // Lista di parole chiave valide che identificano motori / alimentazioni
     const validEngineTokens = new Set([
@@ -363,10 +373,39 @@ const parseToDate = (value) => {
       "MULTIAIR2", "BLUECORE", "BOOSTHYBRID", "DCAT", "TURBODIESEL"
     ]);
 
+    const compactEngineToken = (token) => {
+      switch (String(token || "").toUpperCase()) {
+        case "DIESEL":
+          return "D";
+        case "MULTIJET":
+          return "MJET";
+        case "BENZINA":
+        case "BZ":
+          return "B";
+        case "ELETTRICO":
+        case "BEV":
+        case "MOTORELETTRICO":
+          return "EV";
+        case "METANO":
+        case "NGT":
+        case "G-TEC":
+        case "TGI":
+          return "CNG";
+        case "LPG":
+          return "GPL";
+        case "HYBRID":
+          return "HYB";
+        case "PLUG":
+          return "PHEV";
+        default:
+          return String(token || "").toUpperCase();
+      }
+    };
+
     // Pattern 1: Formato BMW/Mercedes "30d", "220d", "xdrive30d" ecc.
     // Cattura: (opzionale testo)(numero)(lettera singola diesel/benzina)
     const bmwPattern = /(?:xdrive|sdrive)?(\d+)([di])\b/gi;
-    let match = bmwPattern.exec(description);
+    let match = bmwPattern.exec(normalizedDescription);
     if (match) {
       const displacement = match[1];
       const fuelType = match[2].toLowerCase();
@@ -377,15 +416,32 @@ const parseToDate = (value) => {
 
     // Pattern 2: Formato standard "1.6 JTDm", "2.0 TDI", "1.5 eTSI" ecc.
     // Cattura: (numero decimale) + (sigla motore con possibili trattini)
-    const standardPattern = /(\d+(?:\.\d+)?)\s*(e?[a-zA-Z]+(?:-[a-zA-Z]+)?)/g;
+    const standardPattern = /(\d{1,2}(?:\.\d)?)\s*(?:l|lt|litri)?\s*([a-zA-Z][a-zA-Z0-9]*(?:[-+][a-zA-Z0-9]+)?)/g;
 
-    while ((match = standardPattern.exec(description)) !== null) {
+    while ((match = standardPattern.exec(normalizedDescription)) !== null) {
       const cilindrata = match[1];
-      const sigla = match[2];
+      const sigla = match[2].toUpperCase();
 
-      if (validEngineTokens.has(sigla.toUpperCase())) {
-        return `${cilindrata} ${sigla}`;
+      if (validEngineTokens.has(sigla)) {
+        return `${cilindrata} ${compactEngineToken(sigla)}`;
       }
+    }
+
+    // Pattern 3: formato da cilindrata tecnica "1498 cc ... TSI".
+    const ccPattern = /(\d{3,5})\s*cc\b.{0,32}?\b([a-zA-Z][a-zA-Z0-9]*(?:[-+][a-zA-Z0-9]+)?)/g;
+    while ((match = ccPattern.exec(normalizedDescription)) !== null) {
+      const cc = Number(match[1]);
+      const sigla = match[2].toUpperCase();
+
+      if (Number.isFinite(cc) && validEngineTokens.has(sigla)) {
+        const liters = (Math.round((cc / 1000) * 10) / 10).toFixed(1);
+        return `${liters} ${compactEngineToken(sigla)}`;
+      }
+    }
+
+    if (allowShortFallback && normalizedDescription.length <= 24 && /\D/.test(normalizedDescription)) {
+      const compact = compactEngineToken(normalizedDescription);
+      return compact || normalizedDescription.toUpperCase();
     }
 
     return null;
@@ -1500,6 +1556,11 @@ const parseToDate = (value) => {
 
   router.get("/v1/vehicles/:userId", authenticateJWT, async (req, res) => {
     const userId = req.params.userId;
+    const includeImagesParam = req.query.includeImages;
+    const wantsLiteResponse = ["1", "true", "yes"].includes(String(req.query.lite || "").toLowerCase());
+    const includeImages = includeImagesParam == null
+      ? !wantsLiteResponse
+      : !["0", "false", "no"].includes(String(includeImagesParam).toLowerCase());
 
     if (!userId) {
       return res.status(400).json({ message: "userId è richiesto." });
@@ -1551,8 +1612,9 @@ const parseToDate = (value) => {
       }
 
       const imageIn = buildInClause(vehicleIds);
+      const imageDataSelect = includeImages ? ", vi.image_data" : "";
       const [imageRows] = vehicleIds.length > 0 ? await conn.execute(
-        `SELECT vi.id, vi.vehicle_id, vi.mime_type, vi.color, vi.file_name, vi.file_size, vi.image_data
+        `SELECT vi.id, vi.vehicle_id, vi.mime_type, vi.color, vi.file_name, vi.file_size${imageDataSelect}
         FROM vehicle_images vi
         INNER JOIN user_vehicles uv ON uv.vehicle_id = vi.vehicle_id
         WHERE vi.vehicle_id IN ${imageIn.clause} AND uv.user_id = ? AND vi.is_primary = 0 AND vi.angle = '12' and LOWER(uv.color) = LOWER(vi.color)
@@ -1569,7 +1631,7 @@ const parseToDate = (value) => {
             color: row.color,
             file_name: row.file_name,
             file_size: row.file_size,
-            image_base64: bufferToBase64(row.image_data)
+            image_base64: includeImages ? bufferToBase64(row.image_data) : null
           });
         }
       }
@@ -1644,7 +1706,7 @@ const parseToDate = (value) => {
       }
 
       const vehiclesWithDetails = vehicles.map(vehicle => {
-        const engine = extractEngineFromModelDetail(vehicle.model_detail);
+        const engine = extractEngineFromModelDetail(vehicle.engine, { allowShortFallback: true }) || extractEngineFromModelDetail(vehicle.model_detail);
         const plate = platesByVehicle.get(vehicle.id) || null;
         const plateId = plate ? plate.id : null;
 
@@ -1661,6 +1723,78 @@ const parseToDate = (value) => {
       res.status(200).json(vehiclesWithDetails);
     } catch (err) {
       console.error("Errore GET /v1/vehicles/:userId:", err);
+      res.status(500).json({ message: "Errore server", error: err.message });
+    } finally {
+      conn.release();
+    }
+  });
+
+  router.get("/v1/vehicles/:vehicleId/image/thumbnail", authenticateJWT, async (req, res) => {
+    const vehicleId = Number.parseInt(req.params.vehicleId, 10);
+    const userId = authenticatedUserId(req);
+    const requestedAngle = String(req.query.angle || "12");
+
+    if (!Number.isInteger(vehicleId)) {
+      return res.status(400).json({ message: "vehicleId non valido." });
+    }
+    if (!userId) {
+      return res.status(401).json({ message: "Utente non autenticato." });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      const ownsVehicle = await ensureVehicleOwnership(conn, userId, vehicleId);
+      if (!ownsVehicle) {
+        return res.status(403).json({ message: "Accesso non autorizzato." });
+      }
+
+      const [rows] = await conn.execute(
+        `SELECT vi.image_data, vi.mime_type, vi.sha256
+        FROM vehicle_images vi
+        INNER JOIN user_vehicles uv ON uv.vehicle_id = vi.vehicle_id AND uv.user_id = ?
+        WHERE vi.vehicle_id = ?
+          AND (
+            vi.angle = ?
+            OR vi.is_primary = 1
+            OR vi.angle IS NULL
+          )
+        ORDER BY
+          CASE WHEN vi.angle = ? THEN 0 ELSE 1 END,
+          CASE WHEN LOWER(COALESCE(uv.color, '')) = LOWER(COALESCE(vi.color, '')) THEN 0 ELSE 1 END,
+          vi.is_primary ASC,
+          vi.id ASC
+        LIMIT 1`,
+        [userId, vehicleId, requestedAngle, requestedAngle]
+      );
+
+      if (rows.length === 0 || !rows[0].image_data) {
+        return res.status(404).json({ message: "Immagine veicolo non trovata." });
+      }
+
+      const imageBuffer = await sharp(rows[0].image_data)
+        .rotate()
+        .resize({
+          width: 700,
+          height: 450,
+          fit: "inside",
+          withoutEnlargement: true
+        })
+        .png({ compressionLevel: 9, adaptiveFiltering: true })
+        .toBuffer();
+
+      const etag = rows[0].sha256 ? `"vehicle-thumb-png-${rows[0].sha256}"` : undefined;
+      if (etag && req.headers["if-none-match"] === etag) {
+        return res.status(304).end();
+      }
+
+      if (etag) {
+        res.setHeader("ETag", etag);
+      }
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.status(200).send(imageBuffer);
+    } catch (err) {
+      console.error("Errore GET /v1/vehicles/:vehicleId/image/thumbnail:", err);
       res.status(500).json({ message: "Errore server", error: err.message });
     } finally {
       conn.release();
@@ -2090,6 +2224,22 @@ const base64ToBufferOrNull = (value) => {
   if (!value) return null;
   const cleaned = String(value).replace(/^data:[^;]+;base64,/, "");
   return Buffer.from(cleaned, "base64");
+};
+
+const normalizeProfileImageBuffer = async (buffer) => {
+  try {
+    return await sharp(buffer)
+      .rotate()
+      .resize(512, 512, {
+        fit: "inside",
+        withoutEnlargement: true
+      })
+      .jpeg({ quality: 82, mozjpeg: true, progressive: true })
+      .toBuffer();
+  } catch (err) {
+    console.warn("⚠️ Profile image compression failed, storing original buffer:", err.message);
+    return buffer;
+  }
 };
 
 const formatMaintenanceEntry = (row) => ({
@@ -2539,7 +2689,7 @@ router.get("/v1/profile_image", authenticateJWT, async (req, res) => {
     await ensureUserProfileImagesTable(conn);
 
     const [rows] = await conn.execute(
-      `SELECT *
+      `SELECT user_id, file_name, mime_type, file_size, created_at, updated_at
        FROM user_profile_images
        WHERE user_id = ?
        LIMIT 1`,
@@ -2550,9 +2700,43 @@ router.get("/v1/profile_image", authenticateJWT, async (req, res) => {
       return res.status(200).json({ userId, imageBase64: null });
     }
 
-    res.status(200).json(formatUserProfileImage(rows[0], true));
+    res.status(200).json(formatUserProfileImage(rows[0], false));
   } catch (err) {
     console.error("Errore GET /v1/profile_image:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.get("/v1/profile_image/content", authenticateJWT, async (req, res) => {
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureUserProfileImagesTable(conn);
+
+    const [rows] = await conn.execute(
+      `SELECT file_name, mime_type, image_data, updated_at
+       FROM user_profile_images
+       WHERE user_id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0 || !rows[0].image_data) {
+      return res.status(404).json({ message: "Foto profilo non trovata." });
+    }
+
+    const imageBuffer = rows[0].image_data;
+    res.setHeader("Content-Type", rows[0].mime_type || "image/jpeg");
+    res.setHeader("Content-Length", imageBuffer.length);
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.setHeader("ETag", `"${userId}-${new Date(rows[0].updated_at).getTime()}"`);
+    return res.status(200).send(imageBuffer);
+  } catch (err) {
+    console.error("Errore GET /v1/profile_image/content:", err);
     res.status(500).json({ message: "Errore server", error: err.message });
   } finally {
     if (conn) conn.release();
@@ -2563,14 +2747,13 @@ router.put("/v1/profile_image", authenticateJWT, async (req, res) => {
   const userId = authenticatedUserId(req);
   const data = req.body || {};
   const imageData = base64ToBufferOrNull(data.image_base64 ?? data.imageBase64);
-  const mimeType = data.mime_type ?? data.mimeType ?? "image/jpeg";
-  const fileName = data.file_name ?? data.fileName ?? "profile.jpg";
 
   if (!imageData) {
     return res.status(400).json({ message: "image_base64 è richiesto." });
   }
 
-  if (!["image/jpeg", "image/png", "image/heic", "image/heif"].includes(mimeType)) {
+  const incomingMimeType = data.mime_type ?? data.mimeType ?? "image/jpeg";
+  if (!["image/jpeg", "image/png", "image/heic", "image/heif"].includes(incomingMimeType)) {
     return res.status(400).json({ message: "Formato immagine non supportato." });
   }
 
@@ -2578,6 +2761,8 @@ router.put("/v1/profile_image", authenticateJWT, async (req, res) => {
   try {
     conn = await pool.getConnection();
     await ensureUserProfileImagesTable(conn);
+
+    const storedImageData = await normalizeProfileImageBuffer(imageData);
 
     await conn.execute(
       `INSERT INTO user_profile_images (
@@ -2592,15 +2777,15 @@ router.put("/v1/profile_image", authenticateJWT, async (req, res) => {
         updated_at = CURRENT_TIMESTAMP`,
       [
         userId,
-        fileName,
-        mimeType,
-        data.file_size ?? data.fileSize ?? imageData.length,
-        imageData
+        "profile.jpg",
+        "image/jpeg",
+        storedImageData.length,
+        storedImageData
       ]
     );
 
     const [rows] = await conn.execute(
-      `SELECT *
+      `SELECT user_id, file_name, mime_type, file_size, created_at, updated_at
        FROM user_profile_images
        WHERE user_id = ?
        LIMIT 1`,

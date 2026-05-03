@@ -19,49 +19,6 @@ private func extractCleanModel(from model: String?) -> String {
     return cleanModel.isEmpty ? trimmed : cleanModel
 }
 
-// Helper function to extract clean engine info (e.g., "1.5 ETSI", "2.0 TDI")
-private func extractCleanEngine(from engine: String) -> String? {
-    // Lista di parole chiave valide che identificano motori / alimentazioni
-    let validEngineTokens: Set<String> = [
-        "BZ", "BENZINA", "TSI", "TFSI", "MPI", "GDI", "VTEC",
-        "DIESEL", "TDI", "TD", "CDTI", "DCI", "JTD", "MULTIJET", "CRDI", "HDI", "BLUEHDI",
-        "HYBRID", "MHEV", "PHEV", "HEV", "EHYBRID",
-        "GPL", "CNG", "METANO", "ECOFUEL",
-        "EV", "ELETTRICO", "BEV",
-        "ETSI", "ECOBOOST", "MHYBRID"
-    ]
-    
-    // Regex per catturare "numero decimale" + "sigla motore", con virgola o punto e L opzionale
-    let pattern = #"(\d+(?:[.,]\d+)?)\s*(L)?\s*([a-zA-Z]+)"#
-    guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
-        return nil
-    }
-    
-    let range = NSRange(engine.startIndex..<engine.endIndex, in: engine)
-    let matches = regex.matches(in: engine, options: [], range: range)
-    
-    for match in matches {
-        if match.numberOfRanges >= 4,
-           let cilindrataRange = Range(match.range(at: 1), in: engine),
-           let siglaRange = Range(match.range(at: 3), in: engine) {
-            let unitRange = match.range(at: 2)
-            let unit = unitRange.location != NSNotFound
-                ? String(engine[Range(unitRange, in: engine)!])
-                : ""
-            
-            let cilindrata = String(engine[cilindrataRange])
-            let sigla = String(engine[siglaRange]).uppercased()
-            
-            if validEngineTokens.contains(sigla) {
-                let unitSuffix = unit.isEmpty ? "" : unit.uppercased()
-                return "\(cilindrata)\(unitSuffix) \(sigla)"
-            }
-        }
-    }
-    
-    return nil
-}
-
 private func normalizedGarageSearchValue(_ value: String) -> String {
     value
         .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
@@ -469,6 +426,7 @@ struct GarageScreen: View {
                             ForEach(Array(filteredCars.enumerated()), id: \.element.vehicle.id) { index, car in
                                 SwipeableCarRow(
                                     vehicle: car,
+                                    thumbnail: viewModel.vehicleThumbnails[car.vehicle.id],
                                     appearanceDelay: Double(index) * 0.04,
                                     onShowDetails: {
                                         viewModel.showDetails(for: car)
@@ -612,7 +570,7 @@ struct GarageScreen: View {
         • License Plate: \(vehicle.plate?.plateNumber ?? "N/A")
         • Engine: \(vehicle.vehicle.smartEngineDescription ?? "N/A")
         • Fuel Type: \(vehicle.vehicle.fuelType ?? "N/A")
-        • Color: \(vehicle.vehicle.color ?? "N/A")
+        • Color: \(localizedVehicleColorName(vehicle.vehicle.color, fallback: "N/A"))
 
         📱 Shared from TyreVibes App
         """
@@ -621,7 +579,10 @@ struct GarageScreen: View {
         var itemsToShare: [Any] = [vehicleInfo]
 
         // Aggiungi l'immagine se disponibile (con targa offuscata per privacy)
-        if let base64String = vehicle.image?.imageBase64,
+        if let image = viewModel.vehicleThumbnails[vehicle.vehicle.id] {
+            let blurredImage = LicensePlateBlurHelper.blurLicensePlate(in: image)
+            itemsToShare.append(blurredImage)
+        } else if let base64String = vehicle.image?.imageBase64,
            let data = Data(base64Encoded: base64String),
            let image = UIImage(data: data) {
             let trimmedImage = image.trimmedTransparentPixels(threshold: 5)
@@ -663,12 +624,12 @@ struct GarageScreen: View {
 
     struct CarCardView: View {
         let v: VehicleResponse
+        let thumbnail: UIImage?
         let onShowDetails: () -> Void
         let onShare: () -> Void
         
         private var engineDisplay: String {
-            let raw = v.vehicle.smartEngineDescription ?? ""
-            return extractCleanEngine(from: raw) ?? raw
+            v.vehicle.smartEngineDescription ?? ""
         }
         
         
@@ -691,23 +652,26 @@ struct GarageScreen: View {
                     
                     VStack(alignment: .leading, spacing: h * 0.05) {
                         HStack {
-                            VStack() {
+                            VStack(alignment: .leading, spacing: 0) {
                                 HStack(spacing: 12) {
                                     Text(v.vehicle.smartModelDescription ?? v.vehicle.model ?? "")
                                         .foregroundColor(.black)
                                         .font(.customFont(size: 16, weight: .semibold))
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
+                                        .truncationMode(.tail)
                                     
                                     Text(v.plate?.plateNumber ?? "")
                                         .font(.customFont(size: 12, weight: .semibold))
                                         .foregroundColor(.gray)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
+                                        .truncationMode(.tail)
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .clipped()
                             
                             HStack(spacing: 6) {
                                 Button(action: {
@@ -739,7 +703,14 @@ struct GarageScreen: View {
                         GeometryReader { imageGeo in
                             HStack(alignment: .center, spacing: 0) {
                                 // Image container with fixed width
-                                if let rawBase64 = v.image?.imageBase64,
+                                if let thumbnail {
+                                    Image(uiImage: thumbnail)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: w * 0.50, height: h * 0.55)
+                                        .clipped()
+                                        .fixedSize(horizontal: true, vertical: true)
+                                } else if let rawBase64 = v.image?.imageBase64,
                                    let data = Data(base64Encoded: rawBase64),
                                    let rawImage = UIImage(data: data) {
 
@@ -748,12 +719,12 @@ struct GarageScreen: View {
                                     Image(uiImage: trimmed)
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
-                                        .frame(width: w * 0.57, height: h * 0.55)
+                                        .frame(width: w * 0.50, height: h * 0.55)
                                         .clipped()
                                         .fixedSize(horizontal: true, vertical: true)
                                 }
 
-                                Spacer().frame(width: w * 0.04)
+                                Spacer().frame(width: w * 0.03)
 
                                 // Technical Specs section with fixed position
                                 VStack(alignment: .leading, spacing: 12) {
@@ -761,17 +732,23 @@ struct GarageScreen: View {
                                     Text(L10n.technicalSpecs.localized)
                                         .font(.customFont(size: 12, weight: .semibold))
                                         .foregroundColor(Color.black)
-                                        .fixedSize()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.9)
+                                        .truncationMode(.tail)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        SpecRow(label: "Make:", value: v.vehicle.make ?? "")
-                                        SpecRow(label: "Model:", value: v.vehicle.smartModelDescription ?? v.vehicle.model ?? "")
-                                        SpecRow(label: "Year:", value: v.plate?.year.map { String($0) } ?? "")
-                                        SpecRow(label: "Engine:", value: engineDisplay, maxLines: 1, minScaleFactor: 0.7, isMarquee: true)
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        SpecRow(label: "\(String(localized: "Make")):", value: v.vehicle.make ?? "")
+                                        SpecRow(label: "\(String(localized: "Model")):", value: v.vehicle.smartModelDescription ?? v.vehicle.model ?? "")
+                                        SpecRow(label: "\(String(localized: "Year")):", value: v.plate?.year.map { String($0) } ?? "")
+                                        SpecRow(label: "\(String(localized: "Engine")):", value: engineDisplay, isMarquee: true)
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .clipped()
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.trailing, w * 0.04)
+                                .padding(.trailing, w * 0.08)
+                                .clipped()
                                 .layoutPriority(1)
                             }
                         }
@@ -787,6 +764,7 @@ struct GarageScreen: View {
     // Custom swipeable row for car card, swipes left but does not reveal delete or trigger deletion
     struct SwipeableCarRow: View {
         let vehicle: VehicleResponse
+        let thumbnail: UIImage?
         var appearanceDelay: Double = 0
         let onShowDetails: () -> Void
         let onShare: () -> Void
@@ -896,7 +874,7 @@ struct GarageScreen: View {
                     .opacity(progress > 0.02 ? 1 : 0)
 
                     // Car card with shadow when swiped
-                    CarCardView(v: vehicle, onShowDetails: onShowDetails, onShare: onShare)
+                    CarCardView(v: vehicle, thumbnail: thumbnail, onShowDetails: onShowDetails, onShare: onShare)
                         .offset(x: offsetX)
                         .rotation3DEffect(
                             .degrees(Double(progress) * -6),
@@ -965,7 +943,7 @@ struct GarageScreen: View {
     struct SpecRow: View {
         let label: String
         let value: String
-        var maxLines: Int? = nil
+        var maxLines: Int? = 1
         var minScaleFactor: CGFloat = 0.85
         var isMarquee: Bool = false
 
@@ -977,7 +955,10 @@ struct GarageScreen: View {
                 Text(label)
                     .font(.customFont(size: 12, weight: .semibold))
                     .foregroundColor(.gray)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
+                    .truncationMode(.tail)
+                    .frame(width: 62, alignment: .leading)
                 
                 if isMarquee {
                     MarqueeText(
@@ -990,20 +971,24 @@ struct GarageScreen: View {
                         spacing: 24
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .clipped()
                     .layoutPriority(1)
                 } else {
                     Text(value)
                         .font(valueFont)
                         .foregroundColor(.black)
                         .lineLimit(maxLines)
-                        .minimumScaleFactor(minScaleFactor)
+                        .minimumScaleFactor(0.82)
                         .allowsTightening(true)
                         .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .truncationMode(.tail)
                         .layoutPriority(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .clipped()
                 }
             }
+            .frame(maxWidth: .infinity, minHeight: 15, alignment: .leading)
+            .clipped()
         }
     }
 

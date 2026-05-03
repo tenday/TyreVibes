@@ -139,6 +139,16 @@
         }
       }
     },
+    "%@, %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
     "%@, %@ %@" : {
       "comment" : "A sublabel displaying the city, province, and postal code of an address.",
       "extractionState" : "manual",
@@ -1904,6 +1914,9 @@
         }
       }
     },
+    "Apri dettaglio gomma" : {
+
+    },
     "Apri il centro notifiche" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3519,7 +3532,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Color"
+            "value" : "Colore"
           }
         }
       }
@@ -5474,6 +5487,9 @@
         }
       }
     },
+    "Eliminare manutenzione?" : {
+
+    },
     "Email" : {
       "comment" : "A label displayed above the user's email text field.",
       "extractionState" : "manual",
@@ -6561,7 +6577,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fuel Type"
+            "value" : "Alimentazione"
           }
         }
       }
@@ -8282,7 +8298,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "License plate"
+            "value" : "Targa"
           }
         }
       }
@@ -11322,7 +11338,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Or"
+            "value" : "Oppure"
           }
         }
       }
@@ -13940,7 +13956,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search..."
+            "value" : "Cerca..."
           }
         }
       }
@@ -14242,7 +14258,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share"
+            "value" : "Condividi"
           }
         }
       }
@@ -15558,6 +15574,9 @@
           }
         }
       }
+    },
+    "Trascina per ruotare • Tocca una ruota" : {
+
     },
     "Tread Analysis" : {
       "comment" : "The title of the toolbar item in the Tread Analysis result view.",

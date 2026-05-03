@@ -87,6 +87,18 @@ private struct CPanelProfileImageResponse: Decodable {
     let updatedAt: Date?
 }
 
+private enum ProfileImageEndpoint {
+    static func url(for path: String) -> URL? {
+        guard let plistPath = Bundle.main.path(forResource: "Api", ofType: "plist"),
+              let plist = NSDictionary(contentsOfFile: plistPath),
+              let baseURL = plist["BASE_URL"] as? String else {
+            return nil
+        }
+
+        return URL(string: baseURL + path)
+    }
+}
+
 @MainActor
 class ProfileViewModel: ObservableObject {
     @Published var userProfile: UserProfile?
@@ -351,8 +363,8 @@ class ProfileViewModel: ObservableObject {
         isLoading = true
 
         do {
-            // Converti l'immagine in dati JPEG
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            guard let resizedImage = resizeProfileImage(image, maxDimension: 512),
+                  let imageData = resizedImage.jpegData(compressionQuality: 0.82) else {
                 throw NSError(domain: "ProfileViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Impossibile convertire l'immagine"])
             }
 
@@ -373,7 +385,7 @@ class ProfileViewModel: ObservableObject {
             )
 
             // Aggiorna l'immagine locale e il profilo
-            profileImage = image
+            profileImage = resizedImage
             userProfile?.profileImageUrl = nil
 
             // Aggiorna cache
@@ -402,25 +414,59 @@ class ProfileViewModel: ObservableObject {
         return username.capitalized
     }
 
+    private func resizeProfileImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage? {
+        let size = image.size
+        let ratio = min(maxDimension / size.width, maxDimension / size.height)
+        if ratio >= 1.0 {
+            return image
+        }
+
+        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resized = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return resized
+    }
+
     private func loadProfileImageFromCPanel() {
         Task {
             do {
-                let response: CPanelProfileImageResponse = try await NetworkManager.shared.get(
-                    endpoint: "/v1/profile_image"
-                )
-                if let imageBase64 = response.imageBase64,
-                   let data = Data(base64Encoded: imageBase64),
-                   let image = UIImage(data: data) {
-                    await MainActor.run {
-                        self.profileImage = image
-                    }
+                guard let url = ProfileImageEndpoint.url(for: "/v1/profile_image/content") else {
+                    return
+                }
+
+                let config = URLSessionConfiguration.default
+                config.timeoutIntervalForRequest = NetworkTimeout.quickLookup
+                config.timeoutIntervalForResource = NetworkTimeout.externalAPI
+                let session = URLSession(configuration: config)
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                guard await AuthTokenHelper.addAuthHeader(to: &request) else {
+                    return
+                }
+
+                let (data, response) = try await session.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 404 {
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode),
+                      let image = UIImage(data: data) else {
+                    return
+                }
+
+                await MainActor.run {
+                    self.profileImage = image
                 }
             } catch {
                 print("Errore caricamento immagine profilo: \(error.localizedDescription)")
             }
         }
     }
-
     // MARK: - Attività Utente
 
     func loadRecentActivities() {

@@ -17,9 +17,11 @@ class GarageViewModel: ObservableObject {
     @Published var isLoading = true
     @Published var showCarDetails = false
     @Published var selectedVehicle: VehicleResponse?
+    @Published var vehicleThumbnails: [Int: UIImage] = [:]
 
     private let authService = AuthService()
     static let apiConfig = PlateAPIService.apiConfig
+    private var thumbnailTasks: [Int: Task<Void, Never>] = [:]
 
     private struct VehiclesEnvelope: Decodable {
         let vehicles: [VehicleResponse]?
@@ -38,6 +40,7 @@ class GarageViewModel: ObservableObject {
         if isLoading, let cachedData = UserDefaults.standard.data(forKey: "cachedVehicles") {
             if let cachedVehicles = try? JSONDecoder().decode([VehicleResponse].self, from: cachedData) {
                 vehicles = cachedVehicles
+                loadVehicleThumbnails(for: cachedVehicles)
                 didLoadCachedVehicles = true
             } else {
                 UserDefaults.standard.removeObject(forKey: "cachedVehicles")
@@ -57,7 +60,7 @@ class GarageViewModel: ObservableObject {
                 isLoading = false
                 return
             }
-            guard let url = URL(string: "\(baseURL)/v1/vehicles/\(userId)") else {
+            guard let url = URL(string: "\(baseURL)/v1/vehicles/\(userId)?includeImages=false") else {
                 print("Invalid URL")
                 isLoading = false
                 return
@@ -90,6 +93,7 @@ class GarageViewModel: ObservableObject {
             // Force a clean update by creating a new array
             vehicles = decodedResponse
             UserDefaults.standard.set(data, forKey: "cachedVehicles")
+            loadVehicleThumbnails(for: decodedResponse)
             isLoading = false
         } catch {
             // Handle the error appropriately, e.g., show an alert to the user
@@ -98,6 +102,67 @@ class GarageViewModel: ObservableObject {
                 vehicles = []
             }
             isLoading = false
+        }
+    }
+
+    private func loadVehicleThumbnails(for vehicles: [VehicleResponse]) {
+        let vehicleIds = Set(vehicles.map { $0.vehicle.id })
+        vehicleThumbnails = vehicleThumbnails.filter { vehicleIds.contains($0.key) }
+
+        for vehicle in vehicles {
+            let vehicleId = vehicle.vehicle.id
+            if vehicleThumbnails[vehicleId] != nil || thumbnailTasks[vehicleId] != nil {
+                continue
+            }
+
+            thumbnailTasks[vehicleId] = Task { [weak self] in
+                guard let self else { return }
+                defer {
+                    Task { @MainActor in
+                        self.thumbnailTasks[vehicleId] = nil
+                    }
+                }
+
+                guard let thumbnail = await self.fetchVehicleThumbnail(vehicleId: vehicleId) else {
+                    return
+                }
+
+                await MainActor.run {
+                    self.vehicleThumbnails[vehicleId] = thumbnail
+                }
+            }
+        }
+    }
+
+    private func fetchVehicleThumbnail(vehicleId: Int) async -> UIImage? {
+        guard let baseURL = GarageViewModel.apiConfig["BASE_URL"] as? String,
+              let url = URL(string: "\(baseURL)/v1/vehicles/\(vehicleId)/image/thumbnail?v=2") else {
+            return nil
+        }
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = NetworkTimeout.quickLookup
+        config.timeoutIntervalForResource = NetworkTimeout.externalAPI
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        let session = URLSession(configuration: config)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        guard await AuthTokenHelper.addAuthHeader(to: &request) else {
+            return nil
+        }
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let image = UIImage(data: data) else {
+                return nil
+            }
+            return image.trimmedTransparentPixels(threshold: 5)
+        } catch {
+            print("Error fetching vehicle thumbnail \(vehicleId): \(error)")
+            return nil
         }
     }
 
@@ -145,6 +210,7 @@ class GarageViewModel: ObservableObject {
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         vehicles.removeAll { $0.vehicle.id == vehicle.id }
+                        vehicleThumbnails[vehicle.id] = nil
                     }
                     if let updatedData = try? JSONEncoder().encode(vehicles) {
                         UserDefaults.standard.set(updatedData, forKey: "cachedVehicles")
