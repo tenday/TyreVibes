@@ -28,6 +28,8 @@ struct TyreRowView: View {
 
     private var tint: Color {
         switch tyre.healthState {
+        case .unknown:
+            return .gray
         case .optimal:
             return .green
         case .monitor:
@@ -39,6 +41,8 @@ struct TyreRowView: View {
 
     private var iconName: String {
         switch tyre.healthState {
+        case .unknown:
+            return "questionmark.circle.fill"
         case .optimal:
             return "checkmark.circle.fill"
         case .monitor:

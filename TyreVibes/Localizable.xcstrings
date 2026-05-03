@@ -139,16 +139,6 @@
         }
       }
     },
-    "%@, %@" : {
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$@"
-          }
-        }
-      }
-    },
     "%@, %@ %@" : {
       "comment" : "A sublabel displaying the city, province, and postal code of an address.",
       "extractionState" : "manual",
@@ -1913,9 +1903,6 @@
           }
         }
       }
-    },
-    "Apri dettaglio gomma" : {
-
     },
     "Apri il centro notifiche" : {
       "extractionState" : "manual",
@@ -5486,9 +5473,6 @@
           }
         }
       }
-    },
-    "Eliminare manutenzione?" : {
-
     },
     "Email" : {
       "comment" : "A label displayed above the user's email text field.",
@@ -15574,9 +15558,6 @@
           }
         }
       }
-    },
-    "Trascina per ruotare • Tocca una ruota" : {
-
     },
     "Tread Analysis" : {
       "comment" : "The title of the toolbar item in the Tread Analysis result view.",

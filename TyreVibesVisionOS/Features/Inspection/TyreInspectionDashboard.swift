@@ -12,14 +12,14 @@ struct TyreInspectionDashboard: View {
             HStack(spacing: 16) {
                 VisionMetricBadge(
                     title: "Battistrada",
-                    value: String(format: "%.1f mm", tyre.treadDepthMillimeters),
+                    value: tyre.treadDepthMillimeters > 0 ? String(format: "%.1f mm", tyre.treadDepthMillimeters) : "n/d",
                     systemImage: "ruler",
                     tint: treadTint
                 )
 
                 VisionMetricBadge(
                     title: "Pressione",
-                    value: String(format: "%.1f bar", tyre.pressureBar),
+                    value: tyre.pressureBar > 0 ? String(format: "%.1f bar", tyre.pressureBar) : "n/d",
                     systemImage: "gauge.with.dots.needle.67percent",
                     tint: .blue
                 )
@@ -52,11 +52,14 @@ struct TyreInspectionDashboard: View {
     }
 
     private var treadTint: Color {
-        tyre.treadDepthMillimeters <= 3.0 ? .red : .green
+        guard tyre.treadDepthMillimeters > 0 else { return .gray }
+        return tyre.treadDepthMillimeters <= 3.0 ? Color.red : Color.green
     }
 
     private var stateTint: Color {
         switch tyre.healthState {
+        case .unknown:
+            return .gray
         case .optimal:
             return .green
         case .monitor:

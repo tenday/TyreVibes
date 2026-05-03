@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000012F0000000000000A /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB7A2E2D2D8B005FB7C0 /* Supabase */; };
 		E913FB712E2D2D2B005FB7C0 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB702E2D2D2B005FB7C0 /* Auth */; };
 		E913FB732E2D2D2B005FB7C0 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB722E2D2D2B005FB7C0 /* Functions */; };
 		E913FB752E2D2D2B005FB7C0 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = E913FB742E2D2D2B005FB7C0 /* PostgREST */; };
@@ -62,6 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000012F0000000000000A /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -122,6 +124,7 @@
 			);
 			name = TyreVibesVisionOS;
 			packageProductDependencies = (
+				E913FB7A2E2D2D8B005FB7C0 /* Supabase */,
 			);
 			productName = TyreVibesVisionOS;
 			productReference = A10000012F00000000000001 /* TyreVibesVisionOS.app */;

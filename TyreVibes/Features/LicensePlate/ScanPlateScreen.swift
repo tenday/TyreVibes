@@ -131,6 +131,7 @@ struct CameraPreview: UIViewControllerRepresentable {
         class CameraViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
         private var lastRequestTime = Date(timeIntervalSince1970: 0)
         private var lastPlates: [String] = []
+        private var frameCounter = 0
         let captureSession = AVCaptureSession()
         var previewLayer: AVCaptureVideoPreviewLayer?
         private var permissionLabel: UILabel?
@@ -405,6 +406,9 @@ struct CameraPreview: UIViewControllerRepresentable {
             
 
         func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+            frameCounter += 1
+            guard frameCounter % 2 == 0 else { return }
+
             guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
                 print("captureOutput: pixelBuffer nil")
                 return
