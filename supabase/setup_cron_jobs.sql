@@ -23,9 +23,9 @@ SELECT cron.schedule(
       -- URL della Edge Function (Sostituisci con il tuo URL di progetto reale se diverso)
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs',
       
-      -- Headers necessari per l'autenticazione (Sostituisci YOUR_ANON_KEY con la tua chiave anon reale)
-      -- NOTA: In un ambiente di produzione, la chiave dovrebbe essere gestita in modo sicuro
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      -- Headers necessari per l'autenticazione (Sostituisci YOUR_BACKGROUND_JOBS_SECRET con il valore configurato nelle Edge Functions)
+      -- NOTA: In un ambiente di produzione, il secret dovrebbe essere gestito in modo sicuro
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       
       -- Body vuoto
       body := '{}'::jsonb
@@ -47,7 +47,7 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-insurance-expiry',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
   ) AS request_id;
   $$
@@ -60,7 +60,7 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-bollo-status',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
   ) AS request_id;
   $$
@@ -73,7 +73,7 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-revision-status',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
   ) AS request_id;
   $$

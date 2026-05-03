@@ -134,7 +134,7 @@ SELECT cron.schedule(
     SELECT
         extensions.http_post(
             url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs',
-            headers := '{"Content-Type": "application/json", "Authorization": "Bearer sb_publishable_j45ieNq6Q9Tyz0qyib5PPA_pEuCNzDc"}'::jsonb,
+            headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
             body := '{}'::jsonb
         ) AS request_id;
     $$

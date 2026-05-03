@@ -189,11 +189,11 @@ supabase db push
 # Copia il contenuto di setup-database.sql e incollalo nel SQL Editor
 ```
 
-**⚠️ IMPORTANTE**: Dopo aver eseguito lo script, modifica il cron job per inserire la tua `SUPABASE_ANON_KEY`:
+**⚠️ IMPORTANTE**: Dopo aver eseguito lo script, modifica il cron job per inserire il tuo `BACKGROUND_JOBS_SECRET`:
 
 1. Vai su Supabase Dashboard → SQL Editor
-2. Cerca `YOUR_SUPABASE_ANON_KEY`
-3. Sostituisci con la chiave reale (Settings → API → anon public)
+2. Cerca `YOUR_BACKGROUND_JOBS_SECRET`
+3. Sostituisci con lo stesso secret configurato nelle Edge Functions
 
 ### 5. Variabili d'Ambiente
 
@@ -202,8 +202,9 @@ Le Edge Functions usano automaticamente queste variabili (configurate da Supabas
 - `SUPABASE_URL` - URL del progetto
 - `SUPABASE_SERVICE_ROLE_KEY` - Service role key (auto-iniettata)
 - `SUPABASE_ANON_KEY` - Anon key pubblica
+- `BACKGROUND_JOBS_SECRET` - Secret condiviso richiesto dai job cron
 
-Nessuna configurazione manuale necessaria! ✨
+Configura manualmente `BACKGROUND_JOBS_SECRET` nella Supabase Dashboard prima di attivare i job cron.
 
 ---
 
@@ -376,38 +377,35 @@ GROUP BY type;
 ```bash
 # URL base
 BASE_URL="https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1"
-ANON_KEY="YOUR_ANON_KEY"
+BACKGROUND_JOBS_SECRET="YOUR_BACKGROUND_JOBS_SECRET"
 
 # Test update-insurance-expiry
 curl -X POST $BASE_URL/update-insurance-expiry \
-  -H "Authorization: Bearer $ANON_KEY" \
+  -H "x-cron-secret: $BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 
 # Test update-bollo-status
 curl -X POST $BASE_URL/update-bollo-status \
-  -H "Authorization: Bearer $ANON_KEY" \
+  -H "x-cron-secret: $BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 
 # Test update-revision-status
 curl -X POST $BASE_URL/update-revision-status \
-  -H "Authorization: Bearer $ANON_KEY" \
+  -H "x-cron-secret: $BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 
 # Test orchestrator (tutti i job)
 curl -X POST $BASE_URL/run-all-jobs \
-  -H "Authorization: Bearer $ANON_KEY" \
+  -H "x-cron-secret: $BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 ```
 
-### Test con JWT Utente
+### Test con Authorization
 
 ```bash
-# Ottieni il token JWT dell'utente
-USER_JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-# Test con autenticazione utente
+# Test con il secret dei background jobs nel formato Authorization
 curl -X POST $BASE_URL/update-insurance-expiry \
-  -H "Authorization: Bearer $USER_JWT" \
+  -H "Authorization: Bearer $BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 ```
 
@@ -418,7 +416,7 @@ curl -X POST $BASE_URL/update-insurance-expiry \
 SELECT
     extensions.http_post(
         url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs',
-        headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+        headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
         body := '{}'::jsonb
     ) AS request_id;
 ```
@@ -437,8 +435,9 @@ Tutte le tabelle hanno RLS abilitato:
 
 ### JWT Validation
 
-Le Edge Functions usano `--no-verify-jwt` per permettere chiamate da cron, ma:
+Le Edge Functions usano `--no-verify-jwt` per permettere chiamate da cron con `BACKGROUND_JOBS_SECRET`, ma:
 
+- Le funzioni rifiutano richieste senza `x-cron-secret` o `Authorization: Bearer <BACKGROUND_JOBS_SECRET>`
 - Le query al database rispettano sempre RLS
 - Solo `service_role` può scrivere in `bollo_status` e `revision_status`
 - Gli utenti possono solo leggere i propri dati

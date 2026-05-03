@@ -51,7 +51,7 @@ echo ""
 # Deploy di ogni funzione
 for func in "${FUNCTIONS[@]}"; do
     echo "🚀 Deploy di $func..."
-    supabase functions deploy $func
+    supabase functions deploy $func --no-verify-jwt
 
     if [ $? -eq 0 ]; then
         echo "✅ $func deployata con successo"
@@ -67,11 +67,11 @@ echo "✅ Tutte le funzioni sono state deployate con successo!"
 echo ""
 echo "📋 Prossimi passi:"
 echo "  1. Configura i job schedulati nel database (vedi cron-schedule.md)"
-echo "  2. Verifica le variabili d'ambiente in Supabase Dashboard"
+echo "  2. Verifica le variabili d'ambiente in Supabase Dashboard, inclusa BACKGROUND_JOBS_SECRET"
 echo "  3. Testa le funzioni manualmente"
 echo ""
 echo "🧪 Test rapido:"
 echo "  curl -X POST https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs \\"
-echo "    -H 'Authorization: Bearer YOUR_ANON_KEY' \\"
+echo "    -H 'x-cron-secret: YOUR_BACKGROUND_JOBS_SECRET' \\"
 echo "    -H 'Content-Type: application/json'"
 echo ""
