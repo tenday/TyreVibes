@@ -191,7 +191,6 @@ class RemainingLifeCalculator {
         var wearRates: [Double] = []
 
         for i in 1..<sorted.count {
-            let timeDiff = sorted[i].timestamp.timeIntervalSince(sorted[i-1].timestamp)
             let kmDiff = sorted[i].kilometers - sorted[i-1].kilometers
             let depthDiff = sorted[i-1].depth - sorted[i].depth  // Depth decreases over time
 
@@ -227,7 +226,7 @@ class RemainingLifeCalculator {
 
     private func estimateMonths(from kilometers: Double, wearAnalysis: WearAnalysis) -> Int {
         // Assume average driving of 15,000 km/year
-        var kmPerMonth = 15000.0 / 12.0
+        let kmPerMonth = 15000.0 / 12.0
 
         // Adjust for driving patterns (if we had that data)
         // For now, use standard value

@@ -35,7 +35,7 @@ class PushNotificationManager: NSObject, ObservableObject {
         }
 
         // Registra per le notifiche remote (questo genera il device token)
-        await UIApplication.shared.registerForRemoteNotifications()
+        UIApplication.shared.registerForRemoteNotifications()
         isRegisteredForRemoteNotifications = true
     }
 
@@ -109,7 +109,7 @@ class PushNotificationManager: NSObject, ObservableObject {
 
         // Gestisci il badge
         if let badge = aps["badge"] as? Int {
-            UIApplication.shared.applicationIconBadgeNumber = badge
+            UNUserNotificationCenter.current().setBadgeCount(badge)
         }
 
         // Estrai dati custom

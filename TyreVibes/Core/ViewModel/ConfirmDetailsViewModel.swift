@@ -116,7 +116,7 @@ class ConfirmDetailsViewModel: ObservableObject {
                                                 case .success(let imgOriginal12):
                                                     Task { @MainActor in
                                                         guard self.activeImageRequestID == requestID else { return }
-                                                        let safeImageOriginal12 = self.ensureRenderable(imgOriginal12)
+                                                        _ = self.ensureRenderable(imgOriginal12)
 
                                                         do {
                                                             try await self.plateAPIService.savePlate(

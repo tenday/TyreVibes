@@ -213,18 +213,29 @@ struct EnterLicensePlateView: View {
                     // Continue Button
                     Button(action: {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        self.showErrorAlert = false
                         isLoadingDetails = true
-                        let trimmed = licensePlate.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
+                        let plate = LicensePlateReader.normalizePlate(licensePlate)
+                        logInfo("[PlateUI:manual] continue tapped raw='\(licensePlate)' normalized='\(plate)'")
+                        guard !plate.isEmpty else {
+                            logWarning("[PlateUI:manual] empty normalized plate")
+                            isLoadingDetails = false
+                            return
+                        }
                         
                         Task {
+                            let startedAt = Date()
                             do {
-                                let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
-                                if data.make == ""  {
+                                let data = try await LicensePlateReader.fetchPlateSummary(plate: plate)
+                                let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+                                logInfo("[PlateUI:manual] lookup completed plate=\(plate) identity=\(data.hasVehicleIdentityData) elapsedMs=\(elapsedMs)")
+                                if !data.hasVehicleIdentityData {
                                     licensePlate = ""
-                                    self.errorMessage = "Targa inserita non trovata, si prega di riprovare"
-                                    self.showErrorAlert = true
+                                    self.data = data.plate.isEmpty ? PlateData(plate: plate) : data
+                                    self.vehicleImage = nil
+                                    self.showConfirmDetailsScreen = true
                                     self.isLoadingDetails = false
+                                    logWarning("[PlateUI:manual] navigating manual fallback plate=\(plate)")
                                     return
                                 }
                                 
@@ -232,8 +243,10 @@ struct EnterLicensePlateView: View {
                                 self.vehicleImage = data.vehicleImage
                                 licensePlate = ""
                                 self.navigateToCheckDetails = true
+                                logInfo("[PlateUI:manual] navigating check details plate=\(plate)")
                             }
                             catch let apiError as PlateAPIError {
+                                logError("[PlateUI:manual] PlateAPIError plate=\(plate) error=\(apiError.localizedDescription)")
                                 switch apiError {
                                 case .alreadyInGarage:
                                     self.errorMessage = "Questa targa è già presente nel tuo garage."
@@ -244,13 +257,12 @@ struct EnterLicensePlateView: View {
                                 licensePlate = ""
                                 
                             } catch {
+                                logError("[PlateUI:manual] generic error plate=\(plate) error=\(error.localizedDescription)")
                                 self.errorMessage = error.localizedDescription
                                 self.showErrorAlert = true
                             }
                         self.isLoadingDetails = false
                     }
-                    
-                    self.showErrorAlert = false
                     
                     }) {
                         if  isLoadingDetails {
@@ -276,12 +288,17 @@ struct EnterLicensePlateView: View {
                     }
                     .background(Color.customBitterSweet)
                     .cornerRadius(100)
-                    .opacity(isContinueEnabled ? 1.0 : 0.6)
-                    .disabled(!isContinueEnabled)
+                    .opacity(isContinueEnabled && !isLoadingDetails ? 1.0 : 0.6)
+                    .disabled(!isContinueEnabled || isLoadingDetails)
                     .padding(.horizontal)
                     .padding(.bottom, 30)
                     
                     Button(action: {
+                        let plate = LicensePlateReader.normalizePlate(licensePlate)
+                        logInfo("[PlateUI:manual] manual entry tapped raw='\(licensePlate)' normalized='\(plate)'")
+                        if !plate.isEmpty {
+                            data = PlateData(plate: plate)
+                        }
                         showConfirmDetailsScreen = true
                     }) {
                         Text("Non trovi la tua auto?")

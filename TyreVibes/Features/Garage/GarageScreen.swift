@@ -427,6 +427,7 @@ struct GarageScreen: View {
                                 SwipeableCarRow(
                                     vehicle: car,
                                     thumbnail: viewModel.vehicleThumbnails[car.vehicle.id],
+                                    isImageLoading: viewModel.loadingThumbnailVehicleIds.contains(car.vehicle.id),
                                     appearanceDelay: Double(index) * 0.04,
                                     onShowDetails: {
                                         viewModel.showDetails(for: car)
@@ -625,6 +626,7 @@ struct GarageScreen: View {
     struct CarCardView: View {
         let v: VehicleResponse
         let thumbnail: UIImage?
+        let isImageLoading: Bool
         let onShowDetails: () -> Void
         let onShare: () -> Void
         
@@ -722,6 +724,21 @@ struct GarageScreen: View {
                                         .frame(width: w * 0.50, height: h * 0.55)
                                         .clipped()
                                         .fixedSize(horizontal: true, vertical: true)
+                                } else if isImageLoading {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.gray.opacity(0.28))
+                                        .frame(width: w * 0.50, height: h * 0.55)
+                                        .shimmer()
+                                } else {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.black.opacity(0.06))
+
+                                        Image(systemName: "car.fill")
+                                            .font(.system(size: min(w, h) * 0.16, weight: .semibold))
+                                            .foregroundColor(.gray.opacity(0.45))
+                                    }
+                                    .frame(width: w * 0.50, height: h * 0.55)
                                 }
 
                                 Spacer().frame(width: w * 0.03)
@@ -765,6 +782,7 @@ struct GarageScreen: View {
     struct SwipeableCarRow: View {
         let vehicle: VehicleResponse
         let thumbnail: UIImage?
+        let isImageLoading: Bool
         var appearanceDelay: Double = 0
         let onShowDetails: () -> Void
         let onShare: () -> Void
@@ -874,7 +892,7 @@ struct GarageScreen: View {
                     .opacity(progress > 0.02 ? 1 : 0)
 
                     // Car card with shadow when swiped
-                    CarCardView(v: vehicle, thumbnail: thumbnail, onShowDetails: onShowDetails, onShare: onShare)
+                    CarCardView(v: vehicle, thumbnail: thumbnail, isImageLoading: isImageLoading, onShowDetails: onShowDetails, onShare: onShare)
                         .offset(x: offsetX)
                         .rotation3DEffect(
                             .degrees(Double(progress) * -6),
@@ -1027,10 +1045,10 @@ struct GarageScreen: View {
                         }
                         .offset(x: offset)
                         .onAppear { startAnimation(containerWidth: containerWidth) }
-                        .onChange(of: containerWidth) { _ in
+                        .onChange(of: containerWidth) {
                             startAnimation(containerWidth: containerWidth)
                         }
-                        .onChange(of: text) { _ in
+                        .onChange(of: text) {
                             measureText()
                             startAnimation(containerWidth: containerWidth)
                         }

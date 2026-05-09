@@ -159,6 +159,19 @@ final class AttachmentManager: ObservableObject {
         deleteRemoteAttachment(attachment.id)
     }
 
+    func deleteAttachments(for entryId: String) {
+        let entryAttachments = attachments.filter { $0.entryId == entryId }
+        guard !entryAttachments.isEmpty else { return }
+
+        let entryDirectory = storageDirectory.appendingPathComponent(entryId)
+        try? fileManager.removeItem(at: entryDirectory)
+
+        attachments.removeAll { $0.entryId == entryId }
+        save()
+
+        entryAttachments.forEach { deleteRemoteAttachment($0.id) }
+    }
+
     func fileURL(for attachment: Attachment) -> URL {
         storageDirectory
             .appendingPathComponent(attachment.entryId)

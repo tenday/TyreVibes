@@ -10,6 +10,29 @@ enum NetworkTimeout {
     static let plateProbeResource: TimeInterval = 5.0
 }
 
+extension URLSessionConfiguration {
+    func applyHTTPToolkitProxyIfEnabled() {
+        #if DEBUG
+        guard let proxy = ProcessInfo.processInfo.environment["HTTP_TOOLKIT_PROXY"], !proxy.isEmpty else {
+            return
+        }
+
+        let parts = proxy.split(separator: ":", maxSplits: 1).map(String.init)
+        let host = parts.first ?? "127.0.0.1"
+        let port = Int(parts.dropFirst().first ?? "") ?? 8000
+
+        connectionProxyDictionary = [
+            "HTTPEnable": true,
+            "HTTPProxy": host,
+            "HTTPPort": port,
+            "HTTPSEnable": true,
+            "HTTPSProxy": host,
+            "HTTPSPort": port
+        ]
+        #endif
+    }
+}
+
 extension URLSession {
     static let tyreVibesShared: URLSession = {
         let config = URLSessionConfiguration.default
@@ -17,6 +40,7 @@ extension URLSession {
         config.timeoutIntervalForResource = NetworkTimeout.standard
         config.waitsForConnectivity = true
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.applyHTTPToolkitProxyIfEnabled()
         return URLSession(configuration: config)
     }()
 }

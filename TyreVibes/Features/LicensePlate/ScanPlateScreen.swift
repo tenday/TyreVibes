@@ -183,8 +183,7 @@ struct CameraPreview: UIViewControllerRepresentable {
         private func correctOCRErrors(_ text: String) -> String {
             guard text.count >= 6 else { return text }
 
-            let original = text
-            var corrected = text
+            let corrected = text
             let chars = Array(corrected)
 
             // Mappa di caratteri facilmente confusi dall'OCR
@@ -580,6 +579,7 @@ struct ScanPlateView: View {
     @State private var plateText: String = ""
     @State private var isLoadingPlateData: Bool = false
     @State private var navigateToCheckDetails: Bool = false
+    @State private var showConfirmDetailsScreen: Bool = false
     @State private var data: PlateData?
     @State private var vehicleImage: UIImage?
     @State private var errorMessage: String = ""
@@ -827,6 +827,11 @@ struct ScanPlateView: View {
                     resetScanningState()
                 }
             }
+            .onChange(of: showConfirmDetailsScreen) { oldValue, newValue in
+                if !newValue && oldValue {
+                    resetScanningState()
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.customBackgroundColor.edgesIgnoringSafeArea(.all))
             .preferredColorScheme(.dark)
@@ -840,6 +845,17 @@ struct ScanPlateView: View {
                     viewModel: ConfirmDetailsViewModel()
                 )
             }
+            .navigationDestination(isPresented: $showConfirmDetailsScreen) {
+                ConfirmDetailsView(
+                    plateData: data,
+                    manualEntryEnabled: true,
+                    viewModel: ConfirmDetailsViewModel(),
+                    consultOnly: selectedAction == .justConsult,
+                    onFullScreenDismiss: onFullScreenDismiss
+                )
+                .preferredColorScheme(.dark)
+                .navigationBarBackButtonHidden(true)
+            }
             .alert("Errore", isPresented: $showErrorAlert) {
                 Button("OK") {
                     resetScanningState()
@@ -851,29 +867,38 @@ struct ScanPlateView: View {
     }
     
     private func performPlateSearch() {
-        let trimmed = plateText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        let plate = LicensePlateReader.normalizePlate(plateText)
+        logInfo("[PlateUI:scan] search started raw='\(plateText)' normalized='\(plate)'")
+        guard !plate.isEmpty else {
+            logWarning("[PlateUI:scan] empty normalized plate")
             self.isLoadingPlateData = false
             return
         }
 
         Task {
+            let startedAt = Date()
             do {
-                let data = try await LicensePlateReader.fetchPlateSummary(plate: trimmed)
+                let data = try await LicensePlateReader.fetchPlateSummary(plate: plate)
+                let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+                logInfo("[PlateUI:scan] lookup completed plate=\(plate) identity=\(data.hasVehicleIdentityData) elapsedMs=\(elapsedMs)")
 
                 await MainActor.run {
-                    if data.make == "" {
-                        self.errorMessage = "Targa inserita non trovata, si prega di riprovare"
-                        self.showErrorAlert = true
+                    if !data.hasVehicleIdentityData {
+                        self.data = data.plate.isEmpty ? PlateData(plate: plate) : data
+                        self.vehicleImage = nil
                         self.isLoadingPlateData = false
+                        self.showConfirmDetailsScreen = true
+                        logWarning("[PlateUI:scan] navigating manual fallback plate=\(plate)")
                     } else {
                         self.data = data
                         self.vehicleImage = data.vehicleImage
                         self.isLoadingPlateData = false
                         self.navigateToCheckDetails = true
+                        logInfo("[PlateUI:scan] navigating check details plate=\(plate)")
                     }
                 }
             } catch let apiError as PlateAPIError {
+                logError("[PlateUI:scan] PlateAPIError plate=\(plate) error=\(apiError.localizedDescription)")
                 await MainActor.run {
                     switch apiError {
                     case .alreadyInGarage:
@@ -885,6 +910,7 @@ struct ScanPlateView: View {
                     self.isLoadingPlateData = false
                 }
             } catch {
+                logError("[PlateUI:scan] generic error plate=\(plate) error=\(error.localizedDescription)")
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.showErrorAlert = true

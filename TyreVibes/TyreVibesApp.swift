@@ -117,15 +117,18 @@ struct TyreVibesApp: App {
                 Task { @MainActor in
                     let token = await SupabaseManager.client.auth.onAuthStateChange { event, session in
                         if case .passwordRecovery = event {
-                            showResetPasswordScreen = true
+                            Task { @MainActor in
+                                showResetPasswordScreen = true
+                            }
                         }
                     }
                     authStateChangeTask = token as Any
                 }
             }
             .onDisappear {
-                if let cancellable = authStateChangeTask as? AnyObject, cancellable.responds(to: Selector(("cancel"))) {
-                    _ = cancellable.perform(Selector(("cancel")))
+                let cancelSelector = #selector(URLSessionTask.cancel)
+                if let cancellable = authStateChangeTask as? AnyObject, cancellable.responds(to: cancelSelector) {
+                    _ = cancellable.perform(cancelSelector)
                 }
                 authStateChangeTask = nil
             }

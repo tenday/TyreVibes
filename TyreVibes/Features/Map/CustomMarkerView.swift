@@ -57,7 +57,7 @@ struct CustomMarkerView: View {
                 startPulseAnimation()
             }
         }
-        .onChange(of: isSelected) { newValue in
+        .onChange(of: isSelected) { _, newValue in
             if newValue {
                 startPulseAnimation()
             }

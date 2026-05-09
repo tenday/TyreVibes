@@ -7,7 +7,7 @@
 
 import CoreML
 import Foundation
-import Vision
+@preconcurrency import Vision
 
 struct TyreQualityPrediction: Equatable {
     let label: String
@@ -57,6 +57,7 @@ final class TyreQualityClassifierService {
         guard let visionModel else {
             throw TyreQualityClassifierError.modelNotFound
         }
+        nonisolated(unsafe) let requestPixelBuffer = pixelBuffer
 
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
@@ -88,7 +89,7 @@ final class TyreQualityClassifierService {
 
                 do {
                     let handler = VNImageRequestHandler(
-                        cvPixelBuffer: pixelBuffer,
+                        cvPixelBuffer: requestPixelBuffer,
                         orientation: orientation,
                         options: [:]
                     )

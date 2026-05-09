@@ -100,7 +100,7 @@ struct MapView: View {
         .onChange(of: selectedCategory) {
             performSearch(haptics: true)
         }
-        .onChange(of: locationManager.userLocation) { _ in
+        .onChange(of: locationManager.userLocation) {
             if locationManager.userLocation != nil, mapManager.searchResults.isEmpty {
                 centerOnUserLocation()
             }

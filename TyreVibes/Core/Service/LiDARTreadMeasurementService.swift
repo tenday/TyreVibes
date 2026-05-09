@@ -377,9 +377,14 @@ class LiDARTreadMeasurementService: NSObject {
         CVPixelBufferLockBaseAddress(depthMap, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(depthMap, .readOnly) }
 
-        if let confMap = confidenceMap {
+        let lockedConfidenceMap = confidenceMap
+        if let confMap = lockedConfidenceMap {
             CVPixelBufferLockBaseAddress(confMap, .readOnly)
-            defer { CVPixelBufferUnlockBaseAddress(confMap, .readOnly) }
+        }
+        defer {
+            if let confMap = lockedConfidenceMap {
+                CVPixelBufferUnlockBaseAddress(confMap, .readOnly)
+            }
         }
 
         let width = CVPixelBufferGetWidth(depthMap)
@@ -389,7 +394,7 @@ class LiDARTreadMeasurementService: NSObject {
             return points
         }
 
-        let confData = confidenceMap.flatMap { CVPixelBufferGetBaseAddress($0) }
+        let confData = lockedConfidenceMap.flatMap { CVPixelBufferGetBaseAddress($0) }
 
         let depthPointer = depthData.assumingMemoryBound(to: Float32.self)
         let confPointer = confData?.assumingMemoryBound(to: UInt8.self)

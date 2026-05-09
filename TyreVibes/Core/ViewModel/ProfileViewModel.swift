@@ -32,10 +32,24 @@ struct ActivityItem: Identifiable {
 
 struct UpdateProfileData: Encodable {
     let fullName: String
+    let email: String
+    let phoneNumber: String?
+    let countryDialCode: String?
 
     enum CodingKeys: String, CodingKey {
         case fullName = "full_name"
+        case email
+        case phoneNumber = "phone_number"
+        case countryDialCode = "country_dial_code"
     }
+}
+
+private struct ServerUserProfile: Decodable {
+    let userId: String?
+    let fullName: String?
+    let email: String?
+    let phoneNumber: String?
+    let countryDialCode: String?
 }
 
 struct UserPreferencesData: Encodable {
@@ -146,24 +160,15 @@ class ProfileViewModel: ObservableObject {
 
         Task {
             do {
-                // Get current user session
                 let session = try await SupabaseManager.client.auth.session
-                let userId = session.user.id
+                let response: ServerUserProfile = try await NetworkManager.shared.request(endpoint: "/v1/profile")
+                let email = nonEmpty(response.email) ?? session.user.email ?? ""
+                let name = nonEmpty(response.fullName) ?? extractNameFromEmail(email)
 
-                // Fetch user profile from Supabase
-                let response: Users = try await SupabaseManager.client
-                    .from("users")
-                    .select("*")
-                    .eq("id", value: userId)
-                    .single()
-                    .execute()
-                    .value
-
-                // Update profile with data from database
                 let profile = UserProfile(
-                    name: response.fullName,
-                    email: session.user.email ?? "",
-                    phone: "\(response.countryDialCode ?? "") \(response.phoneNumber ?? "")",
+                    name: name,
+                    email: email,
+                    phone: formatPhone(countryDialCode: response.countryDialCode, phoneNumber: response.phoneNumber),
                     profileImageUrl: nil
                 )
 
@@ -218,30 +223,37 @@ class ProfileViewModel: ObservableObject {
         UserDefaults.standard.removeObject(forKey: profileCacheTimestampKey)
     }
 
-    func updateProfile(name: String, email: String, phone: String) async {
+    @discardableResult
+    func updateProfile(name: String, email: String, phone: String) async -> Bool {
         isLoading = true
         errorMessage = nil
 
         do {
-            // Get current user session
-            let session = try await SupabaseManager.client.auth.session
-            let userId = session.user.id
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            let phoneComponents = parsePhoneComponents(from: phone)
 
-            // Prepara i dati per l'aggiornamento
-            // Nota: l'email viene gestita da Supabase Auth, quindi aggiorniamo solo full_name e phone_number
-            let updateData = UpdateProfileData(fullName: name)
+            // Prepara i dati per l'aggiornamento del profilo applicativo.
+            let updateData = UpdateProfileData(
+                fullName: trimmedName,
+                email: trimmedEmail,
+                phoneNumber: phoneComponents.phoneNumber,
+                countryDialCode: phoneComponents.countryDialCode
+            )
+            let encoder = JSONEncoder()
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            let bodyData = try encoder.encode(updateData)
 
-            // Aggiorna il profilo su Supabase
-            try await SupabaseManager.client
-                .from("users")
-                .update(updateData)
-                .eq("id", value: userId)
-                .execute()
+            let savedProfile: ServerUserProfile = try await NetworkManager.shared.request(
+                endpoint: "/v1/profile",
+                method: .put,
+                body: bodyData
+            )
 
             // Aggiorna il profilo locale
-            userProfile?.name = name
-            userProfile?.email = email
-            userProfile?.phone = phone
+            userProfile?.name = nonEmpty(savedProfile.fullName) ?? trimmedName
+            userProfile?.email = nonEmpty(savedProfile.email) ?? trimmedEmail
+            userProfile?.phone = formatPhone(countryDialCode: savedProfile.countryDialCode, phoneNumber: savedProfile.phoneNumber)
 
             // Aggiorna cache
             if let profile = userProfile {
@@ -258,10 +270,47 @@ class ProfileViewModel: ObservableObject {
 
             showSuccessMessage = true
             isLoading = false
+            return true
         } catch {
             errorMessage = "Errore durante l'aggiornamento del profilo: \(error.localizedDescription)"
             isLoading = false
+            return false
         }
+    }
+
+    private func parsePhoneComponents(from phone: String) -> (countryDialCode: String?, phoneNumber: String?) {
+        let trimmedPhone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPhone.isEmpty else {
+            return (nil, nil)
+        }
+
+        let parts = trimmedPhone.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        if let firstPart = parts.first, firstPart.hasPrefix("+") {
+            let number = parts.dropFirst().joined()
+            return (firstPart, number.isEmpty ? nil : number)
+        }
+
+        let currentPhoneParts = userProfile?.phone
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: { $0.isWhitespace })
+            .map(String.init)
+        let existingDialCode = currentPhoneParts?.first?.hasPrefix("+") == true ? currentPhoneParts?.first : nil
+
+        return (existingDialCode, trimmedPhone.filter { !$0.isWhitespace })
+    }
+
+    private func formatPhone(countryDialCode: String?, phoneNumber: String?) -> String {
+        [countryDialCode, phoneNumber]
+            .compactMap { value in
+                let trimmedValue = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmedValue?.isEmpty == false ? trimmedValue : nil
+            }
+            .joined(separator: " ")
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed?.isEmpty == false ? trimmed : nil
     }
 
     func savePreferences() async {

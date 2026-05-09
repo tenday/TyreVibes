@@ -138,8 +138,6 @@ class ACISPIDAuthService: ObservableObject {
 
             /// URL di anchor (GET) come visto da DevTools
             func anchorURL() -> URL? {
-                // co = base64(origin)
-                let coB64 = Data(origin.utf8).base64EncodedString()
                 var components = URLComponents(string: "https://www.google.com/recaptcha/api2/anchor")
                 components?.queryItems = [
                     URLQueryItem(name: "ar", value: "1"),

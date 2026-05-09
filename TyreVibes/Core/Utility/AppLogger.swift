@@ -28,7 +28,11 @@ class AppLogger {
 
     // Settings
     var isEnabled: Bool = true
+    #if DEBUG
+    var logToFile: Bool = true
+    #else
     var logToFile: Bool = false
+    #endif
     var minimumLogLevel: LogLevel = .debug
 
     private init() {

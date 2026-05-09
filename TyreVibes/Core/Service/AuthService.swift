@@ -216,11 +216,8 @@ class AuthService {
             throw AuthServiceError.signUpFailed("Could not find top view controller.")
         }
 
-        // Carichiamo clientID da Api.plist
-        guard let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
-              let plist = NSDictionary(contentsOfFile: path),
-              let clientID = plist["GOOGLE_CLIENT_ID"] as? String else {
-            throw AuthServiceError.signUpFailed("GOOGLE_CLIENT_ID not found in Api.plist. Please add it.")
+        guard let clientID = Self.googleClientID() else {
+            throw AuthServiceError.signUpFailed("Google Client ID non configurato. Aggiungi GOOGLE_CLIENT_ID in Api.plist oppure CLIENT_ID in GoogleService-Info.plist.")
         }
 
         // Configurazione globale (si fa una volta sola)
@@ -244,6 +241,24 @@ class AuthService {
 
         // Registra l'attività di login
         await logLoginActivity(provider: "Google")
+    }
+
+    private static func googleClientID() -> String? {
+        if let path = Bundle.main.path(forResource: "Api", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let clientID = plist["GOOGLE_CLIENT_ID"] as? String,
+           !clientID.isEmpty {
+            return clientID
+        }
+
+        if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let clientID = plist["CLIENT_ID"] as? String,
+           !clientID.isEmpty {
+            return clientID
+        }
+
+        return nil
     }
 
     func sendPasswordReset(email: String) async throws {

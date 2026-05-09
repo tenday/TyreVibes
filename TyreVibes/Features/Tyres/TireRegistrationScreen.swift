@@ -451,7 +451,7 @@ class TireOCRManager: NSObject, ObservableObject {
         
         // Extract dimensions with confidence
         if data.size.isEmpty {
-            if let sizeMatch = try? extractTireSize(from: upperText) {
+            if let sizeMatch = extractTireSize(from: upperText) {
                 let sizeConfidence = validateTireSize(sizeMatch) * weightedConfidence
                 extractionCandidates["size"] = (sizeMatch, sizeConfidence)
             }
@@ -523,7 +523,7 @@ class TireOCRManager: NSObject, ObservableObject {
     
     /// Probabilistic data fusion to combine multiple observations
     private func applyProbabilisticDataFusion(to data: TireData, with confidenceMap: [String: Double]) -> TireData {
-        var fusedData = data
+        let fusedData = data
         
         // Apply Bayesian inference for improving accuracy
         // This would combine multiple observations of the same data type
@@ -666,7 +666,7 @@ class TireOCRManager: NSObject, ObservableObject {
         
         // Extract dimensions only if not already present
         if data.size.isEmpty {
-            if let sizeMatch = try? extractTireSize(from: upperText) {
+            if let sizeMatch = extractTireSize(from: upperText) {
                 data.size = sizeMatch
             }
         }
@@ -1971,7 +1971,6 @@ class OCRCameraView: UIView {
         
         // Ottieni dimensioni originali
         let width = CVPixelBufferGetWidth(pixelBuffer)
-        let height = CVPixelBufferGetHeight(pixelBuffer)
         
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         
@@ -1985,7 +1984,7 @@ class OCRCameraView: UIView {
         
         // NON scalare l'immagine o scalare minimamente
         // Solo se necessario per performance, usa un fattore alto
-        let shouldScale = false // Solo se veramente grande
+        let shouldScale = width > 2000
         let finalImage: CIImage
         
         if shouldScale {

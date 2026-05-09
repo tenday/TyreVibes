@@ -253,7 +253,13 @@ struct EditProfileSheet: View {
                         TextField("", text: $phone).font(.customFont(size: 16, weight: .regular)).foregroundColor(.white).keyboardType(.phonePad).padding().background(Color.white.opacity(0.05)).cornerRadius(12).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
                     }
                     Spacer()
-                    Button(action: { Task { await viewModel.updateProfile(name: name, email: email, phone: phone); dismiss() } }) {
+                    Button(action: {
+                        Task {
+                            if await viewModel.updateProfile(name: name, email: email, phone: phone) {
+                                dismiss()
+                            }
+                        }
+                    }) {
                         Text("Salva Modifiche").font(.customFont(size: 18, weight: .semibold)).foregroundColor(.white).frame(maxWidth: .infinity).frame(height: 56).background(Color.cyan).cornerRadius(16)
                     }
                 }.padding(24)

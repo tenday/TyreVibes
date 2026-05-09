@@ -151,7 +151,7 @@ class PrecisionLiDARService {
 
         // 1. CORREZIONE DISTORSIONE OTTICA
         if config.correctOpticalDistortion {
-            let params = opticalCorrector.extractParametersFromARCamera(camera)
+            _ = opticalCorrector.extractParametersFromARCamera(camera)
             // Applica correzione (punti 3D già in world space, non serve correzione 2D)
             print("✅ [PrecisionLiDAR] Parametri ottici estratti")
         }

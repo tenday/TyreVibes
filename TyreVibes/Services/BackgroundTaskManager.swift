@@ -207,7 +207,7 @@ class BackgroundTaskManager: ObservableObject {
             let notifications = try await fetchNotifications()
 
             // Aggiorna le notifiche locali
-            await NotificationScheduler.shared.syncWithServerNotifications(notifications)
+            NotificationScheduler.shared.syncWithServerNotifications(notifications)
 
             logger.info("✅ Notifiche aggiornate: \(notifications.count) nuove")
             return nil

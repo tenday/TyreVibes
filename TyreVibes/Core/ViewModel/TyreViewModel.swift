@@ -162,6 +162,7 @@ struct TyreRegistered: Codable, Identifiable {
     }
 }
 
+@MainActor
 class TyreViewModel: ObservableObject {
     @Published var brand: String = ""
     @Published var model: String = ""
@@ -233,33 +234,33 @@ class TyreViewModel: ObservableObject {
             await AuthTokenHelper.addAuthHeader(to: &request)
 
             URLSession.tyreVibesShared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
+                Task { @MainActor [weak self] in
+                    self?.isLoading = false
 
-                if let error = error {
-                    self?.errorMessage = error.localizedDescription
-                    return
-                }
+                    if let error = error {
+                        self?.errorMessage = error.localizedDescription
+                        return
+                    }
 
-                if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-                    self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
-                    return
-                }
+                    if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+                        self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
+                        return
+                    }
 
-                guard let data = data else {
-                    self?.errorMessage = "Nessun dato ricevuto"
-                    return
-                }
+                    guard let data = data else {
+                        self?.errorMessage = "Nessun dato ricevuto"
+                        return
+                    }
 
-                do {
-                    let tyres = try JSONDecoder().decode([TyreRegistered].self, from: data)
-                    self?.registeredTyres = tyres
-                    // Salva in cache
-                    TyreCacheManager.shared.saveTyres(tyres, forVehicleId: vehicleId)
-                } catch {
-                    self?.errorMessage = "Errore nella decodifica: \(error.localizedDescription)"
+                    do {
+                        let tyres = try JSONDecoder().decode([TyreRegistered].self, from: data)
+                        self?.registeredTyres = tyres
+                        // Salva in cache
+                        TyreCacheManager.shared.saveTyres(tyres, forVehicleId: vehicleId)
+                    } catch {
+                        self?.errorMessage = "Errore nella decodifica: \(error.localizedDescription)"
+                    }
                 }
-            }
             }.resume()
         }
     }
@@ -288,32 +289,32 @@ class TyreViewModel: ObservableObject {
             await AuthTokenHelper.addAuthHeader(to: &request)
 
             URLSession.tyreVibesShared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("❌ Errore network: \(error.localizedDescription)")
-                    self?.errorMessage = error.localizedDescription
-                    completion(false)
-                    return
-                }
-
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("📡 Status code: \(httpResponse.statusCode)")
-                    if (200...299).contains(httpResponse.statusCode) {
-                        print("✅ Pneumatico eliminato con successo")
-                        // Rimuovi dalla lista locale
-                        self?.registeredTyres.removeAll { $0.id == tyreId }
-                        // Invalida la cache
-                        TyreCacheManager.shared.invalidateCache(forVehicleId: vehicleId)
-                        completion(true)
-                    } else {
-                        if let data = data, let responseBody = String(data: data, encoding: .utf8) {
-                            print("📄 Response body: \(responseBody)")
-                        }
-                        self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
+                Task { @MainActor [weak self] in
+                    if let error = error {
+                        print("❌ Errore network: \(error.localizedDescription)")
+                        self?.errorMessage = error.localizedDescription
                         completion(false)
+                        return
+                    }
+
+                    if let httpResponse = response as? HTTPURLResponse {
+                        print("📡 Status code: \(httpResponse.statusCode)")
+                        if (200...299).contains(httpResponse.statusCode) {
+                            print("✅ Pneumatico eliminato con successo")
+                            // Rimuovi dalla lista locale
+                            self?.registeredTyres.removeAll { $0.id == tyreId }
+                            // Invalida la cache
+                            TyreCacheManager.shared.invalidateCache(forVehicleId: vehicleId)
+                            completion(true)
+                        } else {
+                            if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                                print("📄 Response body: \(responseBody)")
+                            }
+                            self?.errorMessage = "Errore server: \(httpResponse.statusCode)"
+                            completion(false)
+                        }
                     }
                 }
-            }
             }.resume()
         }
     }

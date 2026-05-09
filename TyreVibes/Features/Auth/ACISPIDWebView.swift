@@ -420,7 +420,7 @@ class WebViewCoordinator: NSObject, ObservableObject, WKNavigationDelegate, WKSc
     // MARK: - WKScriptMessageHandler
 
     /// Riceve la risposta di /api/v2/vehicle intercettata dall'iniettore fetch/XHR
-    nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "vehicleData",
               let body = message.body as? String,
               let data = body.data(using: .utf8) else { return }

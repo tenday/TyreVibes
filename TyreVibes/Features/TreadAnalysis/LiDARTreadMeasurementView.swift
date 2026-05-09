@@ -406,12 +406,14 @@ struct LiDARARViewContainer: UIViewRepresentable {
             // Update frame ogni 100ms durante scansione
             frameUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                 guard let self = self,
-                      let frame = self.arView?.session.currentFrame,
-                      self.viewModel.isScanning else {
+                      let frame = self.arView?.session.currentFrame else {
                     return
                 }
 
-                LiDARTreadMeasurementService.shared.captureFrame(frame)
+                Task { @MainActor [viewModel = self.viewModel] in
+                    guard viewModel.isScanning else { return }
+                    LiDARTreadMeasurementService.shared.captureFrame(frame)
+                }
             }
         }
 

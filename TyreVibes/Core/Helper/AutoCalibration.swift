@@ -266,7 +266,7 @@ class AutoCalibrationSystem {
                     parent.startCalibration()
                 }
 
-            case .holdSteady(let remaining):
+            case .holdSteady:
                 // Controlla se tenuto fermo abbastanza
                 guard let startTime = steadyStartTime else {
                     currentStep = .placeTarget

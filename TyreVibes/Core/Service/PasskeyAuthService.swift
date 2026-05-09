@@ -226,6 +226,7 @@ final class PasskeyAuthService: NSObject {
         )
     }
 
+    @MainActor
     private func performAuthorization(
         requests: [ASAuthorizationRequest],
         presentationAnchor: ASPresentationAnchor
@@ -309,6 +310,7 @@ final class PasskeyAuthService: NSObject {
     }
 }
 
+@MainActor
 private final class PasskeyAuthorizationDelegate: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     var continuation: CheckedContinuation<ASAuthorization, Error>?
     var presentationAnchor: ASPresentationAnchor?
@@ -325,4 +327,3 @@ private final class PasskeyAuthorizationDelegate: NSObject, ASAuthorizationContr
         continuation?.resume(throwing: error)
     }
 }
-

@@ -817,7 +817,7 @@ struct StatusBadge: View {
             return .inactive
         }
         // Check if expired
-        if let expiryDate = insurance.rcaExpiry {
+        if insurance.rcaExpiry != nil {
             // Implementation of date check
             return .active // Simplified
         }

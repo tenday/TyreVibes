@@ -462,7 +462,6 @@ struct TireLifecycleChart: View {
     }
 
     var projectedData: [ChartDataPoint] {
-        let currentPoint = projections.first { $0.kilometersFromNow == 0 }
         let futureProjections = projections.filter { $0.kilometersFromNow >= 0 }
 
         return futureProjections.map { ChartDataPoint(

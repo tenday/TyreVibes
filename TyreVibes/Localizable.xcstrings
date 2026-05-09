@@ -1257,6 +1257,12 @@
         }
       }
     },
+    "Aggiungi documento" : {
+
+    },
+    "Aggiungi gli interventi già fatti per rendere più precisi piano, costi e prossime scadenze." : {
+
+    },
     "Aggiungi il prossimo intervento dal pulsante in alto." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1273,6 +1279,9 @@
           }
         }
       }
+    },
+    "Aggiungi libretto, ricevute, certificati e garanzie per tenerli collegati al veicolo." : {
+
     },
     "Aggiungi promemoria con titolo, messaggio e orario." : {
       "extractionState" : "manual",
@@ -1887,6 +1896,9 @@
         }
       }
     },
+    "Apri %@" : {
+
+    },
     "Apri assistente per la manutenzione" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1937,6 +1949,9 @@
           }
         }
       }
+    },
+    "Archivio" : {
+
     },
     "Are you sure you want to delete this tire?" : {
       "extractionState" : "manual",
@@ -2304,6 +2319,9 @@
           }
         }
       }
+    },
+    "Avanti" : {
+
     },
     "Avg. Score" : {
       "comment" : "A label displayed next to the average safety score in the historical comparison chart.",
@@ -3507,6 +3525,9 @@
         }
       }
     },
+    "Collegamento" : {
+
+    },
     "Color" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4211,6 +4232,9 @@
         }
       }
     },
+    "Costruisci il tuo storico" : {
+
+    },
     "Count" : {
       "comment" : "Label for the count of a depth distribution chart bar.",
       "extractionState" : "manual",
@@ -4476,6 +4500,9 @@
         }
       }
     },
+    "Data documento" : {
+
+    },
     "Data preferita" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4526,6 +4553,9 @@
           }
         }
       }
+    },
+    "Data scadenza" : {
+
     },
     "Date" : {
       "comment" : "Custom axis labels for the pressure trend chart.",
@@ -5226,6 +5256,9 @@
         }
       }
     },
+    "Documenti, ricevute e garanzie del veicolo" : {
+
+    },
     "Documento" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5473,6 +5506,9 @@
           }
         }
       }
+    },
+    "Eliminare documento?" : {
+
     },
     "Email" : {
       "comment" : "A label displayed above the user's email text field.",
@@ -6208,6 +6244,9 @@
         }
       }
     },
+    "File" : {
+
+    },
     "File Temporanei" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6772,6 +6811,9 @@
         }
       }
     },
+    "Ha una scadenza" : {
+
+    },
     "Hai il controllo completo sui tuoi dati personali" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7228,6 +7270,9 @@
         }
       }
     },
+    "Importo (€)" : {
+
+    },
     "Importo stimato" : {
       "comment" : "Label for the estimated total cost in the summary card of the bollo estimate view.",
       "extractionState" : "manual",
@@ -7463,6 +7508,9 @@
           }
         }
       }
+    },
+    "Inserisci anche i km attuali" : {
+
     },
     "Inserisci i km attuali del veicolo per calcolare le scadenze manutenzione." : {
       "extractionState" : "manual",
@@ -9657,6 +9705,9 @@
         }
       }
     },
+    "Manutenzione collegata" : {
+
+    },
     "Manutenzione pneumatici e veicolo" : {
       "comment" : "A description of the app's main functionality.",
       "extractionState" : "manual",
@@ -10297,6 +10348,12 @@
         }
       }
     },
+    "Nessun documento archiviato" : {
+
+    },
+    "Nessun documento in questa categoria" : {
+
+    },
     "Nessun risultato trovato." : {
       "comment" : "A message displayed when no search results are found.",
       "extractionState" : "manual",
@@ -10315,6 +10372,9 @@
           }
         }
       }
+    },
+    "Nessuna" : {
+
     },
     "Nessuna manutenzione in programma" : {
       "extractionState" : "manual",
@@ -10625,6 +10685,12 @@
           }
         }
       }
+    },
+    "Non ho recuperato i dati automatici per questa targa. Completa i campi principali per salvarla." : {
+
+    },
+    "Non mostrare piu" : {
+
     },
     "Non riesco a scansionare il pneumatico" : {
       "extractionState" : "stale",
@@ -11195,6 +11261,9 @@
           }
         }
       }
+    },
+    "Nuovo documento" : {
+
     },
     "Nuovo set pneumatici" : {
       "comment" : "The title of a view allowing users to add a new tyre set.",
@@ -15504,6 +15573,9 @@
         }
       }
     },
+    "Tour sezioni" : {
+
+    },
     "Tracker Premi" : {
       "comment" : "The title of the premium tracker section.",
       "extractionState" : "manual",
@@ -16127,6 +16199,9 @@
           }
         }
       }
+    },
+    "Verranno rimossi anche gli allegati collegati." : {
+
     },
     "Version" : {
       "extractionState" : "manual",

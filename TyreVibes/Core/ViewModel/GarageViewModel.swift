@@ -18,6 +18,7 @@ class GarageViewModel: ObservableObject {
     @Published var showCarDetails = false
     @Published var selectedVehicle: VehicleResponse?
     @Published var vehicleThumbnails: [Int: UIImage] = [:]
+    @Published var loadingThumbnailVehicleIds: Set<Int> = []
 
     private let authService = AuthService()
     static let apiConfig = PlateAPIService.apiConfig
@@ -108,6 +109,7 @@ class GarageViewModel: ObservableObject {
     private func loadVehicleThumbnails(for vehicles: [VehicleResponse]) {
         let vehicleIds = Set(vehicles.map { $0.vehicle.id })
         vehicleThumbnails = vehicleThumbnails.filter { vehicleIds.contains($0.key) }
+        loadingThumbnailVehicleIds = loadingThumbnailVehicleIds.intersection(vehicleIds)
 
         for vehicle in vehicles {
             let vehicleId = vehicle.vehicle.id
@@ -115,11 +117,13 @@ class GarageViewModel: ObservableObject {
                 continue
             }
 
+            loadingThumbnailVehicleIds.insert(vehicleId)
             thumbnailTasks[vehicleId] = Task { [weak self] in
                 guard let self else { return }
                 defer {
                     Task { @MainActor in
                         self.thumbnailTasks[vehicleId] = nil
+                        self.loadingThumbnailVehicleIds.remove(vehicleId)
                     }
                 }
 

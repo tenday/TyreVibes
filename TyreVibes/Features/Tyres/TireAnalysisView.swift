@@ -172,7 +172,7 @@ struct TireAnalysisView: View {
     }
 
     private func markTireCompleted(_ position: TirePosition) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        _ = withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             completedTires.insert(position)
         }
     }

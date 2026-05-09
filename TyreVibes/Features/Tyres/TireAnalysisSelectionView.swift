@@ -103,7 +103,7 @@ struct TireAnalysisSelectionView: View {
                         }
 
                         // Tyre Selection Section
-                        if let vehicle = selectedVehicle {
+                        if selectedVehicle != nil {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text(LocalizedStringKey("Select Tire"))
                                     .font(.customFont(size: 16, weight: .semibold))

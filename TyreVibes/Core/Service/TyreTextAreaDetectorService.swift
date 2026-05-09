@@ -8,7 +8,7 @@
 import CoreGraphics
 import CoreML
 import Foundation
-import Vision
+@preconcurrency import Vision
 
 struct TyreTextAreaDetection: Equatable {
     let boundingBox: CGRect

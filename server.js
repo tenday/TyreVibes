@@ -1412,10 +1412,13 @@ const parseToDate = (value) => {
 
   // verifica targa
   const handleCheckPlate = async (plate, userId) => {
+    const startedAt = Date.now();
     if (!plate) {
+      console.warn("[check_plate] rejected empty plate", { userId });
       return { status: 400, body: { message: "Il numero di targa è richiesto." } };
     }
 
+    console.log("[check_plate] start", { plate, userId });
     const conn = await pool.getConnection();
     try {
       const [rows] = await conn.execute(
@@ -1454,12 +1457,18 @@ const parseToDate = (value) => {
         FROM plates p
         INNER JOIN vehicles v ON p.vehicle_id = v.id
         LEFT JOIN user_vehicles uv ON uv.vehicle_id = v.id AND uv.user_id = ?
-        LEFT JOIN vehicle_images vi ON vi.vehicle_id = v.id
+        LEFT JOIN vehicle_images vi ON vi.vehicle_id = v.id AND vi.is_primary = 1 AND vi.angle = '23'
         LEFT JOIN plate_insurance pi ON pi.plate_id = p.id
-        WHERE p.plate_number = ? and vi.is_primary = 1 and vi.angle = '23'
+        WHERE p.plate_number = ?
         LIMIT 1`,
         [userId, plate]
       );
+      console.log("[check_plate] db rows", {
+        plate,
+        userId,
+        rows: rows.length,
+        elapsedMs: Date.now() - startedAt
+      });
 
       if (userId && rows.length > 0) {
         const [userVehicleRows] = await conn.execute(
@@ -1467,6 +1476,12 @@ const parseToDate = (value) => {
           [userId, rows[0].vehicle_id]
         );
         if (userVehicleRows.length > 0) {
+        console.log("[check_plate] already in garage", {
+          plate,
+          userId,
+          vehicleId: rows[0].vehicle_id,
+          elapsedMs: Date.now() - startedAt
+        });
         conn.release();
         return {
           status: 200,
@@ -1480,6 +1495,7 @@ const parseToDate = (value) => {
       }
 
       if (rows.length === 0) {
+        console.log("[check_plate] not found", { plate, userId, elapsedMs: Date.now() - startedAt });
         conn.release();
         return { status: 404, body: { message: "Targa non trovata nel database." } };
       }
@@ -1527,9 +1543,22 @@ const parseToDate = (value) => {
       };
 
       conn.release();
+      console.log("[check_plate] success", {
+        plate,
+        userId,
+        vehicleId: row.vehicle_id,
+        hasImage: Boolean(row.image_data),
+        elapsedMs: Date.now() - startedAt
+      });
       return { status: 200, body: response };
     } catch (err) {
-      console.error("Errore check_plate:", err);
+      console.error("Errore check_plate:", {
+        plate,
+        userId,
+        elapsedMs: Date.now() - startedAt,
+        error: err.message,
+        stack: err.stack
+      });
       conn.release();
       return { status: 500, body: { message: "Errore server", error: err.message } };
     }
@@ -2151,6 +2180,22 @@ const ensureUserProfileImagesTable = async (conn) => {
   `);
 };
 
+const ensureUserProfilesTable = async (conn) => {
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      user_id VARCHAR(128) NOT NULL PRIMARY KEY,
+      full_name VARCHAR(255) NULL,
+      email VARCHAR(255) NULL,
+      country_dial_code VARCHAR(16) NULL,
+      phone_number VARCHAR(64) NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_profiles_email (email),
+      INDEX idx_user_profiles_updated_at (updated_at)
+    )
+  `);
+};
+
 const runMaintenanceEntriesMigration = async () => {
   let conn;
   try {
@@ -2166,6 +2211,9 @@ const runMaintenanceEntriesMigration = async () => {
     maintenanceAttachmentsMigrationState.error = null;
     maintenanceAttachmentsMigrationState.completedAt = new Date().toISOString();
     console.log("✅ maintenance_attachments table ready");
+
+    await ensureUserProfilesTable(conn);
+    console.log("✅ user_profiles table ready");
 
     await ensureUserProfileImagesTable(conn);
     userProfileImagesMigrationState.status = "ready";
@@ -2297,6 +2345,22 @@ const formatUserProfileImage = (row, includeData = true) => {
 
   return profileImage;
 };
+
+const cleanOptionalString = (value) => {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const formatUserProfile = (row, fallback = {}) => ({
+  userId: row?.user_id || fallback.userId || null,
+  fullName: row?.full_name || null,
+  email: row?.email || fallback.email || null,
+  countryDialCode: row?.country_dial_code || null,
+  phoneNumber: row?.phone_number || null,
+  createdAt: toIsoStringOrNull(row?.created_at),
+  updatedAt: toIsoStringOrNull(row?.updated_at)
+});
 
 const appendMaintenanceAttachmentId = async (conn, userId, entryId, attachmentId) => {
   const [rows] = await conn.execute(
@@ -2674,6 +2738,87 @@ router.delete("/v1/maintenance_attachments/:attachmentId", authenticateJWT, asyn
     res.status(204).send();
   } catch (err) {
     console.error("Errore DELETE /v1/maintenance_attachments/:attachmentId:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.get("/v1/profile", authenticateJWT, async (req, res) => {
+  const userId = authenticatedUserId(req);
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureUserProfilesTable(conn);
+
+    const [rows] = await conn.execute(
+      `SELECT user_id, full_name, email, country_dial_code, phone_number, created_at, updated_at
+       FROM user_profiles
+       WHERE user_id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(200).json(formatUserProfile(null, { userId, email: req.user?.email || null }));
+    }
+
+    res.status(200).json(formatUserProfile(rows[0], { userId, email: req.user?.email || null }));
+  } catch (err) {
+    console.error("Errore GET /v1/profile:", err);
+    res.status(500).json({ message: "Errore server", error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+router.put("/v1/profile", authenticateJWT, async (req, res) => {
+  const userId = authenticatedUserId(req);
+  const data = req.body || {};
+  const fullName = cleanOptionalString(data.full_name ?? data.fullName);
+  const email = cleanOptionalString(data.email);
+  const countryDialCode = cleanOptionalString(data.country_dial_code ?? data.countryDialCode);
+  const phoneNumber = cleanOptionalString(data.phone_number ?? data.phoneNumber);
+
+  if (!fullName) {
+    return res.status(400).json({ message: "full_name è richiesto." });
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ message: "Email non valida." });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await ensureUserProfilesTable(conn);
+
+    await conn.execute(
+      `INSERT INTO user_profiles (
+        user_id, full_name, email, country_dial_code, phone_number
+      )
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        full_name = VALUES(full_name),
+        email = VALUES(email),
+        country_dial_code = VALUES(country_dial_code),
+        phone_number = VALUES(phone_number),
+        updated_at = CURRENT_TIMESTAMP`,
+      [userId, fullName, email, countryDialCode, phoneNumber]
+    );
+
+    const [rows] = await conn.execute(
+      `SELECT user_id, full_name, email, country_dial_code, phone_number, created_at, updated_at
+       FROM user_profiles
+       WHERE user_id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    res.status(200).json(formatUserProfile(rows[0], { userId, email: req.user?.email || null }));
+  } catch (err) {
+    console.error("Errore PUT /v1/profile:", err);
     res.status(500).json({ message: "Errore server", error: err.message });
   } finally {
     if (conn) conn.release();

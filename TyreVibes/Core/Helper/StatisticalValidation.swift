@@ -359,27 +359,33 @@ class SpatialFrequencyAnalysis {
         // Esegui FFT usando vDSP
         var realp = [Double](repeating: 0, count: nPadded / 2)
         var imagp = [Double](repeating: 0, count: nPadded / 2)
-
-        var splitComplex = DSPDoubleSplitComplex(realp: &realp, imagp: &imagp)
-
-        paddedDepths.withUnsafeBufferPointer { bufferPointer in
-            let complexBuffer = UnsafePointer<DSPDoubleComplex>(OpaquePointer(bufferPointer.baseAddress))
-
-            vDSP_ctozD(complexBuffer!, 2, &splitComplex, 1, vDSP_Length(nPadded / 2))
-        }
-
+        var magnitudes = [Double](repeating: 0, count: nPadded / 2)
         let log2n = vDSP_Length(log2(Double(nPadded)))
         guard let fftSetup = vDSP_create_fftsetupD(log2n, FFTRadix(kFFTRadix2)) else {
             return FrequencySpectrum(frequencies: [], magnitudes: [], dominantFrequency: 0, dominantMagnitude: 0)
         }
 
-        vDSP_fft_zripD(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
+        realp.withUnsafeMutableBufferPointer { realBuffer in
+            imagp.withUnsafeMutableBufferPointer { imagBuffer in
+                var splitComplex = DSPDoubleSplitComplex(
+                    realp: realBuffer.baseAddress!,
+                    imagp: imagBuffer.baseAddress!
+                )
+
+                paddedDepths.withUnsafeBufferPointer { bufferPointer in
+                    let complexBuffer = UnsafePointer<DSPDoubleComplex>(OpaquePointer(bufferPointer.baseAddress))
+
+                    vDSP_ctozD(complexBuffer!, 2, &splitComplex, 1, vDSP_Length(nPadded / 2))
+                }
+
+                vDSP_fft_zripD(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
+
+                // Calcola magnitudini
+                vDSP_zvmagsD(&splitComplex, 1, &magnitudes, 1, vDSP_Length(nPadded / 2))
+            }
+        }
 
         vDSP_destroy_fftsetupD(fftSetup)
-
-        // Calcola magnitudini
-        var magnitudes = [Double](repeating: 0, count: nPadded / 2)
-        vDSP_zvmagsD(&splitComplex, 1, &magnitudes, 1, vDSP_Length(nPadded / 2))
 
         // Converti in sqrt per ottenere magnitudine (non magnitudine al quadrato)
         magnitudes = magnitudes.map { sqrt($0) }

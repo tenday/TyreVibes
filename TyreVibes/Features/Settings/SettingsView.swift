@@ -966,17 +966,8 @@ struct AboutSection: View {
     }
 
     private func rateApp() {
-        // Try the new SKStoreReviewController first
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            if #available(iOS 14.0, *) {
-                SKStoreReviewController.requestReview(in: windowScene)
-            } else {
-                // Fallback for older iOS versions
-                if let appID = Bundle.main.infoDictionary?["APP_STORE_ID"] as? String,
-                   let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
-                    UIApplication.shared.open(url)
-                }
-            }
+            AppStore.requestReview(in: windowScene)
         }
     }
 

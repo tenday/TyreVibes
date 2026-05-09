@@ -412,7 +412,6 @@ class LiDARDataProcessor {
         }
 
         let width = maxX - minX
-        let zoneWidth = width / 6 // 6 zone
 
         for point in points {
             let normalizedX = (point.x - minX) / width

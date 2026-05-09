@@ -169,7 +169,7 @@ struct ComparisonData: Codable {
 }
 
 struct LifeFactor: Codable, Identifiable {
-    let id = UUID()
+    var id = UUID()
     let name: String
     let impact: Double
     let description: String

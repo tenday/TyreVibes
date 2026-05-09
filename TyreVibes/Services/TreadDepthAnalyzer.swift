@@ -286,7 +286,7 @@ class TreadDepthAnalyzer {
     private func detectTreadLines(in edgeImage: CIImage) -> [Line] {
         // Simplified line detection - in production, use Hough Transform
         // This is a placeholder for the actual implementation
-        var lines: [Line] = []
+        let lines: [Line] = []
 
         // TODO: Implement Hough Line Transform or similar
         // For now, return empty array
@@ -470,7 +470,6 @@ class TreadDepthAnalyzer {
         }
 
         let depths = measurements.map { $0.filteredDepth }
-        let confidences = measurements.map { $0.confidence }
 
         let avgDepth = depths.reduce(0, +) / Double(depths.count)
         let minDepth = depths.min() ?? 0

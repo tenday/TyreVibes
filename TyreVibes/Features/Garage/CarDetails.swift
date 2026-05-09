@@ -1911,6 +1911,10 @@ struct AdvancedInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var currentTab = 0
     @State private var tabSelectorOffset: CGFloat = 0
+    @AppStorage("hasSeenVehicleInfoSectionsTutorial") private var hasSeenSectionsTutorial = false
+    @AppStorage("hasDismissedVehicleInfoSectionTips") private var hasDismissedSectionTips = false
+    @State private var showSectionsTutorial = false
+    @State private var showSectionTip = false
 
     @State private var isRefreshing = false
 
@@ -1930,12 +1934,14 @@ struct AdvancedInfoSheet: View {
             String(localized: "Supported Tyres"),
             String(localized: "Insurances"),
             String(localized: "Storico Manutenzioni"),
-            String(localized: "Bollo")
+            String(localized: "Bollo"),
+            String(localized: "Archivio")
         ]
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
             // Enhanced Header with refresh button
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -1951,6 +1957,18 @@ struct AdvancedInfoSheet: View {
                 }
 
                 Spacer()
+
+                Button {
+                    showSectionsTutorial = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(10)
 
                 // Refresh button
                 Button(action: refreshData) {
@@ -2063,7 +2081,7 @@ struct AdvancedInfoSheet: View {
                                 .padding(.vertical, 2)
                             }
                         }
-                        .onChange(of: currentTab) { newTab in
+                        .onChange(of: currentTab) { _, newTab in
                             withAnimation {
                                 proxy.scrollTo(newTab, anchor: .center)
                             }
@@ -2114,7 +2132,7 @@ struct AdvancedInfoSheet: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 10)
                         .padding(.bottom, 10)
-                        .onChange(of: currentTab) { newTab in
+                        .onChange(of: currentTab) { _, newTab in
                             withAnimation {
                                 proxy.scrollTo(newTab, anchor: .center)
                             }
@@ -2157,11 +2175,34 @@ struct AdvancedInfoSheet: View {
 
                 BolloEstimateView(vehicle: vehicle)
                     .tag(5)
+
+                VehicleArchiveView(vehicleId: vehicle.vehicle.id)
+                    .tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(SpringAnimation.fluid, value: currentTab)
 
-            Spacer()
+                Spacer()
+            }
+
+            if showSectionTip && !hasDismissedSectionTips && !showSectionsTutorial {
+                VehicleSectionHelpOverlay(
+                    selectedIndex: currentTab,
+                    onClose: {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                            showSectionTip = false
+                        }
+                    },
+                    onDisable: {
+                        hasDismissedSectionTips = true
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                            showSectionTip = false
+                        }
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(2)
+            }
         }
         .background(
             LinearGradient(
@@ -2175,6 +2216,38 @@ struct AdvancedInfoSheet: View {
             )
             .ignoresSafeArea()
         )
+        .onAppear {
+            if !hasSeenSectionsTutorial {
+                hasSeenSectionsTutorial = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    showSectionsTutorial = true
+                }
+            }
+
+            showCurrentSectionTipIfNeeded(after: 0.95)
+        }
+        .onChange(of: currentTab) { _, _ in
+            showSectionTip = false
+            showCurrentSectionTipIfNeeded(after: 0.45)
+        }
+        .sheet(isPresented: $showSectionsTutorial) {
+            VehicleInfoTutorialSheet { index in
+                withAnimation(SpringAnimation.bouncy) {
+                    currentTab = index
+                }
+            }
+        }
+    }
+
+    private func showCurrentSectionTipIfNeeded(after delay: TimeInterval) {
+        guard !hasDismissedSectionTips else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard !hasDismissedSectionTips else { return }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.88)) {
+                showSectionTip = true
+            }
+        }
     }
 
     private func tabIcon(for index: Int) -> String? {
@@ -2187,6 +2260,8 @@ struct AdvancedInfoSheet: View {
         case 4: return "maintenanceHistoryIcon"
         case 5:
             return "eurosign.circle.fill"
+        case 6:
+            return "folder.fill"
         default:
             return nil
         }
@@ -2204,6 +2279,7 @@ struct AdvancedInfoSheet: View {
         case 3: return [.purple, .pink]
         case 4: return [.indigo, .cyan]
         case 5: return [.teal, .blue]
+        case 6: return [.cyan, .green]
         default: return [.gray, .gray]
         }
     }

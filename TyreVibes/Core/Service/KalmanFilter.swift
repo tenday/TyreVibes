@@ -163,12 +163,6 @@ class AdaptiveKalmanFilter: KalmanFilter {
     private func adaptParameters() {
         guard recentMeasurements.count >= 2 else { return }
 
-        // Calcola varianza delle misurazioni recenti
-        let mean = recentMeasurements.reduce(0, +) / Double(recentMeasurements.count)
-        let variance = recentMeasurements
-            .map { pow($0 - mean, 2) }
-            .reduce(0, +) / Double(recentMeasurements.count - 1)
-
         // Adatta R (rumore misurazione) basato sulla varianza osservata
         // Maggiore varianza = maggiore rumore = maggiore R
         // Il fattore 0.5 è un peso empirico per bilanciare la risposta

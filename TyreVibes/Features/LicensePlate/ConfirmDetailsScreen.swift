@@ -33,6 +33,10 @@ struct ConfirmDetailsView: View {
         !licenseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var shouldShowManualLookupFallbackMessage: Bool {
+        manualEntryEnabled && plateData != nil && !(plateData?.hasVehicleIdentityData ?? false)
+    }
+
     var body: some View {
         ZStack {
             Color.customBackgroundColor
@@ -65,6 +69,23 @@ struct ConfirmDetailsView: View {
                     VStack(spacing: 20) {
                         // Detail items
                         VStack(alignment:.center, spacing: 14) {
+                            if shouldShowManualLookupFallbackMessage {
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(Color.customBitterSweet)
+
+                                    Text("Non ho recuperato i dati automatici per questa targa. Completa i campi principali per salvarla.")
+                                        .font(.customFont(size: 14, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.82))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                                .background(Color.customFieldColor)
+                                .cornerRadius(12)
+                            }
+
                             if manualEntryEnabled {
                                 VStack(spacing: 12) {
                                     TextField("Marchio (es. Fiat)", text: $makeText)
@@ -216,6 +237,10 @@ struct ConfirmDetailsView: View {
                     }
                 }
             }
+            .onAppear {
+                populateManualFieldsIfNeeded()
+                logInfo("[PlateUI:confirm] appear manual=\(manualEntryEnabled) consultOnly=\(consultOnly) plate=\(plateData?.plate ?? licenseText) identity=\(plateData?.hasVehicleIdentityData ?? false)")
+            }
             .alert(item: $viewModel.alertItem) { alertItem in
                 Alert(
                     title: Text(alertItem.title),
@@ -224,6 +249,30 @@ struct ConfirmDetailsView: View {
                 )
             }
             .background(InteractivePopGestureEnabler())
+        }
+    }
+
+    private func populateManualFieldsIfNeeded() {
+        guard manualEntryEnabled, let plateData else { return }
+
+        func clean(_ value: String?) -> String {
+            value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }
+
+        if makeText.isEmpty { makeText = clean(plateData.make) }
+        if modelText.isEmpty { modelText = clean(plateData.modelDetails).isEmpty ? clean(plateData.model) : clean(plateData.modelDetails) }
+        if engineText.isEmpty { engineText = clean(plateData.displacementCC) }
+        if licenseText.isEmpty { licenseText = LicensePlateReader.normalizePlate(plateData.plate) }
+        if fuelText.isEmpty { fuelText = clean(plateData.fuelType) }
+        if powerText.isEmpty { powerText = clean(plateData.powerCV) }
+
+        if yearText.isEmpty {
+            let registrationDate = clean(plateData.registrationDate)
+            if let year = registrationDate.split(separator: "/").last {
+                yearText = String(year)
+            } else {
+                yearText = clean(plateData.year)
+            }
         }
     }
 
@@ -236,6 +285,7 @@ struct ConfirmDetailsView: View {
             guard !makeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   !modelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   !licenseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                logWarning("[PlateUI:confirm] manual validation failed plate=\(licenseText)")
                 viewModel.alertItem = AlertItem(
                     title: "Dati mancanti",
                     message: "Compila almeno i campi: Marchio, Modello e Targa"
@@ -277,6 +327,7 @@ struct ConfirmDetailsView: View {
             )
 
             let colorName = ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor)
+            logInfo("[PlateUI:confirm] save manual plate=\(manualPlateData.plate) make=\(manualPlateData.make ?? "") model=\(manualPlateData.model ?? "")")
             Task {
                 await viewModel.savePlate(plateData: manualPlateData, color: colorName, angle: 23)
             }
@@ -288,10 +339,12 @@ struct ConfirmDetailsView: View {
 
         let colorName = ColorPickerView(selectedColor: .constant(selectedColor)).colorName(for: selectedColor)
         if LicensePlateReader.exists, !plate.plate.isEmpty {
+            logInfo("[PlateUI:confirm] associate existing vehicleId=\(plate.vehicleId ?? 0) plate=\(plate.plate)")
             Task {
                 await viewModel.associateVehicleWithUser(vehicleId: plate.vehicleId ?? 0, vehicleData: plate, color: colorName)
             }
         } else {
+            logInfo("[PlateUI:confirm] save automatic plate=\(plate.plate) identity=\(plate.hasVehicleIdentityData)")
             Task {
                 await viewModel.savePlate(plateData: plate, color: colorName, angle: 23)
             }

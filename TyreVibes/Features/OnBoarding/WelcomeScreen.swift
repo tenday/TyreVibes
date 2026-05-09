@@ -13,6 +13,7 @@ struct WelcomeScreen: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @State private var goToLogin = false
     @State private var goToSignUp = false
+    @State private var showAlert = false
 
     var body: some View {
         NavigationStack {
@@ -51,7 +52,7 @@ struct WelcomeScreen: View {
                                     SocialLoginView(
                                         metrics: metrics,
                                         onGoogleTap: {
-                                            // Handle Google log in
+                                            viewModel.signInWithGoogle()
                                         },
                                         onAppleTap: {
                                             handleAppleLogin()
@@ -71,6 +72,9 @@ struct WelcomeScreen: View {
             }
             .onAppear {
                 viewModel.attemptAutoLogin()
+            }
+            .onReceive(viewModel.$alertItem) { newValue in
+                showAlert = newValue != nil
             }
             .onChange(of: viewModel.showHomeScreen) { _, newValue in
                 if newValue {
@@ -99,6 +103,17 @@ struct WelcomeScreen: View {
                 SignUpScreen()
                     .navigationBarBackButtonHidden(true)
             }
+            .customAlert(
+                isPresented: $showAlert,
+                title: viewModel.alertItem?.title ?? "Error",
+                message: viewModel.alertItem?.message ?? "An unknown error occurred.",
+                showprogress: false,
+                primaryButtonTitle: "OK",
+                primaryButtonAction: {
+                    viewModel.alertItem = nil
+                    showAlert = false
+                }
+            )
         }
     }
 

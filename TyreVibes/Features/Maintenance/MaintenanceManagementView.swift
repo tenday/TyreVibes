@@ -619,11 +619,7 @@ struct MaintenanceManagementView: View {
             )
 
             if completedItems.isEmpty {
-                EmptyStateView(
-                    icon: "checkmark.circle",
-                    title: "Nessuna manutenzione registrata",
-                    subtitle: "Registra i lavori effettuati per avere storico e tracciamento."
-                )
+                completedEmptyGuidance
             } else {
                 LazyVStack(spacing: 10) {
                     ForEach(completedItems) { entry in
@@ -635,6 +631,115 @@ struct MaintenanceManagementView: View {
                 }
             }
         }
+    }
+
+    private var completedEmptyGuidance: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "list.bullet.clipboard")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.green)
+                    .frame(width: 48, height: 48)
+                    .background(Color.green.opacity(0.14), in: Circle())
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Costruisci il tuo storico")
+                        .font(.customFont(size: 17, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("Aggiungi gli interventi già fatti per rendere più precisi piano, costi e prossime scadenze.")
+                        .font(.customFont(size: 12, weight: .regular))
+                        .foregroundColor(.white.opacity(0.66))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            VStack(spacing: 9) {
+                MaintenanceEmptyGuideRow(
+                    index: "1",
+                    title: "Parti dall'ultimo intervento",
+                    subtitle: "Tagliando, cambio gomme, freni, batteria o qualunque lavoro recente.",
+                    icon: "wrench.and.screwdriver.fill",
+                    color: .green
+                )
+                MaintenanceEmptyGuideRow(
+                    index: "2",
+                    title: "Aggiungi data, km e costo",
+                    subtitle: "Bastano pochi dati per alimentare statistiche e promemoria.",
+                    icon: "calendar.badge.clock",
+                    color: .cyan
+                )
+                MaintenanceEmptyGuideRow(
+                    index: "3",
+                    title: "Allega la ricevuta",
+                    subtitle: "Puoi scansionare una fattura o importare un PDF per tenerla nel veicolo.",
+                    icon: "doc.text.viewfinder",
+                    color: .orange
+                )
+            }
+
+            HStack(spacing: 10) {
+                MaintenanceEmptyActionButton(
+                    title: "Registra ora",
+                    icon: "plus.circle.fill",
+                    tint: .green,
+                    isPrimary: true
+                ) {
+                    showCompletedSheet = true
+                }
+
+                MaintenanceEmptyActionButton(
+                    title: "Scansiona",
+                    icon: "doc.text.viewfinder",
+                    tint: .orange,
+                    isPrimary: false
+                ) {
+                    showScanReceiptSheet = true
+                }
+            }
+
+            if currentMileage == nil {
+                Button {
+                    showMileagePrompt = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "speedometer")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("Inserisci anche i km attuali")
+                            .font(.customFont(size: 12, weight: .semibold))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(.cyan)
+                    .padding(12)
+                    .background(Color.cyan.opacity(0.09), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Color.cyan.opacity(0.20), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.09),
+                            Color.green.opacity(0.06),
+                            Color.white.opacity(0.045)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.green.opacity(0.20), lineWidth: 1)
+        )
     }
 
     private func contentHeader(title: String, subtitle: String, icon: String) -> some View {
@@ -769,6 +874,77 @@ private struct MaintenanceQuickActionButton: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.white.opacity(0.07), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct MaintenanceEmptyGuideRow: View {
+    let index: String
+    let title: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(index)
+                .font(.customFont(size: 11, weight: .bold))
+                .foregroundColor(.black)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(color))
+
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 26, height: 26)
+                .background(color.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.customFont(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                Text(subtitle)
+                    .font(.customFont(size: 11, weight: .regular))
+                    .foregroundColor(.white.opacity(0.60))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(11)
+        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct MaintenanceEmptyActionButton: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let isPrimary: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                Text(title)
+                    .font(.customFont(size: 12, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .foregroundColor(isPrimary ? .black : tint)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(isPrimary ? tint : tint.opacity(0.12))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(isPrimary ? Color.clear : tint.opacity(0.25), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

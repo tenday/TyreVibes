@@ -161,7 +161,7 @@ final class SettingsViewModel: NSObject, ObservableObject {
             let tempFilesSize = await self.computeTempFilesSizeString()
 
             await MainActor.run {
-                stats = SettingsStats(
+                self.stats = SettingsStats(
                     appSize: appSize,
                     cacheSize: cacheSize,
                     batteryUsage: batteryUsage,
@@ -527,13 +527,13 @@ final class SettingsViewModel: NSObject, ObservableObject {
         guard let url else { return 0 }
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
-                let size = self.recursiveSize(at: url)
+                let size = Self.recursiveSize(at: url)
                 continuation.resume(returning: size)
             }
         }
     }
 
-    private func recursiveSize(at url: URL) -> UInt64 {
+    nonisolated private static func recursiveSize(at url: URL) -> UInt64 {
         let fileManager = FileManager.default
         var size: UInt64 = 0
         if let enumerator = fileManager.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
