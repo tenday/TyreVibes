@@ -1,0 +1,33 @@
+# Local and generated state
+.git/
+.codex/
+.venv*/
+tmp/
+output/
+graphify-out/
+runs/
+build/
+DerivedData/
+
+# Apple/Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Large binary/model assets
+*.mlpackage/
+*.mlmodel
+*.bin
+*.pt
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.pdf
+
+# Local/private tooling
+.agents/
+plugins/tyrevibes-cpanel-mcp/
+
+# Keep the codebase, project docs, database, Supabase, and small web flows indexed.

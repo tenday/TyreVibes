@@ -1134,7 +1134,6 @@ struct CarDetailsView: View {
     @StateObject private var tyreViewModel = TyreViewModel()
     @StateObject private var paywallManager = PaywallManager.shared
     @State private var showTyreRegistration: Bool = false
-    @State private var showTyreDetails: Bool = false
     @State private var showInfoDialog: Bool = false
     @State private var infoDialogOffset: CGFloat = 0
     @State private var showPremiumScreen = false
@@ -1319,8 +1318,8 @@ struct CarDetailsView: View {
                                 // Registered Tyre Sets
                                 ForEach(tyreSets, id: \.first!.id) { tyreSet in
                                     Button(action: {
+                                        showFirstTimeHint = false
                                         selectedTyre = tyreSet.first
-                                        showTyreDetails = true
                                     }) {
                                         ZStack {
                                             // Base for the stack to make it look like a pile
@@ -1414,6 +1413,15 @@ struct CarDetailsView: View {
                 )
                 if hasSeenDetailsHint == false {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        guard selectedTyre == nil,
+                              !showInfoDialog,
+                              !showTyreRegistration,
+                              !showPremiumScreen,
+                              !showAddTyreSetSheet,
+                              !show360View else {
+                            return
+                        }
+
                         showFirstTimeHint = true
                         hasSeenDetailsHint = true
                     }

@@ -225,10 +225,27 @@ struct EnterLicensePlateView: View {
                         
                         Task {
                             let startedAt = Date()
+                            logInfo("[PlateUI:manual] task started plate=\(plate)")
+                            let watchdog = Task {
+                                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                                guard !Task.isCancelled else { return }
+                                let loadingAfter5s = await MainActor.run { self.isLoadingDetails }
+                                logWarning("[PlateUI:manual] still waiting after 5s plate=\(plate) loading=\(loadingAfter5s)")
+                                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                                guard !Task.isCancelled else { return }
+                                let loadingAfter15s = await MainActor.run { self.isLoadingDetails }
+                                logWarning("[PlateUI:manual] still waiting after 15s plate=\(plate) loading=\(loadingAfter15s)")
+                            }
+                            defer {
+                                watchdog.cancel()
+                                logInfo("[PlateUI:manual] task finished plate=\(plate) elapsedMs=\(Int(Date().timeIntervalSince(startedAt) * 1000))")
+                            }
+
                             do {
+                                logInfo("[PlateUI:manual] fetchPlateSummary.start plate=\(plate)")
                                 let data = try await LicensePlateReader.fetchPlateSummary(plate: plate)
                                 let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
-                                logInfo("[PlateUI:manual] lookup completed plate=\(plate) identity=\(data.hasVehicleIdentityData) elapsedMs=\(elapsedMs)")
+                                logInfo("[PlateUI:manual] fetchPlateSummary.done plate=\(plate) identity=\(data.hasVehicleIdentityData) image=\(data.vehicleImage != nil) elapsedMs=\(elapsedMs)")
                                 if !data.hasVehicleIdentityData {
                                     licensePlate = ""
                                     self.data = data.plate.isEmpty ? PlateData(plate: plate) : data
@@ -236,6 +253,7 @@ struct EnterLicensePlateView: View {
                                     self.showConfirmDetailsScreen = true
                                     self.isLoadingDetails = false
                                     logWarning("[PlateUI:manual] navigating manual fallback plate=\(plate)")
+                                    logInfo("[PlateUI:manual] ui.state loading=\(self.isLoadingDetails) showConfirm=\(self.showConfirmDetailsScreen) navigateCheck=\(self.navigateToCheckDetails) showError=\(self.showErrorAlert)")
                                     return
                                 }
                                 
@@ -244,6 +262,7 @@ struct EnterLicensePlateView: View {
                                 licensePlate = ""
                                 self.navigateToCheckDetails = true
                                 logInfo("[PlateUI:manual] navigating check details plate=\(plate)")
+                                logInfo("[PlateUI:manual] ui.state loading=\(self.isLoadingDetails) showConfirm=\(self.showConfirmDetailsScreen) navigateCheck=\(self.navigateToCheckDetails) showError=\(self.showErrorAlert)")
                             }
                             catch let apiError as PlateAPIError {
                                 logError("[PlateUI:manual] PlateAPIError plate=\(plate) error=\(apiError.localizedDescription)")
@@ -255,13 +274,16 @@ struct EnterLicensePlateView: View {
                             }
                                 self.showErrorAlert = true
                                 licensePlate = ""
+                                logInfo("[PlateUI:manual] ui.errorState loading=\(self.isLoadingDetails) showError=\(self.showErrorAlert) message='\(self.errorMessage)'")
                                 
                             } catch {
                                 logError("[PlateUI:manual] generic error plate=\(plate) error=\(error.localizedDescription)")
                                 self.errorMessage = error.localizedDescription
                                 self.showErrorAlert = true
+                                logInfo("[PlateUI:manual] ui.errorState loading=\(self.isLoadingDetails) showError=\(self.showErrorAlert) message='\(self.errorMessage)'")
                             }
                         self.isLoadingDetails = false
+                        logInfo("[PlateUI:manual] loading reset plate=\(plate)")
                     }
                     
                     }) {

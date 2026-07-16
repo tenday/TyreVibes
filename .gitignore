@@ -8,3 +8,8 @@ xcuserdata/
 # Local Codex/cPanel MCP tooling. Keep server code and credentials off GitHub.
 .agents/
 plugins/tyrevibes-cpanel-mcp/
+
+# Graphify local metadata. Keep graph.json, graph.html, and GRAPH_REPORT.md shareable.
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/cache/

@@ -877,10 +877,27 @@ struct ScanPlateView: View {
 
         Task {
             let startedAt = Date()
+            logInfo("[PlateUI:scan] task started plate=\(plate)")
+            let watchdog = Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { return }
+                let loadingAfter5s = await MainActor.run { self.isLoadingPlateData }
+                logWarning("[PlateUI:scan] still waiting after 5s plate=\(plate) loading=\(loadingAfter5s)")
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                guard !Task.isCancelled else { return }
+                let loadingAfter15s = await MainActor.run { self.isLoadingPlateData }
+                logWarning("[PlateUI:scan] still waiting after 15s plate=\(plate) loading=\(loadingAfter15s)")
+            }
+            defer {
+                watchdog.cancel()
+                logInfo("[PlateUI:scan] task finished plate=\(plate) elapsedMs=\(Int(Date().timeIntervalSince(startedAt) * 1000))")
+            }
+
             do {
+                logInfo("[PlateUI:scan] fetchPlateSummary.start plate=\(plate)")
                 let data = try await LicensePlateReader.fetchPlateSummary(plate: plate)
                 let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
-                logInfo("[PlateUI:scan] lookup completed plate=\(plate) identity=\(data.hasVehicleIdentityData) elapsedMs=\(elapsedMs)")
+                logInfo("[PlateUI:scan] fetchPlateSummary.done plate=\(plate) identity=\(data.hasVehicleIdentityData) image=\(data.vehicleImage != nil) elapsedMs=\(elapsedMs)")
 
                 await MainActor.run {
                     if !data.hasVehicleIdentityData {
@@ -896,6 +913,7 @@ struct ScanPlateView: View {
                         self.navigateToCheckDetails = true
                         logInfo("[PlateUI:scan] navigating check details plate=\(plate)")
                     }
+                    logInfo("[PlateUI:scan] ui.state loading=\(self.isLoadingPlateData) showConfirm=\(self.showConfirmDetailsScreen) navigateCheck=\(self.navigateToCheckDetails) showError=\(self.showErrorAlert)")
                 }
             } catch let apiError as PlateAPIError {
                 logError("[PlateUI:scan] PlateAPIError plate=\(plate) error=\(apiError.localizedDescription)")
@@ -908,6 +926,7 @@ struct ScanPlateView: View {
                     }
                     self.showErrorAlert = true
                     self.isLoadingPlateData = false
+                    logInfo("[PlateUI:scan] ui.errorState loading=\(self.isLoadingPlateData) showError=\(self.showErrorAlert) message='\(self.errorMessage)'")
                 }
             } catch {
                 logError("[PlateUI:scan] generic error plate=\(plate) error=\(error.localizedDescription)")
@@ -915,6 +934,7 @@ struct ScanPlateView: View {
                     self.errorMessage = error.localizedDescription
                     self.showErrorAlert = true
                     self.isLoadingPlateData = false
+                    logInfo("[PlateUI:scan] ui.errorState loading=\(self.isLoadingPlateData) showError=\(self.showErrorAlert) message='\(self.errorMessage)'")
                 }
             }
         }

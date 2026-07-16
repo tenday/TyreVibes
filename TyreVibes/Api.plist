@@ -4,6 +4,8 @@
 <dict>
 	<key>CheckPlateBaseURL</key>
 	<string>https://www.tyrevibes.com/api/v1/check_plate</string>
+	<key>PlateDatabaseLookupEnabled</key>
+	<false/>
 	<key>BASE_URL</key>
 	<string>https://www.tyrevibes.com/api</string>
 	<key>SavePlateURL</key>

@@ -221,577 +221,6 @@ public class LicensePlateReader {
     }
 
 
-    /// Ottiene un token reCAPTCHA v3 partendo dall'URL di anchor (Google)
-    public static func fetchRecaptchaV3Token(anchorURL: String, completion: @escaping (Result<String, Error>) -> Void) {
-        // 1) Scarica l'anchor
-        guard let anchor = URL(string: anchorURL) else {
-            completion(.failure(NSError(domain: "LicensePlateReader", code: 11001, userInfo: [NSLocalizedDescriptionKey: "Anchor URL non valido"]))); return
-        }
-        var req = URLRequest(url: anchor)
-        req.httpMethod = "GET"
-        req.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
-        req.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
-        URLSession.tyreVibesShared.dataTask(with: req) { data, resp, err in
-            if let err = err { completion(.failure(err)); return }
-            guard let data = data, let html = String(data: data, encoding: .utf8) else {
-                completion(.failure(NSError(domain: "LicensePlateReader", code: 11002, userInfo: [NSLocalizedDescriptionKey: "Nessun HTML dal server"]))); return
-            }
-            // 2) Estrai il valore di "recaptcha-token" (chiave "c") dall'HTML dell'anchor
-            //   Nei markup v3 tipici compare un input/textarea con name="recaptcha-token" value="<c>"
-            let patterns = [
-                "name=\\\"recaptcha-token\\\"[^>]*value=\\\"([^\\\"]+)\\\"",
-                "id=\\\"recaptcha-token\\\"[^>]*value=\\\"([^\\\"]+)\\\"",
-                "\nrecaptcha-token\n.*?value=\\\"([^\\\"]+)\\\""
-            ]
-            var cParam: String?
-            for pat in patterns {
-                if let rgx = try? NSRegularExpression(pattern: pat, options: [.dotMatchesLineSeparators, .caseInsensitive]) {
-                    let ns = NSRange(html.startIndex..<html.endIndex, in: html)
-                    if let m = rgx.firstMatch(in: html, options: [], range: ns), m.numberOfRanges >= 2,
-                       let r = Range(m.range(at: 1), in: html) {
-                        cParam = String(html[r])
-                        break
-                    }
-                }
-            }
-            guard let c = cParam, !c.isEmpty else {
-                completion(.failure(NSError(domain: "LicensePlateReader", code: 11003, userInfo: [NSLocalizedDescriptionKey: "Impossibile estrarre 'c' dall'anchor reCAPTCHA"]))); return
-            }
-            // 3) Prepara parametri per /reload: k, v, co estratti dalla query dell'anchor
-            guard let comps = URLComponents(string: anchorURL),
-                  let siteKey = comps.queryItems?.first(where: { $0.name == "k" })?.value,
-                  let v = comps.queryItems?.first(where: { $0.name == "v" })?.value,
-                  let co = comps.queryItems?.first(where: { $0.name == "co" })?.value else {
-                completion(.failure(NSError(domain: "LicensePlateReader", code: 11004, userInfo: [NSLocalizedDescriptionKey: "Parametri obbligatori mancanti nell'anchor (k/v/co)"]))); return
-            }
-            // 4) Chiama /reload per ottenere il token "rresp"
-            guard let reloadURL = URL(string: "https://www.google.com/recaptcha/api2/reload?k=\(siteKey)") else {
-                completion(.failure(NSError(domain: "LicensePlateReader", code: 11005, userInfo: [NSLocalizedDescriptionKey: "Reload URL non valido"]))); return
-            }
-            var reloadReq = URLRequest(url: reloadURL)
-            reloadReq.httpMethod = "POST"
-            reloadReq.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-            reloadReq.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
-            let body = "v=\(v)&reason=q&k=\(siteKey)&c=\(c)&sa=&co=\(co)"
-            reloadReq.httpBody = body.data(using: .utf8)
-            URLSession.tyreVibesShared.dataTask(with: reloadReq) { data2, resp2, err2 in
-                if let err2 = err2 { completion(.failure(err2)); return }
-                guard let data2 = data2, let txt = String(data: data2, encoding: .utf8) else {
-                    completion(.failure(NSError(domain: "LicensePlateReader", code: 11006, userInfo: [NSLocalizedDescriptionKey: "Nessuna risposta da /reload"]))); return
-                }
-                // 5) Estrai il token dall'array JSON "magic" di /reload (terzo elemento, di solito)
-                //    Strategia robusta: prendi la stringa tra virgolette più lunga (>100)
-                let quotePattern = "\\\"([^\\\"]{50,})\\\"" // cattura stringhe lunghe
-                if let rgx = try? NSRegularExpression(pattern: quotePattern, options: [] ) {
-                    let ns = NSRange(txt.startIndex..<txt.endIndex, in: txt)
-                    let matches = rgx.matches(in: txt, options: [], range: ns)
-                    let candidates: [String] = matches.compactMap { m in
-                        guard m.numberOfRanges >= 2, let r = Range(m.range(at: 1), in: txt) else { return nil }
-                        return String(txt[r])
-                    }
-                    if let token = candidates.max(by: { $0.count < $1.count }) {
-                        completion(.success(token))
-                        return
-                    }
-                }
-                completion(.failure(NSError(domain: "LicensePlateReader", code: 11007, userInfo: [NSLocalizedDescriptionKey: "Impossibile estrarre token da /reload"])));
-            }.resume()
-        }.resume()
-    }
-
-    // UA randomico (iOS/Android/desktop)
-    private static func randomUserAgent() -> String {
-        let iosMaj = Int.random(in: 15...18)
-        let iosMin = Int.random(in: 0...6)
-        let chromeMaj = Int.random(in: 120...128)
-        let androidMaj = Int.random(in: 10...14)
-        let pick = Int.random(in: 0...2)
-        switch pick {
-        case 0: // iPhone
-            return "Mozilla/5.0 (iPhone; CPU iPhone OS \(iosMaj)_\(iosMin) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(iosMaj).0 Mobile/15E148 Safari/604.1"
-        case 1: // Android
-            return "Mozilla/5.0 (Linux; Android \(androidMaj)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/\(chromeMaj).0.0.0 Mobile Safari/537.36"
-        default: // Desktop
-            return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/\(chromeMaj).0.0.0 Safari/537.36"
-        }
-    }
-
-    // Costruisce il body JSON array per /reload
-    private static func buildReloadJSONArrayBody(
-        c: String,
-        k: String,
-        v: String,
-        co: String,
-        size: String = "invisible",
-        reason: String = "q",
-        ar: String = "1",
-        cb: String,
-        hl: String = "it"
-    ) throws -> Data {
-        let arr: [[String: Any]] = [
-            ["key":"bg","value":""],
-            ["key":"vh","value":""],
-            ["key":"chr","value":""],
-            ["key":"c","value":c],
-            ["key":"reason","value":reason],
-            ["key":"size","value":size],
-            ["key":"v","value":v],
-            ["key":"co","value":co],
-            ["key":"k","value":k],
-            ["key":"ar","value":ar],
-            ["key":"cb","value":cb],
-            ["key":"hl","value":hl]
-        ]
-        return try JSONSerialization.data(withJSONObject: arr, options: [])
-    }
-    
-    
-    
-
-    // Estrae dall'anchor i parametri (k, v, co, hl, ar, size, cb) + il token "c" dall'HTML
-    private static func parseAnchorAndExtractParams(
-        anchorURL: String,
-        completion: @escaping (Result<(k:String,v:String,co:String,hl:String,ar:String,size:String,cb:String,c:String), Error>) -> Void
-    ) {
-        guard let url = URL(string: anchorURL), let comps = URLComponents(string: anchorURL) else {
-            completion(.failure(NSError(domain: "LicensePlateReader", code: 13001, userInfo: [NSLocalizedDescriptionKey:"Anchor URL non valido"])));
-            return
-        }
-        let q = comps.queryItems ?? []
-        func qv(_ name: String, _ def: String = "") -> String { q.first(where:{$0.name==name})?.value ?? def }
-        let k  = qv("k")
-        let v  = qv("v")
-        let co = qv("co")
-        let hl = qv("hl","it")
-        let ar = qv("ar","1")
-        let size = qv("size","invisible")
-        let cb = qv("cb","cb")
-        guard !k.isEmpty, !v.isEmpty, !co.isEmpty else {
-            completion(.failure(NSError(domain: "LicensePlateReader", code: 13002, userInfo: [NSLocalizedDescriptionKey:"Parametri k/v/co mancanti nell'anchor"])));
-            return
-        }
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
-        req.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
-        URLSession.tyreVibesShared.dataTask(with: req) { data, _, err in
-            if let err = err { completion(.failure(err)); return }
-            guard let data = data, let html = String(data: data, encoding: .utf8) else {
-                completion(.failure(NSError(domain:"LicensePlateReader", code:13003, userInfo:[NSLocalizedDescriptionKey:"Nessun HTML"])));
-                return
-            }
-            let patterns = [
-                "name=\\\"recaptcha-token\\\"[^>]*value=\\\"([^\\\"]+)\\\"",
-                "id=\\\"recaptcha-token\\\"[^>]*value=\\\"([^\\\"]+)\\\"",
-                "\\brecaptcha-token\\b[\\s\\S]*?value=\\\"([^\\\"]+)\\\""
-            ]
-            var cParam: String?
-            for pat in patterns {
-                if let rgx = try? NSRegularExpression(pattern: pat, options: [.dotMatchesLineSeparators,.caseInsensitive]) {
-                    let ns = NSRange(html.startIndex..<html.endIndex, in: html)
-                    if let m = rgx.firstMatch(in: html, options: [], range: ns), m.numberOfRanges >= 2,
-                       let r = Range(m.range(at: 1), in: html) {
-                        cParam = String(html[r])
-                        break
-                    }
-                }
-            }
-            guard let c = cParam, !c.isEmpty else {
-                completion(.failure(NSError(domain:"LicensePlateReader", code:13004, userInfo:[NSLocalizedDescriptionKey:"Impossibile estrarre 'c' dall'anchor"])));
-                return
-            }
-            completion(.success((k:k,v:v,co:co,hl:hl,ar:ar,size:size,cb:cb,c:c)))
-        }.resume()
-    }
-
-    // Chiama /reload con body JSON array e UA randomico; restituisce il token finale (rresp)
-    public static func fetchRecaptchaV3Token_JSON(
-        anchorURL: String,
-        completion: @escaping (Result<String, Error>) -> Void
-    ) {
-        parseAnchorAndExtractParams(anchorURL: anchorURL) { parseResult in
-            switch parseResult {
-            case .failure(let e): completion(.failure(e))
-            case .success(let p):
-                guard let reloadURL = URL(string: "https://www.google.com/recaptcha/api2/reload?k=\(p.k)") else {
-                    completion(.failure(NSError(domain:"LicensePlateReader", code:13005, userInfo:[NSLocalizedDescriptionKey:"Reload URL non valido"])));
-                    return
-                }
-                var req = URLRequest(url: reloadURL)
-                req.httpMethod = "POST"
-                req.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
-                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                do {
-                    req.httpBody = try buildReloadJSONArrayBody(c: p.c, k: p.k, v: p.v, co: p.co, size: p.size, reason: "q", ar: p.ar, cb: p.cb, hl: p.hl)
-                } catch {
-                    completion(.failure(error)); return
-                }
-                URLSession.tyreVibesShared.dataTask(with: req) { data, _, err in
-                    if let err = err { completion(.failure(err)); return }
-                    guard let data = data, let txt = String(data: data, encoding: .utf8) else {
-                        completion(.failure(NSError(domain:"LicensePlateReader", code:13006, userInfo:[NSLocalizedDescriptionKey:"Nessuna risposta da /reload"])));
-                        return
-                    }
-                    if let rgx = try? NSRegularExpression(pattern: "\\\"([^\\\"]{50,})\\\"", options: [] ) {
-                        let ns = NSRange(txt.startIndex..<txt.endIndex, in: txt)
-                        let matches = rgx.matches(in: txt, options: [], range: ns)
-                        let candidates = matches.compactMap { m -> String? in
-                            guard m.numberOfRanges >= 2, let r = Range(m.range(at: 1), in: txt) else { return nil }
-                            return String(txt[r])
-                        }
-                        if let token = candidates.max(by: { $0.count < $1.count }) {
-                            completion(.success(token)); return
-                        }
-                    }
-                    completion(.failure(NSError(domain:"LicensePlateReader", code:13007, userInfo:[NSLocalizedDescriptionKey:"Impossibile estrarre token da /reload"])));
-                }.resume()
-            }
-        }
-    }
-
-    /// Interroga prima l'anchor reCAPTCHA (anchor -> reload JSON array con UA random) e poi chiama l'API Quattroruote check-plate
-    public static func fetchQuattroruotePlateData(plate: String, anchorURL: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
-        fetchRecaptchaV3Token(anchorURL: anchorURL) { tokenResult in
-            switch tokenResult {
-            case .failure(let e):
-                completion(.failure(e))
-            case .success(let token):
-                guard let url = URL(string: "https://quotazioni.quattroruote.it/api/check-plate") else {
-                    completion(.failure(NSError(domain: "LicensePlateReader", code: 12001, userInfo: [NSLocalizedDescriptionKey: "Endpoint Quattroruote non valido"])))
-                    return
-                }
-                var req = URLRequest(url: url)
-                req.httpMethod = "POST"
-                req.timeoutInterval = NetworkTimeout.quickLookup
-                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                req.setValue("application/json", forHTTPHeaderField: "Accept")
-                req.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
-                let body: [String: Any] = [
-                    "plate": plate.uppercased(),
-                    "recaptcha_token": token
-                ]
-                // Corpo JSON
-                do {
-                    req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-                } catch { completion(.failure(error)); return }
-
-                URLSession.tyreVibesShared.dataTask(with: req) { data, resp, err in
-                    if let err = err { completion(.failure(err)); return }
-                    let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
-                    let contentType = (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
-                    logNetwork("[Quattroruote] check-plate status=\(status) contentType=\(contentType) bytes=\(data?.count ?? 0) plate=\(plate)")
-                    guard let data = data else {
-                        completion(.failure(NSError(domain: "LicensePlateReader", code: 12002, userInfo: [NSLocalizedDescriptionKey: "Nessun dato da Quattroruote"])))
-                        return
-                    }
-
-                    // 1) Prova JSON standard
-                    if let jsonObj = try? JSONSerialization.jsonObject(with: data, options: []),
-                       let dict = jsonObj as? [String: Any] {
-                        logNetwork("[Quattroruote] check-plate json keys=\(dict.keys.sorted()) plate=\(plate)")
-                        completion(.success(dict))
-                        return
-                    }
-
-                    // 2) Altrimenti prova a leggere HTML e a estrarre il csrf-token
-                    if let html = String(data: data, encoding: .utf8) {
-                        // Possibili pattern:
-                        // <meta name="csrf-token" content="..."> oppure
-                        // <input type="hidden" name="csrf-token" value="...">
-                        let patterns = [
-                            "<meta[^>]*name=\\\"csrf-token\\\"[^>]*content=\\\"([^\\\"]+)\\\"[^>]*>",
-                            "name=\\\"csrf-token\\\"[^>]*value=\\\"([^\\\"]+)\\\""
-                        ]
-                        for pat in patterns {
-                            if let rgx = try? NSRegularExpression(pattern: pat, options: [.caseInsensitive, .dotMatchesLineSeparators]) {
-                                let nsrange = NSRange(html.startIndex..<html.endIndex, in: html)
-                                if let m = rgx.firstMatch(in: html, options: [], range: nsrange), m.numberOfRanges >= 2,
-                                   let r = Range(m.range(at: 1), in: html) {
-                                    let csrfToken = String(html[r])
-                                    // Invece di restituire subito il token, chiama /allestimenti
-                                    // Costruisci la URL con i parametri richiesti
-                                    guard var comps = URLComponents(string: "https://quotazioni.quattroruote.it/allestimenti") else {
-                                        completion(.failure(NSError(domain: "LicensePlateReader", code: 12006, userInfo: [NSLocalizedDescriptionKey: "URL allestimenti non valida"])))
-                                        return
-                                    }
-                                    comps.queryItems = [
-                                        URLQueryItem(name: "_token", value: csrfToken),
-                                        URLQueryItem(name: "plate", value: plate.uppercased()),
-                                        URLQueryItem(name: "vehicle_type", value: "1"),
-                                        URLQueryItem(name: "quotation_type", value: "nominale")
-                                    ]
-                                    guard let allestimentiURL = comps.url else {
-                                        completion(.failure(NSError(domain: "LicensePlateReader", code: 12006, userInfo: [NSLocalizedDescriptionKey: "URL allestimenti non valida"])))
-                                        return
-                                    }
-                                    var getReq = URLRequest(url: allestimentiURL)
-                                    getReq.httpMethod = "POST"
-                                    getReq.timeoutInterval = NetworkTimeout.quickLookup
-                                    getReq.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
-                                    getReq.setValue("application/json", forHTTPHeaderField: "Accept")
-                URLSession.tyreVibesShared.dataTask(with: getReq) { data2, resp2, err2 in
-                    if let err2 = err2 {
-                        completion(.failure(err2))
-                        return
-                    }
-                    let status = (resp2 as? HTTPURLResponse)?.statusCode ?? -1
-                    let contentType = (resp2 as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
-                    logNetwork("[Quattroruote] allestimenti status=\(status) contentType=\(contentType) bytes=\(data2?.count ?? 0) plate=\(plate)")
-                    guard let data2 = data2 else {
-                        completion(.failure(NSError(domain: "LicensePlateReader", code: 12007, userInfo: [NSLocalizedDescriptionKey: "Nessun dato da /allestimenti"])))
-                        return
-                    }
-                    // Prova a decodificare come JSON
-                    do {
-                        let obj = try JSONSerialization.jsonObject(with: data2, options: [])
-                        if let dict = obj as? [String: Any] {
-                            completion(.success(dict))
-                            return
-                        } else {
-                            // Fallback: restituisci il csrf_token se la risposta non è JSON valido
-                            completion(.success(["csrf_token": csrfToken]))
-                            return
-                        }
-                    } catch {
-                        // Errore: risposta non JSON, quindi tentiamo di estrarre dal tag <car-filter-container :data="...">
-                        guard let html = String(data: data2, encoding: .utf8) else {
-                            completion(.failure(NSError(domain: "LicensePlateReader", code: 12008, userInfo: [NSLocalizedDescriptionKey: "Impossibile convertire i dati in HTML"])))
-                            return
-                        }
-                        logWarning("[Quattroruote] allestimenti html preview plate=\(plate) preview='\(responsePreview(data2))'")
-                        
-                        if html.contains("La targa inserita non identifica nessun veicolo Quattroruote") {
-                            completion(.failure(NSError(domain: "LicensePlateReader", code: 12008, userInfo: [NSLocalizedDescriptionKey: "Targa non rilevata"])))
-                            return
-                        }
-
-                        // 1) Cerca l'attributo :data sul tag <car-filter-container>
-                        let pattern = #"<car-filter-container[^>]*:data=\"([^\"]+)\""#
-                        if let rgx = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive]),
-                           let m = rgx.firstMatch(in: html, options: [], range: NSRange(html.startIndex..<html.endIndex, in: html)),
-                           m.numberOfRanges >= 2,
-                           let r = Range(m.range(at: 1), in: html) {
-                            var jsonStr = String(html[r])
-                            // Decodifica entità HTML
-                            jsonStr = jsonStr.replacingOccurrences(of: "&quot;", with: "\"")
-
-                            if let dataJSON = jsonStr.data(using: .utf8) {
-                                do {
-                                    if let root = try JSONSerialization.jsonObject(with: dataJSON, options: []) as? [String: Any] {
-                                        var codice: String? = nil
-                                        var quotation: String? = nil
-
-                                        // quotation_id in general_info
-                                        if let gi = root["general_info"] as? [String: Any] {
-                                            if let qn = gi["quotation_id"] as? NSNumber { quotation = qn.stringValue }
-                                            else if let qs = gi["quotation_id"] as? String { quotation = qs }
-                                        }
-                                        // CodiceInfocarAM nel primo elemento di setups
-                                        if let setups = root["setups"] as? [[String: Any]], let first = setups.first {
-                                            if let cs = first["CodiceInfocarAM"] as? String { codice = cs }
-                                            else if let cn = first["CodiceInfocarAM"] as? NSNumber { codice = cn.stringValue }
-                                        }
-
-                                        if let codice = codice, let quotation = quotation {
-                                            // Costruisci URL dettagli
-                                                guard var comps = URLComponents(string: "https://quotazioni.quattroruote.it/dettagli") else {
-                                                    completion(.failure(NSError(domain: "LicensePlateReader", code: 13001, userInfo: [NSLocalizedDescriptionKey: "URL dettagli non valida"])))
-                                                    return
-                                                }
-                                                comps.queryItems = [
-                                                    URLQueryItem(name: "_token", value: csrfToken),
-                                                    URLQueryItem(name: "codiceInfocarAM", value: codice),
-                                                    URLQueryItem(name: "quotation_id", value: quotation)
-                                                ]
-                                                guard let dettagliURL = comps.url else {
-                                                    completion(.failure(NSError(domain: "LicensePlateReader", code: 13001, userInfo: [NSLocalizedDescriptionKey: "URL dettagli non valida"])))
-                                                    return
-                                                }
-
-                                                var req = URLRequest(url: dettagliURL)
-                                                req.httpMethod = "POST"
-                                                req.timeoutInterval = NetworkTimeout.quickLookup
-                                                req.setValue(randomUserAgent(), forHTTPHeaderField: "User-Agent")
-                                                req.setValue("application/json", forHTTPHeaderField: "Accept")
-
-                                                URLSession.tyreVibesShared.dataTask(with: req) { data, resp, err in
-                                                    if let err = err {
-                                                        completion(.failure(err))
-                                                        return
-                                                    }
-                                                    let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
-                                                    let contentType = (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
-                                                    logNetwork("[Quattroruote] dettagli status=\(status) contentType=\(contentType) bytes=\(data?.count ?? 0) plate=\(plate)")
-                                                    guard let data = data else {
-                                                        completion(.failure(NSError(domain: "LicensePlateReader", code: 13002, userInfo: [NSLocalizedDescriptionKey: "Nessun dato da /dettagli"])))
-                                                        return
-                                                    }
-                                                    do {
-                                                        let html = String(data: data, encoding: .utf8) ?? ""
-
-                                                        // 1) Cerca l'attributo :data sul tag <buy-quotation-form>
-                                                        var jsonStr: String? = nil
-                                                        let pattern = #"<buy-quotation-form[^>]*:data=\"([^\"]+)\""#
-                                                        if let rgx = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive]),
-                                                           let m = rgx.firstMatch(in: html, options: [], range: NSRange(html.startIndex..<html.endIndex, in: html)),
-                                                           m.numberOfRanges >= 2,
-                                                           let r = Range(m.range(at: 1), in: html) {
-                                                            jsonStr = String(html[r])
-                                                            // Decodifica entità HTML
-                                                            jsonStr = jsonStr?.replacingOccurrences(of: "&quot;", with: "\"")
-                                                        }
-                                                        
-                                                        if jsonStr == nil {
-                                                            let pattern2 = #"<car-filter-container[^>]*:data=\"([^\"]+)\""#
-                                                            if let rgx = try? NSRegularExpression(pattern: pattern2, options: [.dotMatchesLineSeparators, .caseInsensitive]),
-                                                               let m = rgx.firstMatch(in: html, options: [], range: NSRange(html.startIndex..<html.endIndex, in: html)),
-                                                               m.numberOfRanges >= 2,
-                                                               let r = Range(m.range(at: 1), in: html) {
-                                                                jsonStr = String(html[r]).replacingOccurrences(of: "&quot;", with: "\"")
-                                                            }
-                                                        }
-
-                                                        guard let jsonStr = jsonStr else {
-                                                            logWarning("[Quattroruote] dettagli data attribute missing plate=\(plate) preview='\(responsePreview(data))'")
-                                                            completion(.failure(NSError(
-                                                                domain: "LicensePlateReader",
-                                                                code: 13004,
-                                                                userInfo: [NSLocalizedDescriptionKey: ":data non trovato né in buy-quotation-form né in car-filter-container"]
-                                                            )))
-                                                            return
-                                                        }
-
-                                                        if let dataJSON = jsonStr.data(using: .utf8),
-                                                            let dict = try JSONSerialization.jsonObject(with: dataJSON, options: []) as? [String: Any] {
-                                                            // --- PlateData mapping for /dettagli response ---
-                                                            var mapped: [String: Any] = [:]
-                                                            // Top-level fields
-                                                            // infocar mapping
-                                                            if let infocar = dict["infocar"] as? [String: Any] ??
-                                                                             (dict["infocar"] as? [[String: Any]])?.first ??
-                                                                             (dict["setups"] as? [String: Any]) ??
-                                                                             (dict["setups"] as? [[String: Any]])?.first {
-
-                                                                if let inizioVendita = infocar["inizioVendita"] { mapped["inizioVendita"] = inizioVendita }
-                                                                if let fineVendita = infocar["fineVendita"] { mapped["fineVendita"] = fineVendita }
-                                                                if let cc = infocar["cilindrata"] { mapped["displacementCC"] = cc }
-                                                                if let cambio = infocar["cambio"] { mapped["gearbox"] = cambio }
-                                                                if let vmax = infocar["velocitaMax"] { mapped["maxSpeed"] = vmax }
-                                                                if let carrozzeria = infocar["carrozzeria"] { mapped["bodyType"] = carrozzeria }
-                                                                if let porte = infocar["porte"] { mapped["doors"] = porte }
-                                                                if let posti = infocar["posti"] { mapped["seats"] = posti }
-                                                                if let consumi = infocar["consumi"] { mapped["consumption"] = consumi }
-                                                                if let trazione = infocar["trazione"] { mapped["traction"] = trazione }
-                                                                // "potenza" → "powerCVKW" (split if possible, support both formats)
-                                                                if let potenza = infocar["potenza"] as? String {
-                                                                    let pattern1 = #"(\d+)\s*CV\s*\((\d+)\s*kW\)"#
-                                                                    let pattern2 = #"(\d+)\s*kW\s*/\s*(\d+)\s*CV"#
-                                                                    if let rgx = try? NSRegularExpression(pattern: pattern1),
-                                                                       let m = rgx.firstMatch(in: potenza, options: [], range: NSRange(potenza.startIndex..<potenza.endIndex, in: potenza)),
-                                                                       m.numberOfRanges == 3,
-                                                                       let r1 = Range(m.range(at: 1), in: potenza),
-                                                                       let r2 = Range(m.range(at: 2), in: potenza) {
-                                                                        mapped["powerCV"] = String(potenza[r1])
-                                                                        mapped["powerKW"] = String(potenza[r2])
-                                                                    } else if let rgx = try? NSRegularExpression(pattern: pattern2),
-                                                                              let m = rgx.firstMatch(in: potenza, options: [], range: NSRange(potenza.startIndex..<potenza.endIndex, in: potenza)),
-                                                                              m.numberOfRanges == 3,
-                                                                              let r1 = Range(m.range(at: 1), in: potenza),
-                                                                              let r2 = Range(m.range(at: 2), in: potenza) {
-                                                                        mapped["powerKW"] = String(potenza[r1])
-                                                                        mapped["powerCV"] = String(potenza[r2])
-                                                                    }
-                                                                }
-                                                                if let alimentazione = infocar["alimentazione"] { mapped["fuelType"] = alimentazione }
-                                                                if let nome = infocar["nome"] as? String {
-                                                                    let separators = CharacterSet(charactersIn: "- ")
-                                                                    let parts = nome.components(separatedBy: separators).filter { !$0.isEmpty }
-                                                                    if !parts.isEmpty {
-                                                                        mapped["make"] = parts[0]
-                                                                        
-                                                                        if parts.count > 1 {
-                                                                            let model = parts[1]
-                                                                                .replacingOccurrences(of: "-->", with: "")
-                                                                                .replacingOccurrences(of: "&amp;", with: "&")
-                                                                            mapped["model"] = model
-                                                                        } else {
-                                                                            mapped["model"] = infocar["modello"]
-                                                                        }
-                                                                        
-                                                                        let details = nome
-                                                                            .replacingOccurrences(of: "&amp;", with: "&")
-                                                                        mapped["modelDetails"] = details
-                                                                    }
-                                                                }
-                                                                // Mappatura estesa: tutti i valori presenti nella risposta
-                                                                for (key, value) in infocar {
-                                                                    // Non sovrascrivere già mappati, ma includi tutto il resto
-                                                                    if mapped[key] == nil {
-                                                                        mapped[key] = value
-                                                                    }
-                                                                }
-                                                            }
-                                                            completion(.success(mapped))
-                                                        } else {
-                                                            let preview = String(data: data, encoding: .utf8) ?? ""
-                                                            completion(.failure(NSError(domain: "LicensePlateReader", code: 13003, userInfo: [NSLocalizedDescriptionKey: "Risposta non valida", "preview": preview])))
-                                                        }
-                                                        
-                                                    } catch {
-                                                        completion(.failure(error))
-                                                        return
-                                                    }
-                                                }.resume()
-
-                                                return
-                                        }
-                                    }
-                                } catch {
-                                    completion(.failure(error))
-                                    return
-                                }
-                            }
-                        }
-
-                        completion(.failure(NSError(
-                            domain: "LicensePlateReader",
-                            code: 12009,
-                            userInfo: [
-                                NSLocalizedDescriptionKey: "Dati Quattroruote non trovati nella risposta HTML",
-                                "preview": responsePreview(data2)
-                            ]
-                        )))
-                        return
-
-                        
-                    }
-                }.resume()
-                return
-                                }
-                            }
-                        }
-
-                        // 3) Se non si trova nulla, ritorna errore più diagnostico
-                        let ct = (resp as? HTTPURLResponse)?.allHeaderFields["Content-Type"] as? String ?? ""
-                        completion(.failure(NSError(
-                            domain: "LicensePlateReader",
-                            code: 12004,
-                            userInfo: [NSLocalizedDescriptionKey: "Risposta HTML senza csrf-token rilevabile", "contentType": ct, "preview": String(html.prefix(512))]
-                        )))
-                        return
-                    }
-
-                    // 4) Fallback: dati non decodificabili
-                    completion(.failure(NSError(domain: "LicensePlateReader", code: 12005, userInfo: [NSLocalizedDescriptionKey: "Risposta non decodificabile né JSON né HTML"])))
-                }.resume()
-            }
-        }
-    }
-
-
-
-
-
 public static func fetchCaptchaGenerate(completion: @escaping (Result<[String: String], Error>) -> Void) {
 guard let url = URL(string: "https://www.ilportaledellautomobilista.it/interrogazionistoricorevisioni/noauth/captcha/generate") else {
     completion(.failure(NSError(domain: "LicensePlateReader", code: 1001, userInfo: nil)))
@@ -2101,20 +1530,13 @@ private static func solveCaptchaWithVisionSimple(from cgImage: CGImage, expected
         }
     }
 
-    private static func fetchQuattroruotePlateDataAsync(plate: String, timeout: TimeInterval = 22.0) async throws -> [String:Any] {
-        try await withCheckedThrowingContinuation { cont in
-            let continuationBox = ThrowingContinuationBox(cont)
-
-            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-                continuationBox.resume(with: .failure(NSError(
-                    domain: "LicensePlateReader",
-                    code: 12010,
-                    userInfo: [NSLocalizedDescriptionKey: "Timeout Quattroruote"]
-                )))
-            }
-
-            fetchQuattroruotePlateData(plate: plate, anchorURL: "https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Le8aF8rAAAAAJWwLyBz0etzTUVmNb_xm68qgxoJ&co=aHR0cHM6Ly9xdW90YXppb25pLnF1YXR0cm9ydW90ZS5pdDo0NDM.&hl=it&v=_mscDd1KHr60EWWbt2I_ULP0&size=invisible&anchor-ms=20000&execute-ms=15000&cb=m871w5q3hb3j") { result in
-                continuationBox.resume(with: result)
+    private static func fetchFacilePlateDataAsync(plate: String) async throws -> [String: Any] {
+        try await withTaskCancellationHandler {
+            let vehicle = try await FacileWebLookupService.shared.fetch(plate: plate)
+            return vehicle.dictionary
+        } onCancel: {
+            Task { @MainActor in
+                FacileWebLookupService.shared.cancel()
             }
         }
     }
@@ -2346,30 +1768,34 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         // 🚀 CACHE HIT: Controllo cache prima di fare qualsiasi elaborazione
         if let cachedData = PlateDataCache.get(lookupPlate) {
             print("🎯 Cache hit per targa: \(lookupPlate)")
-            logNetwork("[PlateLookup:\(traceId)] cache.hit identity=\(cachedData.hasVehicleIdentityData) elapsedMs=\(elapsedMilliseconds(since: lookupStart))")
+            logNetwork("[PlateLookup:\(traceId)] cache.hit plate=\(lookupPlate) identity=\(cachedData.hasVehicleIdentityData) elapsedMs=\(elapsedMilliseconds(since: lookupStart))")
             return cachedData
         }
 
-        do {
-            let dbStart = Date()
-            logNetwork("[PlateLookup:\(traceId)] db.start plate=\(lookupPlate)")
-            if let cachedPlateData = try await checkVehicleInDB(plate: lookupPlate) {
-                exists = true
-                // 💾 CACHE SAVE: Salva anche i dati dal DB in cache
-                PlateDataCache.set(lookupPlate, data: cachedPlateData)
-                print("💾 Dati dal DB salvati in cache per targa: \(lookupPlate)")
-                logNetwork("[PlateLookup:\(traceId)] db.hit identity=\(cachedPlateData.hasVehicleIdentityData) elapsedMs=\(elapsedMilliseconds(since: dbStart))")
-                return cachedPlateData
+        let databaseLookupEnabled = (PlateAPIService.apiConfig["PlateDatabaseLookupEnabled"] as? Bool) ?? false
+        if databaseLookupEnabled {
+            do {
+                let dbStart = Date()
+                logNetwork("[PlateLookup:\(traceId)] db.start plate=\(lookupPlate)")
+                if let cachedPlateData = try await checkVehicleInDB(plate: lookupPlate) {
+                    exists = true
+                    PlateDataCache.set(lookupPlate, data: cachedPlateData)
+                    print("💾 Dati dal DB salvati in cache per targa: \(lookupPlate)")
+                    logNetwork("[PlateLookup:\(traceId)] db.hit plate=\(lookupPlate) identity=\(cachedPlateData.hasVehicleIdentityData) elapsedMs=\(elapsedMilliseconds(since: dbStart))")
+                    return cachedPlateData
+                }
+                logNetwork("[PlateLookup:\(traceId)] db.miss plate=\(lookupPlate) elapsedMs=\(elapsedMilliseconds(since: dbStart))")
+            } catch let apiError as PlateAPIError {
+                if case .alreadyInGarage = apiError {
+                    logWarning("[PlateLookup:\(traceId)] db.alreadyInGarage plate=\(lookupPlate)")
+                    throw apiError
+                }
+            } catch {
+                print("⚠️ Errore checkVehicleInDB:", error.localizedDescription)
+                logWarning("[PlateLookup:\(traceId)] db.error \(error.localizedDescription)")
             }
-            logNetwork("[PlateLookup:\(traceId)] db.miss elapsedMs=\(elapsedMilliseconds(since: dbStart))")
-        } catch let apiError as PlateAPIError {
-            if case .alreadyInGarage = apiError {
-                logWarning("[PlateLookup:\(traceId)] db.alreadyInGarage plate=\(lookupPlate)")
-                throw apiError // lo rilanci per gestirlo più in alto con alert
-            }
-        } catch {
-            print("⚠️ Errore checkVehicleInDB:", error.localizedDescription)
-            logWarning("[PlateLookup:\(traceId)] db.error \(error.localizedDescription)")
+        } else {
+            logNetwork("[PlateLookup:\(traceId)] db.skipped disabledByConfiguration plate=\(lookupPlate)")
         }
         
         
@@ -2411,39 +1837,39 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         }
         
         // Prima identifichiamo il veicolo: le chiamate secondarie partono solo se esiste.
-        async let quattroruoteResult: [String: Any] = fetchWithFallback(label: "Quattroruote", fallback: [:], timeout: 12.0) {
-            try await fetchQuattroruotePlateDataAsync(plate: lookupPlate, timeout: 10.0)
+        async let vehicleLookupResult: [String: Any] = fetchWithFallback(label: "FacileVehicle", fallback: [:], timeout: 24.0) {
+            try await fetchFacilePlateDataAsync(plate: lookupPlate)
         }
         async let allianzResult: [String: String] = fetchWithFallback(label: "Allianz", fallback: [:], timeout: 8.0) {
             try await fetchAllianzInfoAsync(plate: lookupPlate, plateData: PlateData(plate: lookupPlate))
         }
 
-        let quattroruoteData = await quattroruoteResult
-        logNetwork("[PlateLookup:\(traceId)] Quattroruote.keys=\(quattroruoteData.keys.sorted())")
+        let vehicleLookupData = await vehicleLookupResult
+        logNetwork("[PlateLookup:\(traceId)] FacileVehicle.keys=\(vehicleLookupData.keys.sorted())")
 
-        // Mappa i dati quattroruote in plateData, usando "" come fallback per nil
-        plateData.make = (quattroruoteData["make"] as? String) ?? ""
-        plateData.model = (quattroruoteData["model"] as? String) ?? ""
-        plateData.modelDetails = (quattroruoteData["modelDetails"] as? String) ?? ""
-        plateData.displacementCC = (quattroruoteData["displacementCC"] as? String) ?? ""
-        plateData.fuelType = (quattroruoteData["fuelType"] as? String) ?? ""
-        plateData.powerKW = (quattroruoteData["powerKW"] as? String) ?? ""
-        plateData.powerCV = (quattroruoteData["powerCV"] as? String) ?? ""
-        plateData.registrationDate = (quattroruoteData["registrationDate"] as? String) ?? ""
-        plateData.gearbox = (quattroruoteData["cambio"] as? String) ?? (plateData.gearbox ?? "")
-        plateData.maxSpeed = (quattroruoteData["velocitaMax"] as? String) ?? (plateData.maxSpeed ?? "")
-        plateData.bodyType = (quattroruoteData["bodyType"] as? String) ?? (plateData.bodyType ?? "")
-        plateData.consumption = (quattroruoteData["consumi"] as? String) ?? (plateData.consumption ?? "")
-        plateData.traction = (quattroruoteData["trazione"] as? String) ?? (plateData.traction ?? "")
-        plateData.version = (quattroruoteData["version"] as? String) ?? (plateData.version ?? "")
-        plateData.vin = (quattroruoteData["vin"] as? String) ?? (plateData.vin ?? "")
-        plateData.saleStart = (quattroruoteData["inizioVendita"] as? String) ?? (plateData.saleStart ?? "")
-        plateData.saleEnd = (quattroruoteData["fineVendita"] as? String) ?? (plateData.saleEnd ?? "")
+        plateData.make = (vehicleLookupData["make"] as? String) ?? ""
+        plateData.model = (vehicleLookupData["model"] as? String) ?? ""
+        plateData.modelDetails = (vehicleLookupData["modelDetails"] as? String) ?? ""
+        plateData.displacementCC = (vehicleLookupData["displacementCC"] as? String) ?? ""
+        plateData.fuelType = (vehicleLookupData["fuelType"] as? String) ?? ""
+        plateData.powerKW = (vehicleLookupData["powerKW"] as? String) ?? ""
+        plateData.powerCV = (vehicleLookupData["powerCV"] as? String) ?? ""
+        plateData.registrationDate = (vehicleLookupData["registrationDate"] as? String) ?? ""
+        plateData.gearbox = (vehicleLookupData["cambio"] as? String) ?? (plateData.gearbox ?? "")
+        plateData.maxSpeed = (vehicleLookupData["velocitaMax"] as? String) ?? (plateData.maxSpeed ?? "")
+        plateData.bodyType = (vehicleLookupData["bodyType"] as? String) ?? (plateData.bodyType ?? "")
+        plateData.consumption = (vehicleLookupData["consumi"] as? String) ?? (plateData.consumption ?? "")
+        plateData.traction = (vehicleLookupData["trazione"] as? String) ?? (plateData.traction ?? "")
+        plateData.version = (vehicleLookupData["version"] as? String) ?? (plateData.version ?? "")
+        plateData.vin = (vehicleLookupData["vin"] as? String) ?? (plateData.vin ?? "")
+        plateData.emissionClass = (vehicleLookupData["emissionClass"] as? String) ?? (plateData.emissionClass ?? "")
+        plateData.saleStart = (vehicleLookupData["inizioVendita"] as? String) ?? (plateData.saleStart ?? "")
+        plateData.saleEnd = (vehicleLookupData["fineVendita"] as? String) ?? (plateData.saleEnd ?? "")
 
-        let doorsValue = stringValue(quattroruoteData["doors"])
+        let doorsValue = stringValue(vehicleLookupData["doors"])
         plateData.doors = !doorsValue.isEmpty ? doorsValue : (plateData.doors ?? "")
 
-        let seatsValue = stringValue(quattroruoteData["seats"])
+        let seatsValue = stringValue(vehicleLookupData["seats"])
         plateData.seats = !seatsValue.isEmpty ? seatsValue : (plateData.seats ?? "")
 
         let allianz = await allianzResult
@@ -2489,18 +1915,28 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         ].contains { value in
             !(value ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
+        logNetwork(
+            "[PlateLookup:\(traceId)] identity.evaluated hasIdentity=\(hasVehicleIdentity) " +
+            "make='\(plateData.make ?? "")' model='\(plateData.model ?? "")' " +
+            "details='\(plateData.modelDetails ?? "")' registration='\(plateData.registrationDate ?? "")' " +
+            "displacement='\(plateData.displacementCC ?? "")'"
+        )
 
         let shouldCalculateRevisions = hasVehicleIdentity && Self.shouldCalculateRevisions(registrationDateString: plateData.registrationDate)
+        logNetwork("[PlateLookup:\(traceId)] revisions.shouldFetch=\(shouldCalculateRevisions)")
 
         let revisioniRaw: [[String: String]]
         if shouldCalculateRevisions {
             revisioniRaw = await fetchWithFallback(label: "Revisioni", fallback: [[String: String]]()) {
                 try await fetchRevisioniSecureAsync(plate: lookupPlate)
             }
+            logNetwork("[PlateLookup:\(traceId)] Revisioni.count=\(revisioniRaw.count)")
         } else if hasVehicleIdentity {
             revisioniRaw = []
+            logNetwork("[PlateLookup:\(traceId)] Revisioni.skipped vehicleTooRecentOrDateUnavailable")
         } else {
             print("ℹ️ [PlateSummary] Revisioni saltate per targa \(lookupPlate): veicolo non identificato")
+            logWarning("[PlateLookup:\(traceId)] Revisioni.skipped identityMissing")
             revisioniRaw = []
         }
 
@@ -2518,6 +1954,10 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
                 try await fetchTyreBlackcirclesAsync(plate: lookupPlate)
             }
             (rca, classeAmbientale, tyres) = await (rcaLookup, classeAmbientaleLookup, tyresLookup)
+            logNetwork(
+                "[PlateLookup:\(traceId)] secondary.done " +
+                "rcaKeys=\(rca.keys.sorted()) classe='\(classeAmbientale)' tyresCount=\(tyres.count)"
+            )
         } else {
             print("ℹ️ [PlateSummary] Identità veicolo non recuperata per targa \(lookupPlate); dati secondari saltati.")
             logWarning("[PlateLookup:\(traceId)] identity.missing skipSecondaryLookups")
@@ -2559,23 +1999,41 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
         // Se parsed è vuoto, lo consideriamo un risultato valido ("nessuna revisione").
         // Il retry in background parte solo nel ramo di errore fetch/scraping.
 
-        // Fetch immagine veicolo
-        if let make = plateData.make, let model = plateData.model {
+        // Fetch immagine veicolo solo quando abbiamo abbastanza dati per identificarlo.
+        let imageMake = plateData.make?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let imageModel = plateData.model?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if hasVehicleIdentity, !imageMake.isEmpty, !imageModel.isEmpty {
             plateData.year = plateData.registrationDate?.components(separatedBy: "/").last ?? ""
             do {
-                let image = try await VehicleImageService.fetchVehicleImageAsync(
-                    make: make,
-                    modelFamily: plateData.modelDetails ?? model,
-                    year: plateData.year ?? "",
-                    paintId: plateData.color ?? "",
-                    plate: plateData.plate,
-                    angle: 23
+                let imageStart = Date()
+                let imageModelDetails = plateData.modelDetails?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let imageModelFamily = imageModelDetails.isEmpty ? imageModel : imageModelDetails
+                let imageYear = plateData.year ?? ""
+                let imagePaintId = plateData.color ?? ""
+                let imagePlate = plateData.plate
+                logNetwork(
+                    "[PlateLookup:\(traceId)] image.start make='\(imageMake)' modelFamily='\(imageModelFamily)' " +
+                    "year='\(imageYear)' plate=\(imagePlate)"
                 )
+                let image = try await withTimeout(8.0) {
+                    try await VehicleImageService.fetchVehicleImageAsync(
+                        make: imageMake,
+                        modelFamily: imageModelFamily,
+                        year: imageYear,
+                        paintId: imagePaintId,
+                        plate: imagePlate,
+                        angle: 23
+                    )
+                }
                 plateData.vehicleImage = image
+                logNetwork("[PlateLookup:\(traceId)] image.success elapsedMs=\(elapsedMilliseconds(since: imageStart))")
             } catch {
                 print("⚠️ Immagine non recuperata: \(error.localizedDescription)")
+                logWarning("[PlateLookup:\(traceId)] image.failed error=\(error.localizedDescription)")
                 plateData.vehicleImage = nil
             }
+        } else {
+            logWarning("[PlateLookup:\(traceId)] image.skipped plate=\(lookupPlate) hasIdentity=\(hasVehicleIdentity) make='\(imageMake)' model='\(imageModel)'")
         }
 
         // 💾 CACHE SAVE: Salva solo veicoli identificati, non targhe inesistenti con dati vuoti
@@ -2588,7 +2046,7 @@ private static func withTimeout<T>(_ seconds: Double, operation: @escaping @Send
             logWarning("[PlateLookup:\(traceId)] cache.skipNoIdentity")
         }
 
-        logNetwork("[PlateLookup:\(traceId)] finished identity=\(hasVehicleIdentity) elapsedMs=\(elapsedMilliseconds(since: lookupStart))")
+        logNetwork("[PlateLookup:\(traceId)] finished plate=\(lookupPlate) identity=\(hasVehicleIdentity) elapsedMs=\(elapsedMilliseconds(since: lookupStart))")
         return plateData
     }
 
