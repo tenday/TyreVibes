@@ -1584,7 +1584,7 @@ const parseToDate = (value) => {
   });
 
   router.get("/v1/vehicles/:userId", authenticateJWT, async (req, res) => {
-    const userId = req.params.userId;
+    const userId = authenticatedUserId(req);
     const includeImagesParam = req.query.includeImages;
     const wantsLiteResponse = ["1", "true", "yes"].includes(String(req.query.lite || "").toLowerCase());
     const includeImages = includeImagesParam == null
@@ -1594,7 +1594,7 @@ const parseToDate = (value) => {
     if (!userId) {
       return res.status(400).json({ message: "userId è richiesto." });
     }
-    if (rejectUserMismatch(req, res, userId)) {
+    if (rejectUserMismatch(req, res, req.params.userId)) {
       return;
     }
 
@@ -1831,12 +1831,13 @@ const parseToDate = (value) => {
   });
 
   router.delete("/v1/vehicles/:id/user/:userId", authenticateJWT, async (req, res) => {
-    const { id, userId } = req.params;
+    const { id } = req.params;
+    const userId = authenticatedUserId(req);
 
     if (!id || !userId) {
       return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
     }
-    if (rejectUserMismatch(req, res, userId)) {
+    if (rejectUserMismatch(req, res, req.params.userId)) {
       return;
     }
 
@@ -1861,13 +1862,14 @@ const parseToDate = (value) => {
   });
 
 router.patch("/v1/vehicles/:id/user/:userId/mileage", authenticateJWT, async (req, res) => {
-  const { id, userId } = req.params;
+  const { id } = req.params;
+  const userId = authenticatedUserId(req);
   const { currentMileage } = req.body || {};
 
   if (!id || !userId) {
     return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
   }
-  if (rejectUserMismatch(req, res, userId)) {
+  if (rejectUserMismatch(req, res, req.params.userId)) {
     return;
   }
 
@@ -1915,7 +1917,8 @@ router.patch("/v1/vehicles/:id/user/:userId/mileage", authenticateJWT, async (re
 });
 
 router.post("/v1/vehicles/:id/user/:userId", authenticateJWT, async (req, res) => {
-  const { id, userId } = req.params;
+  const { id } = req.params;
+  const userId = authenticatedUserId(req);
   // Extract color and potential image data from the body
   const { color, imagesBase64, imagesMime, imagesAngle } = req.body || {};
 
@@ -1925,7 +1928,7 @@ router.post("/v1/vehicles/:id/user/:userId", authenticateJWT, async (req, res) =
   if (!id || !userId) {
     return res.status(400).json({ message: "vehicleId e userId sono richiesti." });
   }
-  if (rejectUserMismatch(req, res, userId)) {
+  if (rejectUserMismatch(req, res, req.params.userId)) {
     return;
   }
   
