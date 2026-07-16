@@ -129,13 +129,13 @@ SELECT cron.schedule(
     SELECT
         extensions.http_post(
             url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs',
-            headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SUPABASE_ANON_KEY"}'::jsonb,
+            headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
             body := '{}'::jsonb
         ) AS request_id;
     $$
 );
 
--- NOTA: Sostituisci YOUR_SUPABASE_ANON_KEY con la chiave effettiva
+-- NOTA: Sostituisci YOUR_BACKGROUND_JOBS_SECRET con il secret configurato nelle Edge Functions
 
 -- ==================================
 -- ROW LEVEL SECURITY (RLS)
@@ -260,4 +260,4 @@ SELECT 'Database setup completato con successo! ✅' as message;
 SELECT 'Tabelle create: bollo_status, revision_status, job_execution_log' as tables;
 SELECT 'Viste create: upcoming_expirations' as views;
 SELECT 'Cron jobs schedulati: run-all-background-jobs' as cron_jobs;
-SELECT 'RICORDA: Sostituisci YOUR_SUPABASE_ANON_KEY nel job cron!' as reminder;
+SELECT 'RICORDA: Sostituisci YOUR_BACKGROUND_JOBS_SECRET nel job cron!' as reminder;

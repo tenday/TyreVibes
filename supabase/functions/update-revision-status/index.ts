@@ -9,7 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://jbcbrnegmqraivdfmlsn.supabase.co'
@@ -23,6 +23,23 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 })
 
 const BASE_API_URL = 'https://www.tyrevibes.com/api'
+
+const JOBS_SECRET = Deno.env.get('BACKGROUND_JOBS_SECRET') ?? ''
+
+function isAuthorized(req: Request): boolean {
+  if (!JOBS_SECRET) {
+    console.error('❌ BACKGROUND_JOBS_SECRET non configurato')
+    return false
+  }
+
+  const authHeader = req.headers.get('authorization')
+  const cronHeader = req.headers.get('x-cron-secret')
+
+  if (cronHeader === JOBS_SECRET) return true
+  if (authHeader === `Bearer ${JOBS_SECRET}`) return true
+
+  return false
+}
 
 interface NotificationPayload {
   user_id: string
@@ -86,6 +103,13 @@ async function logAutoRefresh(vehicleId: number, plate: string, success: boolean
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST' || !isAuthorized(req)) {
+    return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 401
+    })
   }
 
   try {

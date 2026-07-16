@@ -59,7 +59,7 @@ SELECT cron.schedule(
   SELECT
     net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
     ) AS request_id;
   $$
@@ -73,7 +73,7 @@ SELECT cron.schedule(
   SELECT
     net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-insurance-expiry',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
     ) AS request_id;
   $$
@@ -86,7 +86,7 @@ SELECT cron.schedule(
   SELECT
     net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-bollo-status',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
     ) AS request_id;
   $$
@@ -99,7 +99,7 @@ SELECT cron.schedule(
   SELECT
     net.http_post(
       url := 'https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-revision-status',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "x-cron-secret": "YOUR_BACKGROUND_JOBS_SECRET"}'::jsonb,
       body := '{}'::jsonb
     ) AS request_id;
   $$
@@ -169,21 +169,21 @@ Testare le funzioni manualmente:
 ```bash
 # Test update-insurance-expiry
 curl -X POST https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-insurance-expiry \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "x-cron-secret: YOUR_BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 
 # Test update-bollo-status
 curl -X POST https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-bollo-status \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "x-cron-secret: YOUR_BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 
 # Test update-revision-status
 curl -X POST https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/update-revision-status \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "x-cron-secret: YOUR_BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 
 # Test run-all-jobs
 curl -X POST https://jbcbrnegmqraivdfmlsn.supabase.co/functions/v1/run-all-jobs \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "x-cron-secret: YOUR_BACKGROUND_JOBS_SECRET" \
   -H "Content-Type: application/json"
 ```
